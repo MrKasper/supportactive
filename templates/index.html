@@ -1,0 +1,444 @@
+<!-- templates/index.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Боковое меню -->
+<div class="sidebar">
+    <div class="sidebar-header">
+        <div class="logo-wrapper-sidebar">
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" style="max-width: 70px; height: auto;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+            <i class="bi bi-headset" style="font-size: 2.5rem; color: #667eea; display: none;"></i>
+        </div>
+        <h4 class="mt-2">Support Active</h4>
+        <small class="text-white-50">v1.0</small>
+    </div>
+
+    <div class="sidebar-menu">
+        <nav class="nav flex-column">
+            <a class="nav-link active" href="#" data-page="tasks" onclick="loadPage('tasks')">
+                <i class="bi bi-list-check"></i>
+                <span>Заявки</span>
+            </a>
+
+            <a class="nav-link" href="#" data-page="users" onclick="loadPage('users')">
+                <i class="bi bi-people"></i>
+                <span>Пользователи</span>
+            </a>
+
+            <a class="nav-link" href="#" data-page="cartridges" onclick="loadPage('cartridges')">
+                <i class="bi bi-printer"></i>
+                <span>Картриджи</span>
+            </a>
+
+            <a class="nav-link" href="#" data-page="licenses" onclick="loadPage('licenses')">
+                <i class="bi bi-key"></i>
+                <span>Лицензии</span>
+            </a>
+
+            <a class="nav-link" href="#" data-page="contacts" onclick="loadPage('contacts')">
+                <i class="bi bi-person-lines-fill"></i>
+                <span>Внешние контакты</span>
+            </a>
+
+            <a class="nav-link" href="#" data-page="directory" onclick="loadPage('directory')">
+                <i class="bi bi-book"></i>
+                <span>Справочник</span>
+            </a>
+
+            <a class="nav-link" href="#" data-page="report" onclick="loadPage('report')">
+                <i class="bi bi-file-text"></i>
+                <span>Отчет по задачам</span>
+            </a>
+        </nav>
+    </div>
+</div>
+
+<!-- Основной контент -->
+<div class="main-content">
+    <!-- Карточка пользователя -->
+    <div class="user-card">
+        <div class="row align-items-center">
+            <div class="col-md-3">
+                <div class="d-flex align-items-center">
+                    <div class="avatar-circle" id="userAvatar"></div>
+                    <div>
+                        <h5 class="mb-1" id="userName"></h5>
+                        <p class="mb-0 text-muted">
+                            <i class="bi bi-person-badge"></i>
+                            <span id="userRole"></span>
+                        </p>
+                        <small class="text-muted" id="userDepartment"></small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-primary" onclick="showUserCard()">
+                        <i class="bi bi-person-badge"></i> Карточка пользователя
+                    </button>
+                    <button class="btn btn-outline-secondary" onclick="changeUser()">
+                        <i class="bi bi-arrow-repeat"></i> Сменить
+                    </button>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="row">
+                    <div class="col-3">
+                        <div class="stats-card">
+                            <div class="stats-number" id="statCompleted">0</div>
+                            <div class="stats-label">Выполнено</div>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="stats-card">
+                            <div class="stats-number" id="statNewProgress">0</div>
+                            <div class="stats-label">В работе</div>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="stats-card">
+                            <div class="stats-number" id="statTotal">0</div>
+                            <div class="stats-label">Всего</div>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="stats-card">
+                            <div class="stats-number" id="statMyCompleted">0</div>
+                            <div class="stats-label">Мои заявки</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Блок с заявками (показывается по умолчанию) -->
+    <div id="tasksBlock">
+        <!-- Секция фильтров -->
+        <div class="filters-section">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-2">
+                    <label class="form-label">Тип работы</label>
+                    <select class="form-select" id="filterWorkType">
+                        <option value="">Все типы работ</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Кабинет</label>
+                    <select class="form-select" id="filterCabinet">
+                        <option value="">Все кабинеты</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Статус заявки</label>
+                    <select class="form-select" id="filterStatus">
+                        <option value="">Все статусы</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Пользователь</label>
+                    <select class="form-select" id="filterUser">
+                        <option value="">Все пользователи</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Срок выполнения</label>
+                    <input type="date" class="form-control" id="filterDate" onchange="loadTasks()">
+                </div>
+                <div class="col-md-2">
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-danger btn-sm" onclick="closeSelectedTasks()">
+                            <i class="bi bi-x-circle"></i> Закрыть заявки
+                        </button>
+                        <button class="btn btn-success btn-sm" onclick="showCreateTaskModal()">
+                            <i class="bi bi-plus-circle"></i> Создать
+                        </button>
+                        <button class="btn btn-primary btn-sm" onclick="refreshData()">
+                            <i class="bi bi-arrow-clockwise"></i> Обновить
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Таблица заявок -->
+        <div class="table-container">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" id="selectAll"></th>
+                            <th>Дата создания</th>
+                            <th>Срок</th>
+                            <th>От кого</th>
+                            <th>Кабинет</th>
+                            <th>Описание работы</th>
+                            <th>Тип работы</th>
+                            <th>Статус</th>
+                            <th>Приоритет</th>
+                            <th>Исполнитель</th>
+                            <th>Помощник</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tasksTableBody">
+                        <tr>
+                            <td colspan="11" class="text-center py-4">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Загрузка...</span>
+                                </div>
+                                <p class="mt-2 text-muted">Загрузка заявок...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Блок для других страниц (будет скрыт по умолчанию) -->
+    <div id="otherPagesBlock" style="display: none;">
+        <!-- Содержимое будет загружаться динамически -->
+    </div>
+</div>
+
+<!-- Модальное окно создания заявки -->
+<div class="modal fade" id="createTaskModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-plus-circle"></i> Создание новой заявки
+                </h5>
+            </div>
+            <div class="modal-body">
+                <form id="createTaskForm">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Тип работы *</label>
+                            <select class="form-select" name="work_type" required>
+                                <option value="">Выберите тип работы</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Приоритет</label>
+                            <select class="form-select" name="priority">
+                                <option value="Средний" selected>Средний</option>
+                                <option value="Высокий">Высокий</option>
+                                <option value="Низкий">Низкий</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Срок выполнения *</label>
+                            <input type="datetime-local" class="form-control" name="deadline" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">От кого (ФИО) *</label>
+                            <input type="text" class="form-control" name="from_user"
+                                   placeholder="Например: Иванов И.И." required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Кабинет *</label>
+                            <select class="form-select" name="cabinet" id="cabinetSelect" required>
+                                <option value="">Выберите кабинет</option>
+                            </select>
+                            <div class="form-text">
+                                <small>Выберите кабинет из списка или начните вводить для поиска</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Исполнитель</label>
+                            <select class="form-select" name="executor" id="executorSelect">
+                                <option value="">Выберите исполнителя</option>
+                            </select>
+                            <div class="form-text">
+                                <small>Список технических специалистов</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Помощник</label>
+                            <select class="form-select" name="assistant" id="assistantSelect">
+                                <option value="">Выберите помощника</option>
+                            </select>
+                        </div>
+                        <div class="col-12 mb-3">
+                            <label class="form-label">Описание работы *</label>
+                            <textarea class="form-control" name="description" rows="4"
+                                      placeholder="Подробно опишите проблему или задачу..." required></textarea>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle"></i> Отмена
+                </button>
+                <button type="button" class="btn btn-success" onclick="createTask()">
+                    <i class="bi bi-check-circle"></i> Создать заявку
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно просмотра заявки -->
+<div class="modal fade" id="viewTaskModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-file-text"></i> Описание заявки №<span id="taskNumber"></span>
+                </h5>
+            </div>
+            <div class="modal-body" id="taskDetails">
+                <!-- Динамическое содержимое -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle"></i> Закрыть
+                </button>
+                <button type="button" class="btn btn-primary" id="btnTakeTask" onclick="takeTask()" style="display: none;">
+                    <i class="bi bi-play-circle"></i> Взять в работу
+                </button>
+                <button type="button" class="btn btn-danger" id="btnCloseTask" onclick="closeCurrentTask()">
+                    <i class="bi bi-check-circle"></i> Закрыть заявку
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно редактирования пользователя -->
+<div class="modal fade" id="editUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-pencil-square"></i> Редактирование пользователя
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editUserForm" enctype="multipart/form-data">
+                    <!-- Аватарка -->
+                    <div class="text-center mb-4">
+                        <div class="position-relative d-inline-block">
+                            <div class="avatar-circle mx-auto" id="editUserAvatar"
+                                 style="width: 100px; height: 100px; font-size: 40px; cursor: pointer;"
+                                 onclick="document.getElementById('avatarFileInput').click()">
+                            </div>
+                            <button type="button" class="btn btn-sm btn-light position-absolute bottom-0 end-0 rounded-circle"
+                                    style="width: 35px; height: 35px;"
+                                    onclick="document.getElementById('avatarFileInput').click()"
+                                    title="Загрузить фото">
+                                <i class="bi bi-camera-fill"></i>
+                            </button>
+                        </div>
+                        <input type="file" id="avatarFileInput" name="avatar_file"
+                               accept="image/*" style="display: none;"
+                               onchange="previewAvatarFile(this)">
+                        <input type="hidden" name="avatar" id="avatarInput" value="">
+                        <div class="mt-2">
+                            <small class="text-muted">Нажмите на аватар или иконку камеры, чтобы загрузить фото</small>
+                        </div>
+                    </div>
+
+                    <!-- Выбор аватара -->
+                    <div class="mb-3">
+                        <label class="form-label">Или выберите цветной аватар</label>
+                        <div class="d-flex flex-wrap gap-2" id="avatarSelector">
+                            <!-- Аватары будут добавлены динамически -->
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- ФИО -->
+                    <div class="mb-3">
+                        <label class="form-label">ФИО *</label>
+                        <input type="text" class="form-control" name="full_name" id="editFullName"
+                               placeholder="Введите ФИО" required>
+                    </div>
+
+                    <!-- Роль -->
+                    <div class="mb-3">
+                        <label class="form-label">Роль</label>
+                        <select class="form-select" name="role" id="editRole">
+                            <option value="Администратор">Администратор</option>
+                            <option value="Техник">Техник</option>
+                            <option value="Пользователь">Пользователь</option>
+                        </select>
+                    </div>
+
+                    <!-- Поля логина и пароля (только для админа) -->
+                    <div id="loginPasswordFields" style="display: none;">
+                        <div class="mb-3">
+                            <label class="form-label">Логин *</label>
+                            <input type="text" class="form-control" name="login" id="editLogin"
+                                   placeholder="Введите логин" minlength="3">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Пароль *</label>
+                            <input type="text" class="form-control" name="password" id="editPassword"
+                                   placeholder="Введите пароль" minlength="6">
+                        </div>
+                    </div>
+
+                    <!-- Email -->
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-control" name="email" id="editEmail"
+                               placeholder="Введите email">
+                    </div>
+
+                    <!-- Телефон -->
+                    <div class="mb-3">
+                        <label class="form-label">Телефон</label>
+                        <input type="text" class="form-control" name="phone" id="editPhone"
+                               placeholder="Введите телефон">
+                    </div>
+
+                    <!-- Отдел -->
+                    <div class="mb-3">
+                        <label class="form-label">Отдел</label>
+                        <input type="text" class="form-control" name="department" id="editDepartment"
+                               placeholder="Введите отдел">
+                    </div>
+
+                    <!-- Тумблер блокировки -->
+                    <div id="statusToggleField" class="mb-3" style="display: none;">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="editIsActive" checked>
+                            <label class="form-check-label" for="editIsActive">
+                                Учетная запись активна
+                            </label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle"></i> Отмена
+                </button>
+                <button type="button" class="btn btn-primary" onclick="saveUserProfile()">
+                    <i class="bi bi-check-circle"></i> Сохранить
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/database.js') }}"></script>
+<script src="{{ url_for('static', filename='js/login.js') }}"></script>
+<script src="{{ url_for('static', filename='js/tasks.js') }}"></script>
+<script src="{{ url_for('static', filename='js/users.js') }}"></script>
+<script src="{{ url_for('static', filename='js/cartridges.js') }}"></script>
+<script src="{{ url_for('static', filename='js/licenses.js') }}"></script>
+<script src="{{ url_for('static', filename='js/contacts.js') }}"></script>
+<script src="{{ url_for('static', filename='js/directory.js') }}"></script>
+<script src="{{ url_for('static', filename='js/excel.js') }}"></script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% endblock %}

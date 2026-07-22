@@ -1,0 +1,358 @@
+<!-- templates/login.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    .login-page {
+        min-height: 100vh;
+        display: flex;
+        background: #f0f2f5;
+    }
+
+    .login-left {
+        flex: 1;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 40px;
+    }
+
+    .login-left .logo-container {
+        text-align: center;
+    }
+
+    .login-left .logo-container .logo-wrapper {
+        background: white;
+        border-radius: 20px;
+        padding: 30px;
+        display: inline-block;
+        margin-bottom: 20px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+
+    .login-left .logo-container .logo-wrapper img {
+        max-width: 180px;
+        height: auto;
+        display: block;
+    }
+
+    .login-left .logo-container h2 {
+        color: white;
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 10px;
+    }
+
+    .login-left .logo-container p {
+        color: rgba(255,255,255,0.8);
+        font-size: 1.1rem;
+    }
+
+    .login-right {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 40px;
+        background: white;
+    }
+
+    .login-form-container {
+        width: 100%;
+        max-width: 400px;
+    }
+
+    .login-form-container h3 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #333;
+        margin-bottom: 10px;
+        text-align: center;
+    }
+
+    .login-form-container .subtitle {
+        color: #666;
+        text-align: center;
+        margin-bottom: 30px;
+        font-size: 0.9rem;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+        position: relative;
+    }
+
+    .form-group label {
+        display: block;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 8px;
+        font-size: 0.9rem;
+    }
+
+    .form-group .input-wrapper {
+        position: relative;
+    }
+
+    .form-group .input-wrapper input {
+        width: 100%;
+        padding: 12px 45px 12px 15px;
+        border: 2px solid #e1e4e8;
+        border-radius: 10px;
+        font-size: 1rem;
+        transition: all 0.3s;
+        background: #f8f9fa;
+    }
+
+    .form-group .input-wrapper input:focus {
+        outline: none;
+        border-color: #667eea;
+        background: white;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .form-group .input-wrapper .input-icon {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #999;
+        font-size: 1.2rem;
+        cursor: pointer;
+        transition: color 0.3s;
+    }
+
+    .form-group .input-wrapper .input-icon:hover {
+        color: #667eea;
+    }
+
+    .btn-login {
+        width: 100%;
+        padding: 12px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+        margin-top: 10px;
+    }
+
+    .btn-login:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+    }
+
+    .error-message {
+        background: #fff5f5;
+        color: #c62828;
+        padding: 10px 15px;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        margin-bottom: 15px;
+        display: none;
+        border: 1px solid #ffcdd2;
+    }
+
+    .error-message.show {
+        display: block;
+    }
+
+    .success-message {
+        background: #e8f5e9;
+        color: #2e7d32;
+        padding: 10px 15px;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        margin-bottom: 15px;
+        display: none;
+        border: 1px solid #c8e6c9;
+    }
+
+    .success-message.show {
+        display: block;
+    }
+
+    @media (max-width: 768px) {
+        .login-page {
+            flex-direction: column;
+        }
+
+        .login-left {
+            padding: 30px 20px;
+        }
+
+        .login-left .logo-container .logo-wrapper {
+            padding: 20px;
+        }
+
+        .login-left .logo-container .logo-wrapper img {
+            max-width: 120px;
+        }
+
+        .login-right {
+            padding: 30px 20px;
+        }
+    }
+</style>
+
+<div class="login-page">
+    <!-- Левая сторона с логотипом -->
+    <div class="login-left">
+        <div class="logo-container">
+            <div class="logo-wrapper">
+                <img src="{{ url_for('static', filename='logo.png') }}" alt="Support Active Logo"
+                     onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                <i class="bi bi-headset" style="font-size: 5rem; color: #667eea; display: none;"></i>
+            </div>
+            <h2>Support Active</h2>
+            <p>Система управления заявками</p>
+        </div>
+    </div>
+
+    <!-- Правая сторона с формой входа -->
+    <div class="login-right">
+        <div class="login-form-container">
+            <h3>Вход в систему</h3>
+            <p class="subtitle">Введите ваш логин и пароль</p>
+
+            <!-- Сообщение об ошибке -->
+            <div class="error-message" id="errorMessage">
+                <i class="bi bi-exclamation-circle"></i>
+                <span id="errorText"></span>
+            </div>
+
+            <!-- Сообщение об успехе -->
+            <div class="success-message" id="successMessage">
+                <i class="bi bi-check-circle"></i>
+                <span id="successText"></span>
+            </div>
+
+            <!-- Форма входа -->
+            <form id="loginForm" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label for="loginInput">Ваш логин</label>
+                    <div class="input-wrapper">
+                        <input type="text" id="loginInput" name="login"
+                               placeholder="Введите логин" required autocomplete="username">
+                        <i class="bi bi-person input-icon"></i>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="passwordInput">Ваш пароль</label>
+                    <div class="input-wrapper">
+                        <input type="password" id="passwordInput" name="password"
+                               placeholder="Введите пароль" required autocomplete="current-password">
+                        <i class="bi bi-eye input-icon" id="togglePassword"
+                           onclick="togglePasswordVisibility()" title="Показать пароль"></i>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-login">
+                    <i class="bi bi-box-arrow-in-right"></i> Войти
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Переключение видимости пароля на странице входа
+function togglePasswordVisibility() {
+    var passwordInput = document.getElementById('passwordInput');
+    var toggleIcon = document.getElementById('togglePassword');
+
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        toggleIcon.classList.remove('bi-eye');
+        toggleIcon.classList.add('bi-eye-slash');
+        toggleIcon.title = 'Скрыть пароль';
+    } else {
+        passwordInput.type = 'password';
+        toggleIcon.classList.remove('bi-eye-slash');
+        toggleIcon.classList.add('bi-eye');
+        toggleIcon.title = 'Показать пароль';
+    }
+}
+
+// Показать/скрыть сообщение об ошибке
+function showError(message) {
+    document.getElementById('errorText').textContent = message;
+    document.getElementById('errorMessage').classList.add('show');
+    document.getElementById('successMessage').classList.remove('show');
+}
+
+function hideError() {
+    document.getElementById('errorMessage').classList.remove('show');
+}
+
+function showSuccess(message) {
+    document.getElementById('successText').textContent = message;
+    document.getElementById('successMessage').classList.add('show');
+    document.getElementById('errorMessage').classList.remove('show');
+}
+
+// Обработка входа
+function handleLogin(event) {
+    event.preventDefault();
+    hideError();
+
+    var login = document.getElementById('loginInput').value.trim();
+    var password = document.getElementById('passwordInput').value.trim();
+
+    if (!login || !password) {
+        showError('Введите логин и пароль');
+        return;
+    }
+
+    // Показываем загрузку
+    Swal.fire({
+        title: 'Вход в систему...',
+        allowOutsideClick: false,
+        didOpen: function() {
+            Swal.showLoading();
+        }
+    });
+
+    fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            login: login,
+            password: password
+        })
+    })
+    .then(function(response) {
+        return response.json();
+    })
+    .then(function(data) {
+        Swal.close();
+
+        if (data.success) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Добро пожаловать!',
+                text: data.user.full_name,
+                timer: 1500,
+                showConfirmButton: false
+            }).then(function() {
+                window.location.href = '/';
+            });
+        } else {
+            showError(data.error || 'Ошибка входа');
+        }
+    })
+    .catch(function(error) {
+        Swal.close();
+        showError('Ошибка соединения с сервером');
+        console.error('Error:', error);
+    });
+}
+</script>
+{% endblock %}
