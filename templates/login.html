@@ -47,6 +47,13 @@
     .login-left .logo-container p {
         color: rgba(255,255,255,0.8);
         font-size: 1.1rem;
+        margin-bottom: 5px;
+    }
+
+    .login-left .logo-container .developer-info {
+        color: rgba(255,255,255,0.6);
+        font-size: 0.85rem;
+        margin-top: 20px;
     }
 
     .login-right {
@@ -125,6 +132,28 @@
 
     .form-group .input-wrapper .input-icon:hover {
         color: #667eea;
+    }
+
+    .remember-me {
+        display: flex;
+        align-items: center;
+        margin-bottom: 20px;
+        cursor: pointer;
+    }
+
+    .remember-me input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        margin-right: 10px;
+        cursor: pointer;
+        accent-color: #667eea;
+    }
+
+    .remember-me label {
+        cursor: pointer;
+        font-size: 0.9rem;
+        color: #555;
+        user-select: none;
     }
 
     .btn-login {
@@ -210,6 +239,7 @@
             </div>
             <h2>Support Active</h2>
             <p>Система управления заявками</p>
+            <p class="developer-info">Разработано организацией ExpCode</p>
         </div>
     </div>
 
@@ -252,6 +282,12 @@
                     </div>
                 </div>
 
+                <!-- Запомнить меня -->
+                <div class="remember-me">
+                    <input type="checkbox" id="rememberMe" checked>
+                    <label for="rememberMe">Запомнить меня</label>
+                </div>
+
                 <button type="submit" class="btn-login">
                     <i class="bi bi-box-arrow-in-right"></i> Войти
                 </button>
@@ -261,6 +297,25 @@
 </div>
 
 <script>
+// Загрузка сохраненных данных при открытии страницы
+document.addEventListener('DOMContentLoaded', function() {
+    var savedLogin = localStorage.getItem('savedLogin');
+    var savedPassword = localStorage.getItem('savedPassword');
+    var savedRemember = localStorage.getItem('rememberMe');
+
+    if (savedRemember === 'true') {
+        if (savedLogin) {
+            document.getElementById('loginInput').value = savedLogin;
+        }
+        if (savedPassword) {
+            document.getElementById('passwordInput').value = savedPassword;
+        }
+        document.getElementById('rememberMe').checked = true;
+    } else {
+        document.getElementById('rememberMe').checked = false;
+    }
+});
+
 // Переключение видимости пароля на странице входа
 function togglePasswordVisibility() {
     var passwordInput = document.getElementById('passwordInput');
@@ -303,10 +358,22 @@ function handleLogin(event) {
 
     var login = document.getElementById('loginInput').value.trim();
     var password = document.getElementById('passwordInput').value.trim();
+    var rememberMe = document.getElementById('rememberMe').checked;
 
     if (!login || !password) {
         showError('Введите логин и пароль');
         return;
+    }
+
+    // Сохраняем данные при включенном "Запомнить меня"
+    if (rememberMe) {
+        localStorage.setItem('savedLogin', login);
+        localStorage.setItem('savedPassword', password);
+        localStorage.setItem('rememberMe', 'true');
+    } else {
+        localStorage.removeItem('savedLogin');
+        localStorage.removeItem('savedPassword');
+        localStorage.setItem('rememberMe', 'false');
     }
 
     // Показываем загрузку
@@ -325,7 +392,8 @@ function handleLogin(event) {
         },
         body: JSON.stringify({
             login: login,
-            password: password
+            password: password,
+            remember: rememberMe
         })
     })
     .then(function(response) {

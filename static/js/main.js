@@ -61,17 +61,12 @@ function checkAuthAndInit() {
             // Настраиваем интерфейс в зависимости от роли
             setupInterfaceByRole(data.role);
 
-            // Загружаем данные пользователя
+            // Загружаем данные
             if (typeof loadUserInfo === 'function') loadUserInfo();
             if (typeof loadStatistics === 'function') loadStatistics();
             if (typeof loadFilters === 'function') loadFilters();
-
-            // Загружаем заявки с задержкой для гарантии установки роли
-            setTimeout(function() {
-                console.log('Calling loadTasks - currentUserRole:', window.currentUserRole);
-                if (typeof loadTasks === 'function') loadTasks();
-            }, 300);
-
+            if (typeof loadTasks === 'function') loadTasks();
+            if (typeof loadUnreadCount === 'function') loadUnreadCount();
             if (typeof setupEventHandlers === 'function') setupEventHandlers();
             if (typeof setupContextMenu === 'function') setupContextMenu();
             if (typeof setupCabinetSearch === 'function') setupCabinetSearch();
@@ -104,10 +99,10 @@ function setupInterfaceByRole(role) {
         // Скрываем блок "Мои заявки" в статистике
         $('#statMyCompleted').closest('.col-3').hide();
 
-        // Перераспределяем оставшиеся 3 блока статистики на всю ширину
+        // Перераспределяем оставшиеся 3 блока статистики
         $('.user-card .col-md-6 .col-3').removeClass('col-3').addClass('col-4');
-    }
-    else if (role === 'Пользователь') {
+
+    } else if (role === 'Пользователь') {
         // Скрываем все модули кроме заявок
         $('.sidebar .nav-link[data-page="users"]').hide();
         $('.sidebar .nav-link[data-page="cartridges"]').hide();
@@ -260,6 +255,7 @@ function refreshData() {
     if (typeof loadUserInfo === 'function') loadUserInfo();
     if (typeof loadStatistics === 'function') loadStatistics();
     if (typeof loadTasks === 'function') loadTasks();
+    if (typeof loadUnreadCount === 'function') loadUnreadCount();
 }
 
 console.log('Main module loaded');

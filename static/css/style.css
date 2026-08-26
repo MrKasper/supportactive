@@ -722,3 +722,7 @@ body {
 .logo-wrapper-sidebar img {
     display: block;
 }
+
+.swal-wide {
+    width: 650px !important;
+}

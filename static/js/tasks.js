@@ -118,13 +118,28 @@ function loadTasks() {
 
     console.log('loadTasks - final role:', role);
 
-    if (role === 'Техник') {
-        var userName = $('#userName').text().trim();
-        console.log('Filtering for technician:', userName);
-        if (userName && userName !== 'Неизвестно') {
-            params.append('user', userName);
-        }
-    } else if (role === 'Пользователь') {
+if (role === 'Техник') {
+    // Всегда фильтруем по имени техника
+    var userName = $('#userName').text().trim();
+    if (userName && userName !== 'Неизвестно') {
+        params.append('user', userName);
+    }
+
+    // Применяем фильтры из интерфейса
+    var workType = $('#filterWorkType').val();
+    var cabinet = $('#filterCabinet').val();
+    var status = $('#filterStatus').val();
+    var filterDate = $('#filterDate').val();
+
+    if (workType) params.append('work_type', workType);
+    if (cabinet) params.append('cabinet', cabinet);
+    if (status) params.append('status', status);
+    if (filterDate) {
+        params.append('date_from', filterDate + ' 00:00:00');
+        params.append('date_to', filterDate + ' 23:59:59');
+    }
+}
+    else if (role === 'Пользователь') {
         console.log('Filtering for user ID:', currentUserId);
         if (currentUserId) {
             params.append('created_by', currentUserId);

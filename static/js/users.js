@@ -193,8 +193,21 @@ function editUserById(userId) {
             $('#editPhone').val(data.phone || '');
             $('#editDepartment').val(data.department || '');
             $('#editLogin').val(data.login || '');
-            $('#editPassword').val('');
             $('#editIsActive').prop('checked', data.is_active);
+
+            // Загружаем пароль из базы данных
+            fetch('/api/users/' + userId + '/credentials')
+                .then(function(r) { return r.json(); })
+                .then(function(credData) {
+                    if (credData.success && credData.credentials) {
+                        $('#editPassword').val(credData.credentials.password);
+                    } else {
+                        $('#editPassword').val('');
+                    }
+                })
+                .catch(function() {
+                    $('#editPassword').val('');
+                });
 
             $('#editUserForm').data('user-id', userId);
             $('#editUserForm').data('edit-mode', 'admin');
@@ -202,6 +215,7 @@ function editUserById(userId) {
             $('#loginPasswordFields').show();
             $('#statusToggleField').show();
 
+            // Сбрасываем аватар
             $('#avatarFileInput').val('');
             $('#editUserForm').data('avatar-file', null);
             $('#editUserForm').data('avatar-is-file', false);
@@ -242,17 +256,20 @@ function showAddUserModal() {
     $('#loginPasswordFields').show();
     $('#statusToggleField').hide();
 
+    // Сбрасываем аватар
     $('#avatarFileInput').val('');
     $('#editUserForm').data('avatar-file', null);
     $('#editUserForm').data('avatar-is-file', false);
     $('#avatarInput').val('default.png');
 
+    // Показываем стандартную иконку пользователя вместо буквы
     $('#editUserAvatar').css({
         'background-image': 'none',
         'background-color': '#858796',
         'color': 'white'
     }).html('<i class="bi bi-person" style="font-size: 40px;"></i>');
 
+    // Генерируем селектор аватаров с иконкой пользователя
     generateAvatarSelectorForNewUser();
 
     $('#editUserModal').modal('show');

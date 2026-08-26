@@ -74,10 +74,14 @@
             <div class="col-md-3">
                 <div class="d-flex gap-2">
                     <button class="btn btn-outline-primary" onclick="showUserCard()">
-                        <i class="bi bi-person-badge"></i> Карточка пользователя
+                        <i class="bi bi-person-badge"></i> Карточка
                     </button>
                     <button class="btn btn-outline-secondary" onclick="changeUser()">
                         <i class="bi bi-arrow-repeat"></i> Сменить
+                    </button>
+                    <button class="btn btn-outline-info position-relative" onclick="showNotifications()" title="Уведомления">
+                        <i class="bi bi-bell"></i>
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notificationBadge" style="display: none;">0</span>
                     </button>
                 </div>
             </div>
@@ -148,7 +152,7 @@
                 <div class="col-md-2">
                     <div class="d-flex gap-2">
                         <button class="btn btn-danger btn-sm" onclick="closeSelectedTasks()">
-                            <i class="bi bi-x-circle"></i> Закрыть заявки
+                            <i class="bi bi-x-circle"></i> Закрыть
                         </button>
                         <button class="btn btn-success btn-sm" onclick="showCreateTaskModal()">
                             <i class="bi bi-plus-circle"></i> Создать
@@ -209,6 +213,7 @@
                 <h5 class="modal-title">
                     <i class="bi bi-plus-circle"></i> Создание новой заявки
                 </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <form id="createTaskForm">
@@ -241,18 +246,12 @@
                             <select class="form-select" name="cabinet" id="cabinetSelect" required>
                                 <option value="">Выберите кабинет</option>
                             </select>
-                            <div class="form-text">
-                                <small>Выберите кабинет из списка или начните вводить для поиска</small>
-                            </div>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Исполнитель</label>
                             <select class="form-select" name="executor" id="executorSelect">
                                 <option value="">Выберите исполнителя</option>
                             </select>
-                            <div class="form-text">
-                                <small>Список технических специалистов</small>
-                            </div>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Помощник</label>
@@ -288,6 +287,7 @@
                 <h5 class="modal-title">
                     <i class="bi bi-file-text"></i> Описание заявки №<span id="taskNumber"></span>
                 </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="taskDetails">
                 <!-- Динамическое содержимое -->
@@ -337,9 +337,6 @@
                                accept="image/*" style="display: none;"
                                onchange="previewAvatarFile(this)">
                         <input type="hidden" name="avatar" id="avatarInput" value="">
-                        <div class="mt-2">
-                            <small class="text-muted">Нажмите на аватар или иконку камеры, чтобы загрузить фото</small>
-                        </div>
                     </div>
 
                     <!-- Выбор аватара -->
@@ -369,7 +366,7 @@
                         </select>
                     </div>
 
-                    <!-- Поля логина и пароля (только для админа) -->
+                    <!-- Поля логина и пароля -->
                     <div id="loginPasswordFields" style="display: none;">
                         <div class="mb-3">
                             <label class="form-label">Логин *</label>
@@ -433,6 +430,7 @@
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/database.js') }}"></script>
 <script src="{{ url_for('static', filename='js/login.js') }}"></script>
+<script src="{{ url_for('static', filename='js/notifications.js') }}"></script>
 <script src="{{ url_for('static', filename='js/tasks.js') }}"></script>
 <script src="{{ url_for('static', filename='js/users.js') }}"></script>
 <script src="{{ url_for('static', filename='js/cartridges.js') }}"></script>

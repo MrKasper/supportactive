@@ -15,6 +15,7 @@ from licenses import licenses_bp
 from contacts import contacts_bp
 from directory import directory_bp
 from excel import excel_bp
+from notifications import notifications_bp
 
 # Создаем экземпляр Flask приложения
 app = Flask(__name__)
@@ -28,6 +29,7 @@ app.register_blueprint(licenses_bp)
 app.register_blueprint(contacts_bp)
 app.register_blueprint(directory_bp)
 app.register_blueprint(excel_bp)
+app.register_blueprint(notifications_bp)
 
 # Конфигурация приложения
 app.secret_key = 'your_secret_key_here_2024_secure_helpdesk_system'
@@ -57,13 +59,15 @@ Session(app)
 if not os.path.exists(app.config['SESSION_FILE_DIR']):
     os.makedirs(app.config['SESSION_FILE_DIR'])
 
-# Инициализация базы данных
+# Инициализация базы данных (без удаления)
 db = Database()
+db.init_db()
 
-# Инициализируем БД при первом запуске
-if not os.path.exists('database.db'):
-    db.init_db()
-    print("База данных создана")
+# Проверяем наличие данных
+users_count = db.query('SELECT COUNT(*) as count FROM users', one=True)['count']
+if users_count == 0:
+    print("База данных пуста. Добавление тестовых данных...")
+    db.insert_test_data()
 
 
 # ============= ДЕКОРАТОР ДЛЯ ПРОВЕРКИ АВТОРИЗАЦИИ =============

@@ -146,7 +146,6 @@ function loadCartridgesPage() {
 
 // Показать модальное окно добавления картриджа
 function showAddCartridgeModal() {
-    // Загружаем список кабинетов
     fetch('/api/cabinets')
         .then(function(r) { return r.json(); })
         .then(function(cabinets) {
@@ -158,53 +157,59 @@ function showAddCartridgeModal() {
             Swal.fire({
                 title: 'Добавить запись о замене картриджа',
                 html:
-                    '<div class="mb-3">' +
-                    '<label class="form-label text-start w-100">Кабинет *</label>' +
-                    '<select id="swal-cabinet" class="form-select">' +
+                    '<div class="mb-3 text-start">' +
+                    '<label class="form-label">Кабинет *</label>' +
+                    '<select id="swal-cabinet" class="form-control">' +
                     '<option value="">Выберите кабинет</option>' +
                     cabinetOptions +
                     '</select>' +
                     '</div>' +
-                    '<div class="mb-3">' +
-                    '<label class="form-label text-start w-100">ФИО</label>' +
+                    '<div class="mb-3 text-start">' +
+                    '<label class="form-label">ФИО</label>' +
                     '<input id="swal-fullname" class="form-control" placeholder="Например: Иванов И.И.">' +
                     '</div>' +
-                    '<div class="mb-3">' +
-                    '<label class="form-label text-start w-100">Принтер *</label>' +
+                    '<div class="mb-3 text-start">' +
+                    '<label class="form-label">Принтер *</label>' +
                     '<input id="swal-printer" class="form-control" placeholder="Модель принтера">' +
                     '</div>' +
-                    '<div class="mb-3">' +
-                    '<label class="form-label text-start w-100">Картридж *</label>' +
+                    '<div class="mb-3 text-start">' +
+                    '<label class="form-label">Картридж *</label>' +
                     '<input id="swal-cartridge" class="form-control" placeholder="Модель картриджа">' +
                     '</div>' +
-                    '<div class="mb-3">' +
-                    '<label class="form-label text-start w-100">Даты замены</label>' +
-                    '<div id="dates-container">' +
+                    '<div class="mb-3 text-start">' +
+                    '<label class="form-label">Даты замены</label>' +
+                    '<button type="button" class="btn btn-sm btn-outline-primary mb-2 w-100" onclick="addDateField()">' +
+                    '<i class="bi bi-plus"></i> Добавить дату' +
+                    '</button>' +
+                    '<div id="dates-container" style="max-height: 200px; overflow-y: auto; padding: 8px; border: 1px solid #dee2e6; border-radius: 5px;">' +
                     '<div class="input-group mb-2">' +
                     '<input type="datetime-local" class="form-control date-input">' +
                     '<button type="button" class="btn btn-outline-danger" onclick="removeDateField(this)" title="Удалить"><i class="bi bi-trash"></i></button>' +
                     '</div>' +
                     '</div>' +
-                    '<button type="button" class="btn btn-sm btn-outline-primary" onclick="addDateField()">' +
-                    '<i class="bi bi-plus"></i> Добавить дату' +
-                    '</button>' +
                     '</div>' +
-                    '<div class="mb-3">' +
-                    '<label class="form-label text-start w-100">Примечание</label>' +
+                    '<div class="mb-3 text-start">' +
+                    '<label class="form-label">Примечание</label>' +
                     '<textarea id="swal-notes" class="form-control" rows="2" placeholder="Примечание"></textarea>' +
                     '</div>',
                 showCancelButton: true,
                 confirmButtonText: 'Добавить',
                 cancelButtonText: 'Отмена',
                 confirmButtonColor: '#28a745',
+                customClass: {
+                    popup: 'swal-wide'
+                },
                 didOpen: function() {
-                    // Добавляем функции в глобальную область
                     window.addDateField = function() {
                         var container = document.getElementById('dates-container');
                         var div = document.createElement('div');
                         div.className = 'input-group mb-2';
                         div.innerHTML = '<input type="datetime-local" class="form-control date-input"><button type="button" class="btn btn-outline-danger" onclick="removeDateField(this)" title="Удалить"><i class="bi bi-trash"></i></button>';
-                        container.appendChild(div);
+                        container.insertBefore(div, container.firstChild);
+                        container.scrollTop = 0;
+                        setTimeout(function() {
+                            div.querySelector('input').focus();
+                        }, 100);
                     };
                     window.removeDateField = function(btn) {
                         var container = document.getElementById('dates-container');
@@ -281,9 +286,14 @@ function editCartridge(cartridgeId) {
             cabinetOptions += '<option value="' + cab.cabinet_number + '" ' + selected + '>' + cab.cabinet_number + (cab.description ? ' - ' + cab.description : '') + '</option>';
         });
 
-        var datesHtml = '<div id="dates-container">';
+        var datesHtml = '<button type="button" class="btn btn-sm btn-outline-primary mb-2 w-100" onclick="addDateField()">' +
+            '<i class="bi bi-plus"></i> Добавить дату' +
+            '</button>' +
+            '<div id="dates-container" style="max-height: 200px; overflow-y: auto; padding: 8px; border: 1px solid #dee2e6; border-radius: 5px;">';
+
         if (data.replacement_dates && data.replacement_dates.length > 0) {
-            data.replacement_dates.forEach(function(date) {
+            var reversedDates = data.replacement_dates.slice().reverse();
+            reversedDates.forEach(function(date) {
                 if (date.trim()) {
                     var dateValue = date.trim().replace(' ', 'T').substring(0, 16);
                     datesHtml += '<div class="input-group mb-2">';
@@ -303,47 +313,51 @@ function editCartridge(cartridgeId) {
         Swal.fire({
             title: 'Редактировать запись',
             html:
-                '<div class="mb-3">' +
-                '<label class="form-label text-start w-100">Кабинет *</label>' +
-                '<select id="swal-cabinet" class="form-select">' +
+                '<div class="mb-3 text-start">' +
+                '<label class="form-label">Кабинет *</label>' +
+                '<select id="swal-cabinet" class="form-control">' +
                 '<option value="">Выберите кабинет</option>' +
                 cabinetOptions +
                 '</select>' +
                 '</div>' +
-                '<div class="mb-3">' +
-                '<label class="form-label text-start w-100">ФИО</label>' +
+                '<div class="mb-3 text-start">' +
+                '<label class="form-label">ФИО</label>' +
                 '<input id="swal-fullname" class="form-control" value="' + (data.full_name || '') + '">' +
                 '</div>' +
-                '<div class="mb-3">' +
-                '<label class="form-label text-start w-100">Принтер *</label>' +
+                '<div class="mb-3 text-start">' +
+                '<label class="form-label">Принтер *</label>' +
                 '<input id="swal-printer" class="form-control" value="' + (data.printer || '') + '">' +
                 '</div>' +
-                '<div class="mb-3">' +
-                '<label class="form-label text-start w-100">Картридж *</label>' +
+                '<div class="mb-3 text-start">' +
+                '<label class="form-label">Картридж *</label>' +
                 '<input id="swal-cartridge" class="form-control" value="' + (data.cartridge || '') + '">' +
                 '</div>' +
-                '<div class="mb-3">' +
-                '<label class="form-label text-start w-100">Даты замены</label>' +
+                '<div class="mb-3 text-start">' +
+                '<label class="form-label">Даты замены</label>' +
                 datesHtml +
-                '<button type="button" class="btn btn-sm btn-outline-primary" onclick="addDateField()">' +
-                '<i class="bi bi-plus"></i> Добавить дату' +
-                '</button>' +
                 '</div>' +
-                '<div class="mb-3">' +
-                '<label class="form-label text-start w-100">Примечание</label>' +
+                '<div class="mb-3 text-start">' +
+                '<label class="form-label">Примечание</label>' +
                 '<textarea id="swal-notes" class="form-control" rows="2">' + (data.notes || '') + '</textarea>' +
                 '</div>',
             showCancelButton: true,
             confirmButtonText: 'Сохранить',
             cancelButtonText: 'Отмена',
             confirmButtonColor: '#28a745',
+            customClass: {
+                popup: 'swal-wide'
+            },
             didOpen: function() {
                 window.addDateField = function() {
                     var container = document.getElementById('dates-container');
                     var div = document.createElement('div');
                     div.className = 'input-group mb-2';
                     div.innerHTML = '<input type="datetime-local" class="form-control date-input"><button type="button" class="btn btn-outline-danger" onclick="removeDateField(this)" title="Удалить"><i class="bi bi-trash"></i></button>';
-                    container.appendChild(div);
+                    container.insertBefore(div, container.firstChild);
+                    container.scrollTop = 0;
+                    setTimeout(function() {
+                        div.querySelector('input').focus();
+                    }, 100);
                 };
                 window.removeDateField = function(btn) {
                     var container = document.getElementById('dates-container');
