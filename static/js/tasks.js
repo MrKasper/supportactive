@@ -26,10 +26,9 @@ function loadStatistics() {
                 animateNumber('#statCompleted', data.user_completed || 0);
                 animateNumber('#statNewProgress', data.user_in_progress || 0);
                 animateNumber('#statTotal', data.user_total || 0);
-                // Меняем подписи
-                $('#statCompleted').closest('.stats-card').find('.stats-label').text('Выполнено');
-                $('#statNewProgress').closest('.stats-card').find('.stats-label').text('В работе');
-                $('#statTotal').closest('.stats-card').find('.stats-label').text('Всего');
+                $('#statCompleted').closest('.stats-card').find('.stats-label').text('Мои выполнено');
+                $('#statNewProgress').closest('.stats-card').find('.stats-label').text('Мои в работе');
+                $('#statTotal').closest('.stats-card').find('.stats-label').text('Мои всего');
             } else {
                 animateNumber('#statCompleted', data.completed || 0);
                 animateNumber('#statNewProgress', data.new_or_progress || 0);
@@ -104,48 +103,36 @@ function loadFilters() {
 function loadTasks() {
     showLoadingIndicator();
 
-    // Если роль не установлена, пробуем определить её из интерфейса
-    if (!window.currentUserRole) {
-        var roleText = $('#userRole').text().trim();
-        if (roleText === 'Техник') window.currentUserRole = 'Техник';
-        else if (roleText === 'Пользователь') window.currentUserRole = 'Пользователь';
-        else window.currentUserRole = 'Администратор';
-        console.log('Role determined from UI:', window.currentUserRole);
-    }
-
     var params = new URLSearchParams();
     var role = window.currentUserRole;
 
-    console.log('loadTasks - final role:', role);
+    console.log('loadTasks called - role:', role, 'currentUserId:', currentUserId);
 
-if (role === 'Техник') {
-    // Всегда фильтруем по имени техника
-    var userName = $('#userName').text().trim();
-    if (userName && userName !== 'Неизвестно') {
-        params.append('user', userName);
-    }
+    if (role === 'Техник') {
+        var userName = $('#userName').text().trim();
+        if (userName && userName !== 'Неизвестно') {
+            params.append('user', userName);
+        }
 
-    // Применяем фильтры из интерфейса
-    var workType = $('#filterWorkType').val();
-    var cabinet = $('#filterCabinet').val();
-    var status = $('#filterStatus').val();
-    var filterDate = $('#filterDate').val();
+        // Применяем фильтры из интерфейса для техника
+        var workType = $('#filterWorkType').val();
+        var cabinet = $('#filterCabinet').val();
+        var status = $('#filterStatus').val();
+        var filterDate = $('#filterDate').val();
 
-    if (workType) params.append('work_type', workType);
-    if (cabinet) params.append('cabinet', cabinet);
-    if (status) params.append('status', status);
-    if (filterDate) {
-        params.append('date_from', filterDate + ' 00:00:00');
-        params.append('date_to', filterDate + ' 23:59:59');
-    }
-}
-    else if (role === 'Пользователь') {
-        console.log('Filtering for user ID:', currentUserId);
+        if (workType) params.append('work_type', workType);
+        if (cabinet) params.append('cabinet', cabinet);
+        if (status) params.append('status', status);
+        if (filterDate) {
+            params.append('date_from', filterDate + ' 00:00:00');
+            params.append('date_to', filterDate + ' 23:59:59');
+        }
+    } else if (role === 'Пользователь') {
         if (currentUserId) {
             params.append('created_by', currentUserId);
         }
     } else {
-        console.log('Admin mode - using UI filters');
+        // Администратор
         var workType = $('#filterWorkType').val();
         var cabinet = $('#filterCabinet').val();
         var status = $('#filterStatus').val();
@@ -162,7 +149,7 @@ if (role === 'Техник') {
         }
     }
 
-    console.log('Final params:', params.toString());
+    console.log('Fetching tasks with params:', params.toString());
 
     fetch('/api/tasks?' + params.toString())
         .then(function(response) {
@@ -266,7 +253,35 @@ function createTaskRow(task) {
     var statusClass = getStatusClass(task.status);
     var priorityClass = getPriorityClass(task.priority);
 
-    var row = '<tr class="task-row" data-task-id="' + task.id + '" onclick="viewTask(' + task.id + ')" oncontextmenu="handleContextMenu(event, ' + task.id + '); return false;">';
+    // Определяем подсветку строки
+    var rowStyle = '';
+    var rowClass = '';
+    var deadlineHtml = '';
+
+    if (task.status !== 'Выполнено' && task.status !== 'Отменено' && task.deadline) {
+        var deadlineDate = new Date(task.deadline.replace(' ', 'T'));
+        var now = new Date();
+        var diffMs = deadlineDate - now;
+        var diffHours = diffMs / (1000 * 60 * 60);
+
+        if (diffMs < 0) {
+            // Просрочена - красный
+            rowClass = 'table-danger';
+            rowStyle = 'background-color: #f8d7da !important;';
+            deadlineHtml = '<span class="badge bg-danger">Просрочена</span> ' + formatDate(task.deadline);
+        } else if (diffHours < 24) {
+            // Менее 24 часов - желтый
+            rowClass = 'table-warning';
+            rowStyle = 'background-color: #fff3cd !important;';
+            deadlineHtml = '<span class="badge bg-warning text-dark">Скоро</span> ' + formatDate(task.deadline);
+        } else {
+            deadlineHtml = formatDate(task.deadline);
+        }
+    } else {
+        deadlineHtml = formatDate(task.deadline);
+    }
+
+    var row = '<tr class="task-row ' + rowClass + '" style="' + rowStyle + '" data-task-id="' + task.id + '" onclick="viewTask(' + task.id + ')" oncontextmenu="handleContextMenu(event, ' + task.id + '); return false;">';
 
     // Чекбокс только для администратора
     if (window.currentUserRole === 'Администратор') {
@@ -274,7 +289,7 @@ function createTaskRow(task) {
     }
 
     row += '<td>' + formatDate(task.created_date) + '</td>' +
-        '<td>' + formatDate(task.deadline) + '</td>' +
+        '<td>' + deadlineHtml + '</td>' +
         '<td>' + (task.from_user || '-') + '</td>' +
         '<td>' + (task.cabinet || '-') + '</td>' +
         '<td title="' + escapeHtml(task.description || '') + '">' + truncateText(task.description, 40) + '</td>' +
@@ -313,7 +328,18 @@ function viewTask(taskId) {
 function displayTaskDetails(task) {
     var statusClass = getStatusClass(task.status);
     var canClose = task.status !== 'Выполнено' && task.status !== 'Отменено';
-    var canTake = task.status === 'Новое';
+    var canTake = false;
+
+    // Кнопка "Взять в работу" доступна:
+    // - Администратору всегда для новых заявок
+    // - Технику для заявок без исполнителя
+    if (task.status === 'Новое') {
+        if (window.currentUserRole === 'Администратор') {
+            canTake = true;
+        } else if (window.currentUserRole === 'Техник' && !task.executor) {
+            canTake = true;
+        }
+    }
 
     // Для пользователя скрываем кнопки
     if (window.currentUserRole === 'Пользователь') {
@@ -323,9 +349,24 @@ function displayTaskDetails(task) {
 
     var html = '<div class="row">' +
         '<div class="col-md-6">' +
-        '<p><strong>Дата создания:</strong> ' + formatDate(task.created_date) + '</p>' +
-        '<p><strong>Срок:</strong> ' + formatDate(task.deadline) + '</p>' +
-        '<p><strong>От кого:</strong> ' + (task.from_user || 'Не указано') + '</p>' +
+        '<p><strong>Дата создания:</strong> ' + formatDate(task.created_date) + '</p>';
+
+    // Срок с подсветкой
+    if (task.status !== 'Выполнено' && task.status !== 'Отменено' && task.deadline) {
+        var deadlineDate = new Date(task.deadline.replace(' ', 'T'));
+        var now = new Date();
+        if (deadlineDate < now) {
+            html += '<p><strong>Срок:</strong> <span class="text-danger fw-bold">' + formatDate(task.deadline) + ' (Просрочена)</span></p>';
+        } else if ((deadlineDate - now) / (1000 * 60 * 60) < 24) {
+            html += '<p><strong>Срок:</strong> <span class="text-warning fw-bold">' + formatDate(task.deadline) + ' (Скоро истекает)</span></p>';
+        } else {
+            html += '<p><strong>Срок:</strong> ' + formatDate(task.deadline) + '</p>';
+        }
+    } else {
+        html += '<p><strong>Срок:</strong> ' + formatDate(task.deadline) + '</p>';
+    }
+
+    html += '<p><strong>От кого:</strong> ' + (task.from_user || 'Не указано') + '</p>' +
         '<p><strong>Кабинет:</strong> ' + (task.cabinet || 'Не указан') + '</p></div>' +
         '<div class="col-md-6">' +
         '<p><strong>Статус:</strong> <span class="status-badge ' + statusClass + '">' + task.status + '</span></p>' +
@@ -482,7 +523,7 @@ function handleContextMenu(event, taskId) {
 function setupEventHandlers() {
     $('#filterWorkType, #filterCabinet, #filterStatus, #filterUser').on('change', function() { loadTasks(); });
 
-    $('#selectAll').on('change', function() {
+    $(document).on('change', '#selectAll', function() {
         var isChecked = $(this).prop('checked');
         $('.task-checkbox').each(function() {
             $(this).prop('checked', isChecked);
@@ -562,7 +603,6 @@ function showCreateTaskModal() {
     if (form) form.reset();
 
     loadCabinetsForForm();
-    loadExecutorsForForm();
     loadProblemTypesForForm();
 
     // Автоматически заполняем поле "От кого" ФИО текущего пользователя
@@ -571,6 +611,18 @@ function showCreateTaskModal() {
         .then(function(data) {
             if (data && data.full_name) {
                 $('input[name="from_user"]').val(data.full_name);
+            }
+
+            // Для роли "Пользователь" скрываем выбор исполнителя и помощника
+            if (data.role === 'Пользователь') {
+                $('select[name="executor"]').closest('.col-md-6').hide();
+                $('select[name="assistant"]').closest('.col-md-6').hide();
+                $('select[name="executor"]').val('');
+                $('select[name="assistant"]').val('');
+            } else {
+                $('select[name="executor"]').closest('.col-md-6').show();
+                $('select[name="assistant"]').closest('.col-md-6').show();
+                loadExecutorsForForm();
             }
         })
         .catch(function(error) {

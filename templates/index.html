@@ -10,7 +10,7 @@
             <i class="bi bi-headset" style="font-size: 2.5rem; color: #667eea; display: none;"></i>
         </div>
         <h4 class="mt-2">Support Active</h4>
-        <small class="text-white-50">v1.0</small>
+        <small class="text-white-50">v1.2</small>
     </div>
 
     <div class="sidebar-menu">
@@ -58,8 +58,8 @@
     <!-- Карточка пользователя -->
     <div class="user-card">
         <div class="row align-items-center">
-            <div class="col-md-3">
-                <div class="d-flex align-items-center">
+            <div class="col-lg-3 col-md-4 col-12 mb-3 mb-md-0">
+                <div class="d-flex align-items-center justify-content-center justify-content-md-start">
                     <div class="avatar-circle" id="userAvatar"></div>
                     <div>
                         <h5 class="mb-1" id="userName"></h5>
@@ -71,22 +71,25 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="d-flex gap-2">
-                    <button class="btn btn-outline-primary" onclick="showUserCard()">
-                        <i class="bi bi-person-badge"></i> Карточка
+            <div class="col-lg-3 col-md-4 col-12 mb-3 mb-md-0">
+                <div class="d-flex gap-2 flex-wrap justify-content-center justify-content-md-start">
+                    <button class="btn btn-outline-primary btn-sm" onclick="showUserCard()">
+                        <i class="bi bi-person-badge"></i> <span class="d-none d-md-inline">Карточка</span>
                     </button>
-                    <button class="btn btn-outline-secondary" onclick="changeUser()">
-                        <i class="bi bi-arrow-repeat"></i> Сменить
+                    <button class="btn btn-outline-secondary btn-sm" onclick="changeUser()">
+                        <i class="bi bi-arrow-repeat"></i> <span class="d-none d-md-inline">Сменить</span>
                     </button>
-                    <button class="btn btn-outline-info position-relative" onclick="showNotifications()" title="Уведомления">
+                    <button class="btn btn-outline-info btn-sm position-relative" onclick="showNotifications()" title="Уведомления">
                         <i class="bi bi-bell"></i>
                         <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notificationBadge" style="display: none;">0</span>
                     </button>
+                    <button class="btn btn-outline-warning btn-sm" id="themeToggleBtn" onclick="toggleTheme()" title="Темная тема">
+                        <i class="bi bi-moon"></i>
+                    </button>
                 </div>
             </div>
-            <div class="col-md-6">
-                <div class="row">
+            <div class="col-lg-6 col-md-4 col-12">
+                <div class="row g-2">
                     <div class="col-3">
                         <div class="stats-card">
                             <div class="stats-number" id="statCompleted">0</div>
@@ -116,68 +119,66 @@
         </div>
     </div>
 
-    <!-- Блок с заявками (показывается по умолчанию) -->
+    <!-- Блок с заявками -->
     <div id="tasksBlock">
-        <!-- Секция фильтров -->
         <div class="filters-section">
-            <div class="row g-3 align-items-end">
-                <div class="col-md-2">
+            <div class="row g-2">
+                <div class="col-lg-2 col-md-3 col-sm-4 col-6">
                     <label class="form-label">Тип работы</label>
                     <select class="form-select" id="filterWorkType">
-                        <option value="">Все типы работ</option>
+                        <option value="">Все типы</option>
                     </select>
                 </div>
-                <div class="col-md-2">
+                <div class="col-lg-2 col-md-3 col-sm-4 col-6">
                     <label class="form-label">Кабинет</label>
                     <select class="form-select" id="filterCabinet">
                         <option value="">Все кабинеты</option>
                     </select>
                 </div>
-                <div class="col-md-2">
-                    <label class="form-label">Статус заявки</label>
+                <div class="col-lg-2 col-md-3 col-sm-4 col-6">
+                    <label class="form-label">Статус</label>
                     <select class="form-select" id="filterStatus">
                         <option value="">Все статусы</option>
                     </select>
                 </div>
-                <div class="col-md-2">
+                <div class="col-lg-2 col-md-3 col-sm-4 col-6">
                     <label class="form-label">Пользователь</label>
                     <select class="form-select" id="filterUser">
-                        <option value="">Все пользователи</option>
+                        <option value="">Все</option>
                     </select>
                 </div>
-                <div class="col-md-2">
-                    <label class="form-label">Срок выполнения</label>
+                <div class="col-lg-2 col-md-3 col-sm-4 col-6">
+                    <label class="form-label">Срок</label>
                     <input type="date" class="form-control" id="filterDate" onchange="loadTasks()">
                 </div>
-                <div class="col-md-2">
-                    <div class="d-flex gap-2">
+                <div class="col-lg-2 col-md-3 col-sm-4 col-12">
+                    <div class="d-flex gap-2 flex-wrap">
                         <button class="btn btn-danger btn-sm" onclick="closeSelectedTasks()">
-                            <i class="bi bi-x-circle"></i> Закрыть
+                            <i class="bi bi-x-circle"></i> <span class="d-none d-md-inline">Закрыть</span>
                         </button>
                         <button class="btn btn-success btn-sm" onclick="showCreateTaskModal()">
-                            <i class="bi bi-plus-circle"></i> Создать
+                            <i class="bi bi-plus-circle"></i> <span class="d-none d-md-inline">Создать</span>
                         </button>
                         <button class="btn btn-primary btn-sm" onclick="refreshData()">
-                            <i class="bi bi-arrow-clockwise"></i> Обновить
+                            <i class="bi bi-arrow-clockwise"></i> <span class="d-none d-md-inline">Обновить</span>
                         </button>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Таблица заявок -->
         <div class="table-container">
             <div class="table-responsive">
                 <table class="table table-hover">
                     <thead>
                         <tr>
                             <th><input type="checkbox" id="selectAll"></th>
-                            <th>Дата создания</th>
+                            <th>Дата</th>
                             <th>Срок</th>
                             <th>От кого</th>
                             <th>Кабинет</th>
-                            <th>Описание работы</th>
-                            <th>Тип работы</th>
+                            <th>Описание</th>
+                            <th>Тип</th>
                             <th>Статус</th>
                             <th>Приоритет</th>
                             <th>Исполнитель</th>
@@ -187,10 +188,8 @@
                     <tbody id="tasksTableBody">
                         <tr>
                             <td colspan="11" class="text-center py-4">
-                                <div class="spinner-border text-primary" role="status">
-                                    <span class="visually-hidden">Загрузка...</span>
-                                </div>
-                                <p class="mt-2 text-muted">Загрузка заявок...</p>
+                                <div class="spinner-border text-primary" role="status"></div>
+                                <p class="mt-2 text-muted">Загрузка...</p>
                             </td>
                         </tr>
                     </tbody>
@@ -199,9 +198,30 @@
         </div>
     </div>
 
-    <!-- Блок для других страниц (будет скрыт по умолчанию) -->
-    <div id="otherPagesBlock" style="display: none;">
-        <!-- Содержимое будет загружаться динамически -->
+    <div id="otherPagesBlock" style="display: none;"></div>
+</div>
+
+<!-- Мобильная нижняя навигация -->
+<div class="mobile-bottom-nav" id="mobileBottomNav">
+    <div class="nav-item active" onclick="loadPage('tasks')">
+        <i class="bi bi-list-check"></i>
+        <span>Заявки</span>
+    </div>
+    <div class="nav-item" onclick="loadPage('users')">
+        <i class="bi bi-people"></i>
+        <span>Пользователи</span>
+    </div>
+    <div class="nav-item" onclick="loadPage('cartridges')">
+        <i class="bi bi-printer"></i>
+        <span>Картриджи</span>
+    </div>
+    <div class="nav-item" onclick="loadPage('licenses')">
+        <i class="bi bi-key"></i>
+        <span>Лицензии</span>
+    </div>
+    <div class="nav-item" onclick="showNotifications()">
+        <i class="bi bi-bell"></i>
+        <span>Уведомления</span>
     </div>
 </div>
 
@@ -319,7 +339,6 @@
             </div>
             <div class="modal-body">
                 <form id="editUserForm" enctype="multipart/form-data">
-                    <!-- Аватарка -->
                     <div class="text-center mb-4">
                         <div class="position-relative d-inline-block">
                             <div class="avatar-circle mx-auto" id="editUserAvatar"
@@ -339,24 +358,19 @@
                         <input type="hidden" name="avatar" id="avatarInput" value="">
                     </div>
 
-                    <!-- Выбор аватара -->
                     <div class="mb-3">
                         <label class="form-label">Или выберите цветной аватар</label>
-                        <div class="d-flex flex-wrap gap-2" id="avatarSelector">
-                            <!-- Аватары будут добавлены динамически -->
-                        </div>
+                        <div class="d-flex flex-wrap gap-2" id="avatarSelector"></div>
                     </div>
 
                     <hr>
 
-                    <!-- ФИО -->
                     <div class="mb-3">
                         <label class="form-label">ФИО *</label>
                         <input type="text" class="form-control" name="full_name" id="editFullName"
                                placeholder="Введите ФИО" required>
                     </div>
 
-                    <!-- Роль -->
                     <div class="mb-3">
                         <label class="form-label">Роль</label>
                         <select class="form-select" name="role" id="editRole">
@@ -366,7 +380,6 @@
                         </select>
                     </div>
 
-                    <!-- Поля логина и пароля -->
                     <div id="loginPasswordFields" style="display: none;">
                         <div class="mb-3">
                             <label class="form-label">Логин *</label>
@@ -381,28 +394,24 @@
                         </div>
                     </div>
 
-                    <!-- Email -->
                     <div class="mb-3">
                         <label class="form-label">Email</label>
                         <input type="email" class="form-control" name="email" id="editEmail"
                                placeholder="Введите email">
                     </div>
 
-                    <!-- Телефон -->
                     <div class="mb-3">
                         <label class="form-label">Телефон</label>
                         <input type="text" class="form-control" name="phone" id="editPhone"
                                placeholder="Введите телефон">
                     </div>
 
-                    <!-- Отдел -->
                     <div class="mb-3">
                         <label class="form-label">Отдел</label>
                         <input type="text" class="form-control" name="department" id="editDepartment"
                                placeholder="Введите отдел">
                     </div>
 
-                    <!-- Тумблер блокировки -->
                     <div id="statusToggleField" class="mb-3" style="display: none;">
                         <div class="form-check form-switch">
                             <input class="form-check-input" type="checkbox" id="editIsActive" checked>
@@ -429,6 +438,7 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/database.js') }}"></script>
+<script src="{{ url_for('static', filename='js/theme.js') }}"></script>
 <script src="{{ url_for('static', filename='js/login.js') }}"></script>
 <script src="{{ url_for('static', filename='js/notifications.js') }}"></script>
 <script src="{{ url_for('static', filename='js/tasks.js') }}"></script>
@@ -439,4 +449,31 @@
 <script src="{{ url_for('static', filename='js/directory.js') }}"></script>
 <script src="{{ url_for('static', filename='js/excel.js') }}"></script>
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+<script>
+// Инициализация темы
+$(document).ready(function() {
+    if (typeof initTheme === 'function') {
+        initTheme();
+    }
+});
+
+// Обновление мобильной навигации при смене страницы
+var originalLoadPage = loadPage;
+loadPage = function(pageName) {
+    originalLoadPage(pageName);
+
+    $('.mobile-bottom-nav .nav-item').removeClass('active');
+
+    if (pageName === 'tasks') {
+        $('.mobile-bottom-nav .nav-item').eq(0).addClass('active');
+    } else if (pageName === 'users') {
+        $('.mobile-bottom-nav .nav-item').eq(1).addClass('active');
+    } else if (pageName === 'cartridges') {
+        $('.mobile-bottom-nav .nav-item').eq(2).addClass('active');
+    } else if (pageName === 'licenses') {
+        $('.mobile-bottom-nav .nav-item').eq(3).addClass('active');
+    }
+};
+</script>
 {% endblock %}

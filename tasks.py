@@ -346,26 +346,101 @@ def create_task():
     """Создание новой заявки"""
     try:
         data = request.get_json()
+
         if not data:
             return jsonify({'success': False, 'error': 'Нет данных для создания заявки'}), 400
 
+        # Валидация обязательных полей
         required_fields = ['description', 'work_type']
         for field in required_fields:
             if field not in data or not data[field]:
                 return jsonify({'success': False, 'error': f'Поле "{field}" обязательно для заполнения'}), 400
 
-        task_data = {
-            'deadline': data.get('deadline', datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
-            'from_user': data.get('from_user', ''),
-            'cabinet': data.get('cabinet', ''),
-            'description': data['description'],
-            'work_type': data['work_type'],
-            'priority': data.get('priority', 'Средний'),
-            'executor': data.get('executor', ''),
-            'assistant': data.get('assistant', ''),
-            'status': 'Новое',
-            'created_by': session['user_id']
-        }
+        # Проверяем занятость исполнителя на выбранное время
+        executor = data.get('executor', '').strip()
+        deadline = data.get('deadline', '').strip()
+
+        print(f"=== ПРОВЕРКА ЗАНЯТОСТИ ===")
+        print(f"executor: {executor}")
+        print(f"deadline: {deadline}")
+
+        if executor and deadline:
+            try:
+                # Нормализуем дату из HTML input
+                new_deadline_str = deadline.replace('T', ' ') + ':00'
+                new_deadline = datetime.strptime(new_deadline_str, '%Y-%m-%d %H:%M:%S')
+                print(f"Новая дата: {new_deadline_str}")
+            except Exception as e:
+                print(f"Ошибка парсинга даты: {e}")
+                new_deadline = None
+
+            if new_deadline:
+                existing_tasks = db.query('''
+                    SELECT id, deadline, description, status FROM tasks 
+                    WHERE executor = ? 
+                    AND status IN ('Новое', 'В работе')
+                ''', [executor])
+
+                print(f"Найдено заявок у {executor}: {len(existing_tasks)}")
+
+                for task in existing_tasks:
+                    print(f"---")
+                    print(f"Заявка #{task['id']}: deadline={task['deadline']}, status={task['status']}")
+
+                    if not task['deadline']:
+                        print(f"  Нет даты, пропускаем")
+                        continue
+
+                    try:
+                        task_deadline = None
+                        # Пробуем разные форматы дат
+                        formats_to_try = [
+                            '%Y-%m-%d %H:%M:%S',
+                            '%Y-%m-%d %H:%M',
+                            '%Y-%m-%dT%H:%M:%S',
+                            '%Y-%m-%dT%H:%M'
+                        ]
+
+                        for fmt in formats_to_try:
+                            try:
+                                task_deadline = datetime.strptime(task['deadline'], fmt)
+                                print(f"  Распарсили с форматом: {fmt}")
+                                break
+                            except:
+                                continue
+
+                        if not task_deadline:
+                            print(f"  Не удалось распарсить дату: {task['deadline']}")
+                            continue
+
+                        time_diff = abs((new_deadline - task_deadline).total_seconds())
+                        print(f"  Дата в БД: {task['deadline']}")
+                        print(f"  Разница: {time_diff} сек = {time_diff / 60:.1f} мин")
+
+                        # Проверяем, что заявки в один день
+                        if task_deadline.date() == new_deadline.date():
+                            print(f"  Заявки в один день!")
+
+                            # Проверяем пересечение времени (разница менее 1 часа)
+                            if time_diff < 3600:
+                                print(f"  КОНФЛИКТ! Техник занят в это время")
+                                return jsonify({
+                                    'success': False,
+                                    'error': f'Техник в данное время занят! У него уже есть заявка №{task["id"]} на {task["deadline"]}'
+                                }), 400
+                            else:
+                                print(f"  Разница более 1 часа, конфликта нет")
+                        else:
+                            print(f"  Разные дни, конфликта нет")
+                    except Exception as e:
+                        print(f"  Ошибка обработки: {e}")
+
+        # Создаем заявку
+        print(f"=== СОЗДАНИЕ ЗАЯВКИ ===")
+
+        # Нормализуем дату для сохранения в БД
+        normalized_deadline = deadline.replace('T', ' ') + ':00' if deadline else datetime.now().strftime(
+            '%Y-%m-%d %H:%M:%S')
 
         task_id = db.execute('''
             INSERT INTO tasks (
@@ -374,21 +449,26 @@ def create_task():
                 status, created_by, created_date
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', [
-            task_data['deadline'],
-            task_data['from_user'],
-            task_data['cabinet'],
-            task_data['description'],
-            task_data['work_type'],
-            task_data['priority'],
-            task_data['executor'],
-            task_data['assistant'],
-            task_data['status'],
-            task_data['created_by'],
+            normalized_deadline,
+            data.get('from_user', ''),
+            data.get('cabinet', ''),
+            data['description'],
+            data['work_type'],
+            data.get('priority', 'Средний'),
+            data.get('executor', ''),
+            data.get('assistant', ''),
+            'Новое',
+            session['user_id'],
             datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         ])
 
-        # Отправляем уведомления (одно на пользователя)
-        notify_new_task(task_id, task_data)
+        # Отправляем уведомления о новой заявке
+        notify_new_task(task_id, {
+            'description': data['description'],
+            'from_user': data.get('from_user', ''),
+            'executor': data.get('executor', ''),
+            'assistant': data.get('assistant', '')
+        })
 
         return jsonify({
             'success': True,
@@ -397,6 +477,7 @@ def create_task():
         }), 201
 
     except Exception as e:
+        print(f"Ошибка создания заявки: {e}")
         return jsonify({'success': False, 'error': f'Ошибка создания заявки: {str(e)}'}), 500
 
 
@@ -485,6 +566,38 @@ def take_task(task_id):
             return jsonify({'success': False, 'error': 'Заявка уже в работе или закрыта'}), 400
 
         user_name = session.get('user_name')
+        task_deadline = task['deadline']
+
+        # Проверяем занятость техника на время этой заявки
+        if task_deadline:
+            try:
+                new_deadline = datetime.strptime(task_deadline, '%Y-%m-%d %H:%M:%S')
+            except:
+                new_deadline = None
+
+            if new_deadline:
+                # Ищем другие заявки этого техника
+                existing_tasks = db.query('''
+                    SELECT * FROM tasks 
+                    WHERE executor = ? 
+                    AND id != ?
+                    AND status NOT IN ('Выполнено', 'Отменено')
+                    AND deadline IS NOT NULL
+                ''', [user_name, task_id])
+
+                for existing in existing_tasks:
+                    try:
+                        existing_deadline = datetime.strptime(existing['deadline'], '%Y-%m-%d %H:%M:%S')
+                    except:
+                        continue
+
+                    time_diff = abs((new_deadline - existing_deadline).total_seconds())
+                    if time_diff < 3600:
+                        return jsonify({
+                            'success': False,
+                            'error': 'Техник в данное время занят, выберите другое!'
+                        }), 400
+
         db.execute('''
             UPDATE tasks 
             SET status = "В работе", executor = ?
