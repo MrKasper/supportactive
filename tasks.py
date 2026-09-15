@@ -2,159 +2,21 @@
 from flask import Blueprint, request, jsonify, session
 from database import Database
 from datetime import datetime
+from utils import login_required, role_required
+
+# Импортируем функции уведомлений из единого модуля (устранили дублирование)
+from notifications import (
+    create_notification,
+    notify_new_task,
+    notify_task_taken,
+    notify_task_completed,
+)
 
 # Создаем Blueprint для заявок
 tasks_bp = Blueprint('tasks', __name__)
 
 # Инициализация базы данных
 db = Database()
-
-
-# ============= ДЕКОРАТОР ДЛЯ ПРОВЕРКИ АВТОРИЗАЦИИ =============
-def login_required(f):
-    """Декоратор для проверки авторизации пользователя"""
-
-    def decorated_function(*args, **kwargs):
-        if 'user_id' not in session:
-            return jsonify({'error': 'Необходима авторизация'}), 401
-        return f(*args, **kwargs)
-
-    decorated_function.__name__ = f.__name__
-    return decorated_function
-
-
-# ============= ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ ДЛЯ УВЕДОМЛЕНИЙ =============
-def create_notification(user_id, task_id, title, message, notification_type):
-    """Создание уведомления для пользователя"""
-    try:
-        db.execute('''
-            INSERT INTO notifications (user_id, task_id, title, message, notification_type, is_read, created_date)
-            VALUES (?, ?, ?, ?, ?, 0, ?)
-        ''', [
-            user_id,
-            task_id,
-            title,
-            message,
-            notification_type,
-            datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        ])
-    except Exception as e:
-        print(f"Ошибка создания уведомления: {e}")
-
-
-def notify_new_task(task_id, task_data):
-    """Уведомление о новой заявке (одно уведомление на пользователя)"""
-    try:
-        notified_users = set()  # Множество для отслеживания уже уведомленных пользователей
-
-        # Уведомляем администраторов
-        admins = db.query("SELECT id FROM users WHERE role = 'Администратор' AND is_active = 1")
-        for admin in admins:
-            if admin['id'] not in notified_users:
-                create_notification(
-                    admin['id'],
-                    task_id,
-                    'Новая заявка',
-                    f'Заявка №{task_id}: {task_data.get("description", "")[:50]}... от {task_data.get("from_user", "Неизвестно")}',
-                    'new_task'
-                )
-                notified_users.add(admin['id'])
-
-        # Уведомляем техника-исполнителя
-        if task_data.get('executor'):
-            executor = db.query("SELECT id FROM users WHERE full_name = ? AND is_active = 1", [task_data['executor']],
-                                one=True)
-            if executor and executor['id'] not in notified_users:
-                create_notification(
-                    executor['id'],
-                    task_id,
-                    'Вы назначены исполнителем',
-                    f'Заявка №{task_id}: {task_data.get("description", "")[:50]}... назначена вам',
-                    'new_task'
-                )
-                notified_users.add(executor['id'])
-
-        # Уведомляем техника-помощника
-        if task_data.get('assistant'):
-            assistant = db.query("SELECT id FROM users WHERE full_name = ? AND is_active = 1", [task_data['assistant']],
-                                 one=True)
-            if assistant and assistant['id'] not in notified_users:
-                create_notification(
-                    assistant['id'],
-                    task_id,
-                    'Вы назначены помощником',
-                    f'Заявка №{task_id}: {task_data.get("description", "")[:50]}... вы назначены помощником',
-                    'new_task'
-                )
-                notified_users.add(assistant['id'])
-    except Exception as e:
-        print(f"Ошибка отправки уведомлений о новой заявке: {e}")
-
-
-def notify_task_taken(task_id, task_data):
-    """Уведомление о взятии заявки в работу (одно уведомление на пользователя)"""
-    try:
-        notified_users = set()
-
-        # Уведомляем администраторов
-        admins = db.query("SELECT id FROM users WHERE role = 'Администратор' AND is_active = 1")
-        for admin in admins:
-            if admin['id'] not in notified_users:
-                create_notification(
-                    admin['id'],
-                    task_id,
-                    'Заявка взята в работу',
-                    f'Заявка №{task_id} взята в работу исполнителем {task_data.get("executor", "")}',
-                    'task_taken'
-                )
-                notified_users.add(admin['id'])
-
-        # Уведомляем создателя заявки (если это не администратор)
-        if task_data.get('created_by'):
-            if task_data['created_by'] not in notified_users:
-                create_notification(
-                    task_data['created_by'],
-                    task_id,
-                    'Заявка взята в работу',
-                    f'Ваша заявка №{task_id} взята в работу исполнителем {task_data.get("executor", "")}',
-                    'task_taken'
-                )
-                notified_users.add(task_data['created_by'])
-    except Exception as e:
-        print(f"Ошибка отправки уведомлений о взятии заявки: {e}")
-
-
-def notify_task_completed(task_id, task_data):
-    """Уведомление о выполнении заявки (одно уведомление на пользователя)"""
-    try:
-        notified_users = set()
-
-        # Уведомляем администраторов
-        admins = db.query("SELECT id FROM users WHERE role = 'Администратор' AND is_active = 1")
-        for admin in admins:
-            if admin['id'] not in notified_users:
-                create_notification(
-                    admin['id'],
-                    task_id,
-                    'Заявка выполнена',
-                    f'Заявка №{task_id} выполнена исполнителем {task_data.get("executor", "")}',
-                    'task_completed'
-                )
-                notified_users.add(admin['id'])
-
-        # Уведомляем создателя заявки (если это не администратор)
-        if task_data.get('created_by'):
-            if task_data['created_by'] not in notified_users:
-                create_notification(
-                    task_data['created_by'],
-                    task_id,
-                    'Заявка выполнена',
-                    f'Ваша заявка №{task_id} выполнена',
-                    'task_completed'
-                )
-                notified_users.add(task_data['created_by'])
-    except Exception as e:
-        print(f"Ошибка отправки уведомлений о выполнении заявки: {e}")
 
 
 # ============= API ДЛЯ СТАТИСТИКИ =============
@@ -297,6 +159,7 @@ def get_tasks():
             query += ' AND created_by = ?'
             params.append(created_by)
 
+        # Белый список для сортировки — защита от SQL-инъекции
         allowed_sort_fields = ['created_date', 'deadline', 'status', 'priority', 'from_user', 'cabinet']
         if sort_by not in allowed_sort_fields:
             sort_by = 'created_date'
@@ -315,7 +178,7 @@ def get_tasks():
                 try:
                     deadline_date = datetime.strptime(task_dict['deadline'], '%Y-%m-%d %H:%M:%S')
                     task_dict['is_overdue'] = deadline_date < datetime.now()
-                except:
+                except Exception:
                     task_dict['is_overdue'] = False
             else:
                 task_dict['is_overdue'] = False
@@ -335,6 +198,11 @@ def get_task(task_id):
         task = db.query('SELECT * FROM tasks WHERE id = ?', [task_id], one=True)
         if not task:
             return jsonify({'error': 'Заявка не найдена'}), 404
+
+        # Пользователь видит только свои заявки
+        if session.get('user_role') == 'Пользователь' and task['created_by'] != session.get('user_id'):
+            return jsonify({'error': 'Недостаточно прав'}), 403
+
         return jsonify(dict(task))
     except Exception as e:
         return jsonify({'error': f'Ошибка получения заявки: {str(e)}'}), 500
@@ -357,22 +225,17 @@ def create_task():
                 return jsonify({'success': False, 'error': f'Поле "{field}" обязательно для заполнения'}), 400
 
         # Проверяем занятость исполнителя на выбранное время
-        executor = data.get('executor', '').strip()
-        deadline = data.get('deadline', '').strip()
-
-        print(f"=== ПРОВЕРКА ЗАНЯТОСТИ ===")
-        print(f"executor: {executor}")
-        print(f"deadline: {deadline}")
+        executor = (data.get('executor') or '').strip()
+        deadline = (data.get('deadline') or '').strip()
 
         if executor and deadline:
+            new_deadline = None
             try:
                 # Нормализуем дату из HTML input
                 new_deadline_str = deadline.replace('T', ' ') + ':00'
                 new_deadline = datetime.strptime(new_deadline_str, '%Y-%m-%d %H:%M:%S')
-                print(f"Новая дата: {new_deadline_str}")
             except Exception as e:
                 print(f"Ошибка парсинга даты: {e}")
-                new_deadline = None
 
             if new_deadline:
                 existing_tasks = db.query('''
@@ -381,66 +244,52 @@ def create_task():
                     AND status IN ('Новое', 'В работе')
                 ''', [executor])
 
-                print(f"Найдено заявок у {executor}: {len(existing_tasks)}")
-
                 for task in existing_tasks:
-                    print(f"---")
-                    print(f"Заявка #{task['id']}: deadline={task['deadline']}, status={task['status']}")
-
                     if not task['deadline']:
-                        print(f"  Нет даты, пропускаем")
                         continue
 
-                    try:
-                        task_deadline = None
-                        # Пробуем разные форматы дат
-                        formats_to_try = [
-                            '%Y-%m-%d %H:%M:%S',
-                            '%Y-%m-%d %H:%M',
-                            '%Y-%m-%dT%H:%M:%S',
-                            '%Y-%m-%dT%H:%M'
-                        ]
-
-                        for fmt in formats_to_try:
-                            try:
-                                task_deadline = datetime.strptime(task['deadline'], fmt)
-                                print(f"  Распарсили с форматом: {fmt}")
-                                break
-                            except:
-                                continue
-
-                        if not task_deadline:
-                            print(f"  Не удалось распарсить дату: {task['deadline']}")
+                    task_deadline = None
+                    formats_to_try = [
+                        '%Y-%m-%d %H:%M:%S',
+                        '%Y-%m-%d %H:%M',
+                        '%Y-%m-%dT%H:%M:%S',
+                        '%Y-%m-%dT%H:%M'
+                    ]
+                    for fmt in formats_to_try:
+                        try:
+                            task_deadline = datetime.strptime(task['deadline'], fmt)
+                            break
+                        except Exception:
                             continue
 
-                        time_diff = abs((new_deadline - task_deadline).total_seconds())
-                        print(f"  Дата в БД: {task['deadline']}")
-                        print(f"  Разница: {time_diff} сек = {time_diff / 60:.1f} мин")
+                    if not task_deadline:
+                        continue
 
-                        # Проверяем, что заявки в один день
-                        if task_deadline.date() == new_deadline.date():
-                            print(f"  Заявки в один день!")
+                    time_diff = abs((new_deadline - task_deadline).total_seconds())
 
-                            # Проверяем пересечение времени (разница менее 1 часа)
-                            if time_diff < 3600:
-                                print(f"  КОНФЛИКТ! Техник занят в это время")
-                                return jsonify({
-                                    'success': False,
-                                    'error': f'Техник в данное время занят! У него уже есть заявка №{task["id"]} на {task["deadline"]}'
-                                }), 400
-                            else:
-                                print(f"  Разница более 1 часа, конфликта нет")
-                        else:
-                            print(f"  Разные дни, конфликта нет")
-                    except Exception as e:
-                        print(f"  Ошибка обработки: {e}")
-
-        # Создаем заявку
-        print(f"=== СОЗДАНИЕ ЗАЯВКИ ===")
+                    # Проверяем, что заявки в один день
+                    if task_deadline.date() == new_deadline.date():
+                        # Проверяем пересечение времени (разница менее 1 часа)
+                        if time_diff < 3600:
+                            return jsonify({
+                                'success': False,
+                                'error': f'Техник в данное время занят! '
+                                         f'У него уже есть заявка №{task["id"]} на {task["deadline"]}'
+                            }), 400
 
         # Нормализуем дату для сохранения в БД
-        normalized_deadline = deadline.replace('T', ' ') + ':00' if deadline else datetime.now().strftime(
-            '%Y-%m-%d %H:%M:%S')
+        normalized_deadline = (
+            deadline.replace('T', ' ') + ':00'
+            if deadline
+            else datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        )
+
+        # Роль «Пользователь» не может назначать исполнителя/помощника
+        if session.get('user_role') == 'Пользователь':
+            executor = ''
+            assistant = ''
+        else:
+            assistant = (data.get('assistant') or '').strip()
 
         task_id = db.execute('''
             INSERT INTO tasks (
@@ -455,8 +304,8 @@ def create_task():
             data['description'],
             data['work_type'],
             data.get('priority', 'Средний'),
-            data.get('executor', ''),
-            data.get('assistant', ''),
+            executor,
+            assistant,
             'Новое',
             session['user_id'],
             datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -466,8 +315,8 @@ def create_task():
         notify_new_task(task_id, {
             'description': data['description'],
             'from_user': data.get('from_user', ''),
-            'executor': data.get('executor', ''),
-            'assistant': data.get('assistant', '')
+            'executor': executor,
+            'assistant': assistant
         })
 
         return jsonify({
@@ -493,6 +342,10 @@ def update_task(task_id):
         old_task = db.query('SELECT * FROM tasks WHERE id = ?', [task_id], one=True)
         if not old_task:
             return jsonify({'success': False, 'error': 'Заявка не найдена'}), 404
+
+        # Пользователь может редактировать только свои заявки
+        if session.get('user_role') == 'Пользователь' and old_task['created_by'] != session.get('user_id'):
+            return jsonify({'success': False, 'error': 'Недостаточно прав'}), 403
 
         db.execute('''
             UPDATE tasks 
@@ -526,6 +379,10 @@ def update_task(task_id):
 def close_task(task_id):
     """Закрытие заявки"""
     try:
+        # Только администратор и техник могут закрывать заявки
+        if session.get('user_role') not in ('Администратор', 'Техник'):
+            return jsonify({'success': False, 'error': 'Недостаточно прав'}), 403
+
         task = db.query('SELECT * FROM tasks WHERE id = ?', [task_id], one=True)
         if not task:
             return jsonify({'success': False, 'error': 'Заявка не найдена'}), 404
@@ -558,6 +415,9 @@ def close_task(task_id):
 def take_task(task_id):
     """Взять заявку в работу"""
     try:
+        if session.get('user_role') not in ('Администратор', 'Техник'):
+            return jsonify({'success': False, 'error': 'Недостаточно прав'}), 403
+
         task = db.query('SELECT * FROM tasks WHERE id = ?', [task_id], one=True)
         if not task:
             return jsonify({'success': False, 'error': 'Заявка не найдена'}), 404
@@ -566,17 +426,25 @@ def take_task(task_id):
             return jsonify({'success': False, 'error': 'Заявка уже в работе или закрыта'}), 400
 
         user_name = session.get('user_name')
+
+        # 🆕 Если заявка уже назначена на другого исполнителя — не разрешаем перехват
+        if task['executor'] and task['executor'] != user_name:
+            return jsonify({
+                'success': False,
+                'error': f'Заявка уже назначена на исполнителя: {task["executor"]}'
+            }), 400
+
         task_deadline = task['deadline']
 
         # Проверяем занятость техника на время этой заявки
         if task_deadline:
+            new_deadline = None
             try:
                 new_deadline = datetime.strptime(task_deadline, '%Y-%m-%d %H:%M:%S')
-            except:
+            except Exception:
                 new_deadline = None
 
             if new_deadline:
-                # Ищем другие заявки этого техника
                 existing_tasks = db.query('''
                     SELECT * FROM tasks 
                     WHERE executor = ? 
@@ -588,7 +456,7 @@ def take_task(task_id):
                 for existing in existing_tasks:
                     try:
                         existing_deadline = datetime.strptime(existing['deadline'], '%Y-%m-%d %H:%M:%S')
-                    except:
+                    except Exception:
                         continue
 
                     time_diff = abs((new_deadline - existing_deadline).total_seconds())
@@ -619,13 +487,10 @@ def take_task(task_id):
 
 
 @tasks_bp.route('/api/delete_task/<int:task_id>', methods=['DELETE'])
-@login_required
+@role_required('Администратор')
 def delete_task(task_id):
     """Удаление заявки (только для администраторов)"""
     try:
-        if session.get('user_role') != 'Администратор':
-            return jsonify({'success': False, 'error': 'Недостаточно прав для удаления'}), 403
-
         task = db.query('SELECT * FROM tasks WHERE id = ?', [task_id], one=True)
         if not task:
             return jsonify({'success': False, 'error': 'Заявка не найдена'}), 404

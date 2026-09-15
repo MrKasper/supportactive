@@ -269,7 +269,6 @@ function showAddUserModal() {
         'color': 'white'
     }).html('<i class="bi bi-person" style="font-size: 40px;"></i>');
 
-    // Генерируем селектор аватаров с иконкой пользователя
     generateAvatarSelectorForNewUser();
 
     $('#editUserModal').modal('show');
@@ -282,12 +281,19 @@ function generateAvatarSelectorForNewUser() {
 
     avatarColors.forEach(function(color, index) {
         var avatarName = 'avatar_' + index + '.png';
-        $selector.append('<div class="avatar-option border border-2 border-light" style="width:50px;height:50px;border-radius:50%;background:' + color + ';color:white;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:bold;cursor:pointer;" onclick="selectAvatarForNewUser(\'' + avatarName + '\',\'' + color + '\')"><i class="bi bi-person"></i></div>');
+        $selector.append(
+            '<div class="avatar-option border border-2 border-light" ' +
+            'style="width:50px;height:50px;border-radius:50%;background:' + color + ';' +
+            'color:white;display:flex;align-items:center;justify-content:center;' +
+            'font-size:20px;font-weight:bold;cursor:pointer;" ' +
+            'onclick="selectAvatarForNewUser(\'' + avatarName + '\',\'' + color + '\', this)">' +
+            '<i class="bi bi-person"></i></div>'
+        );
     });
 }
 
-// Выбор аватара для нового пользователя
-function selectAvatarForNewUser(avatarName, color) {
+// ✅ ИСПРАВЛЕНО: явная передача элемента (this) вместо event.currentTarget
+function selectAvatarForNewUser(avatarName, color, el) {
     $('#avatarFileInput').val('');
     $('#editUserForm').data('avatar-file', null);
     $('#editUserForm').data('avatar-is-file', false);
@@ -300,9 +306,9 @@ function selectAvatarForNewUser(avatarName, color) {
     }).html('<i class="bi bi-person" style="font-size: 40px;"></i>');
 
     $('#avatarSelector .avatar-option').removeClass('border-primary').addClass('border-light');
-    if (event && event.currentTarget) {
-        event.currentTarget.classList.remove('border-light');
-        event.currentTarget.classList.add('border-primary');
+    if (el) {
+        el.classList.remove('border-light');
+        el.classList.add('border-primary');
     }
 }
 
@@ -508,11 +514,20 @@ function generateAvatarSelector(selectedAvatar, fullName) {
     avatarColors.forEach(function(color, index) {
         var avatarName = 'avatar_' + index + '.png';
         var isSelected = selectedAvatar === avatarName;
-        $selector.append('<div class="avatar-option ' + (isSelected ? 'border border-3 border-primary' : 'border border-2 border-light') + '" style="width:50px;height:50px;border-radius:50%;background:' + color + ';color:white;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:bold;cursor:pointer;" onclick="selectAvatar(\'' + avatarName + '\',\'' + color + '\',\'' + initials + '\')">' + initials + '</div>');
+        $selector.append(
+            '<div class="avatar-option ' +
+            (isSelected ? 'border border-3 border-primary' : 'border border-2 border-light') +
+            '" style="width:50px;height:50px;border-radius:50%;background:' + color + ';' +
+            'color:white;display:flex;align-items:center;justify-content:center;' +
+            'font-size:20px;font-weight:bold;cursor:pointer;" ' +
+            'onclick="selectAvatar(\'' + avatarName + '\',\'' + color + '\',\'' + initials + '\', this)">' +
+            initials + '</div>'
+        );
     });
 }
 
-function selectAvatar(avatarName, color, initials) {
+// ✅ ИСПРАВЛЕНО: явная передача элемента (this)
+function selectAvatar(avatarName, color, initials, el) {
     $('#avatarFileInput').val('');
     $('#editUserForm').data('avatar-file', null);
     $('#editUserForm').data('avatar-is-file', false);
@@ -525,9 +540,9 @@ function selectAvatar(avatarName, color, initials) {
     }).text(initials);
 
     $('#avatarSelector .avatar-option').removeClass('border-primary').addClass('border-light');
-    if (event && event.currentTarget) {
-        event.currentTarget.classList.remove('border-light');
-        event.currentTarget.classList.add('border-primary');
+    if (el) {
+        el.classList.remove('border-light');
+        el.classList.add('border-primary');
     }
 }
 

@@ -10,7 +10,7 @@
             <i class="bi bi-headset" style="font-size: 2.5rem; color: #667eea; display: none;"></i>
         </div>
         <h4 class="mt-2">Support Active</h4>
-        <small class="text-white-50">v1.2</small>
+        <small class="text-white-50">v1.3</small>
     </div>
 
     <div class="sidebar-menu">
@@ -43,6 +43,11 @@
             <a class="nav-link" href="#" data-page="directory" onclick="loadPage('directory')">
                 <i class="bi bi-book"></i>
                 <span>Справочник</span>
+            </a>
+
+            <a class="nav-link" href="#" data-page="cabinets-manage" onclick="loadPage('cabinets-manage')">
+                <i class="bi bi-door-closed"></i>
+                <span>Управление кабинетами</span>
             </a>
 
             <a class="nav-link" href="#" data-page="report" onclick="loadPage('report')">
@@ -434,6 +439,69 @@
     </div>
 </div>
 
+<!-- Модальное окно управления кабинетом -->
+<div class="modal fade" id="cabinetEditModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="cabinetModalTitle">
+                    <i class="bi bi-door-closed"></i> Кабинет
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="cabinetForm">
+                    <input type="hidden" id="cabinetId">
+                    <div class="mb-3">
+                        <label class="form-label">Номер кабинета *</label>
+                        <input type="text" class="form-control" id="cabinetNumber" required
+                               placeholder="Например: Кабинет 601">
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Этаж</label>
+                            <input type="text" class="form-control" id="cabinetFloor"
+                                   placeholder="Например: 6 этаж">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Корпус</label>
+                            <input type="text" class="form-control" id="cabinetBuilding"
+                                   placeholder="Например: Корпус В">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Описание / назначение</label>
+                        <input type="text" class="form-control" id="cabinetDescription"
+                               placeholder="Например: Бухгалтерия">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Ответственный</label>
+                        <input type="text" class="form-control" id="cabinetResponsible"
+                               placeholder="ФИО ответственного">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Телефон</label>
+                        <input type="text" class="form-control" id="cabinetPhone"
+                               placeholder="+7-999-123-45-67">
+                    </div>
+                    <div class="form-check form-switch" id="cabinetActiveField">
+                        <input class="form-check-input" type="checkbox" id="cabinetIsActive" checked>
+                        <label class="form-check-label" for="cabinetIsActive">Кабинет активен</label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle"></i> Отмена
+                </button>
+                <button type="button" class="btn btn-primary" onclick="saveCabinet()">
+                    <i class="bi bi-check-circle"></i> Сохранить
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
@@ -447,6 +515,7 @@
 <script src="{{ url_for('static', filename='js/licenses.js') }}"></script>
 <script src="{{ url_for('static', filename='js/contacts.js') }}"></script>
 <script src="{{ url_for('static', filename='js/directory.js') }}"></script>
+<script src="{{ url_for('static', filename='js/cabinets_manage.js') }}"></script>
 <script src="{{ url_for('static', filename='js/excel.js') }}"></script>
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 

@@ -57,8 +57,31 @@ function showNotifications() {
             }
 
             var notifications = data.notifications || [];
+            var unreadCount = data.unread_count || 0;
 
-            var html = '<div class="list-group">';
+            var html = '';
+
+            // 🆕 Верхняя панель с счётчиком и кнопкой "Отметить всё"
+            if (notifications.length > 0) {
+                html += '<div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">';
+                html += '<div>';
+                html += '<span class="badge bg-secondary me-2">Всего: ' + notifications.length + '</span>';
+                if (unreadCount > 0) {
+                    html += '<span class="badge bg-danger">Непрочитанных: ' + unreadCount + '</span>';
+                } else {
+                    html += '<span class="badge bg-success">Все прочитаны</span>';
+                }
+                html += '</div>';
+                if (unreadCount > 0) {
+                    html += '<button class="btn btn-sm btn-outline-primary" onclick="markAllNotificationsRead()">';
+                    html += '<i class="bi bi-check-all"></i> Отметить все как прочитанные';
+                    html += '</button>';
+                }
+                html += '</div>';
+            }
+
+            // Список уведомлений
+            html += '<div class="list-group" style="max-height: 55vh; overflow-y: auto;">';
 
             if (notifications.length === 0) {
                 html += '<div class="list-group-item text-center text-muted py-4">';
@@ -71,17 +94,10 @@ function showNotifications() {
                     var bgClass = notification.is_read ? '' : 'bg-light';
 
                     switch(notification.notification_type) {
-                        case 'new_task':
-                            iconClass = 'bi bi-plus-circle text-primary';
-                            break;
-                        case 'task_taken':
-                            iconClass = 'bi bi-play-circle text-warning';
-                            break;
-                        case 'task_completed':
-                            iconClass = 'bi bi-check-circle text-success';
-                            break;
-                        default:
-                            iconClass = 'bi bi-bell text-info';
+                        case 'new_task':       iconClass = 'bi bi-plus-circle text-primary'; break;
+                        case 'task_taken':     iconClass = 'bi bi-play-circle text-warning'; break;
+                        case 'task_completed': iconClass = 'bi bi-check-circle text-success'; break;
+                        default:               iconClass = 'bi bi-bell text-info';
                     }
 
                     html += '<div class="list-group-item ' + bgClass + '" style="cursor: pointer;" onclick="markNotificationRead(' + notification.id + ')">';
@@ -102,22 +118,12 @@ function showNotifications() {
 
             html += '</div>';
 
-            if (notifications.length > 0) {
-                html += '<div class="text-center mt-3">';
-                html += '<button class="btn btn-sm btn-outline-primary" onclick="markAllNotificationsRead()">';
-                html += '<i class="bi bi-check-all"></i> Отметить все как прочитанные';
-                html += '</button>';
-                html += '</div>';
-            }
-
             Swal.fire({
                 title: 'Уведомления',
                 html: html,
                 showConfirmButton: false,
                 showCloseButton: true,
-                customClass: {
-                    popup: 'swal-wide'
-                }
+                customClass: { popup: 'swal-wide' }
             });
         });
 }

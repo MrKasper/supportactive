@@ -2,6 +2,7 @@
 from flask import Blueprint, request, jsonify, session, send_file
 from database import Database
 from datetime import datetime
+from utils import login_required, sanitize_csv_value
 import io
 import csv
 
@@ -12,19 +13,6 @@ excel_bp = Blueprint('excel', __name__)
 db = Database()
 
 
-# ============= ДЕКОРАТОР ДЛЯ ПРОВЕРКИ АВТОРИЗАЦИИ =============
-def login_required(f):
-    """Декоратор для проверки авторизации пользователя"""
-
-    def decorated_function(*args, **kwargs):
-        if 'user_id' not in session:
-            return jsonify({'error': 'Необходима авторизация'}), 401
-        return f(*args, **kwargs)
-
-    decorated_function.__name__ = f.__name__
-    return decorated_function
-
-
 # ============= API ДЛЯ ОТЧЕТОВ =============
 
 @excel_bp.route('/api/report/tasks')
@@ -32,14 +20,12 @@ def login_required(f):
 def get_task_report():
     """Получение отчета по задачам"""
     try:
-        # Статистика по статусам
         status_stats = db.query('''
             SELECT status, COUNT(*) as count 
             FROM tasks 
             GROUP BY status
         ''')
 
-        # Статистика по исполнителям
         executor_stats = db.query('''
             SELECT executor, 
                    COUNT(*) as total,
@@ -51,7 +37,6 @@ def get_task_report():
             ORDER BY total DESC
         ''')
 
-        # Статистика по месяцам
         monthly_stats = db.query('''
             SELECT strftime('%Y-%m', created_date) as month,
                    COUNT(*) as total,
@@ -72,55 +57,53 @@ def get_task_report():
         return jsonify({'error': f'Ошибка получения отчета: {str(e)}'}), 500
 
 
+def _build_tasks_query(args):
+    """Общая сборка SQL-запроса с фильтрами для экспорта и печати."""
+    work_type = args.get('work_type', '')
+    cabinet = args.get('cabinet', '')
+    status = args.get('status', '')
+    user = args.get('user', '')
+    date_from = args.get('date_from', '')
+    date_to = args.get('date_to', '')
+
+    query = 'SELECT * FROM tasks WHERE 1=1'
+    params = []
+
+    if work_type:
+        query += ' AND work_type = ?'
+        params.append(work_type)
+    if cabinet:
+        query += ' AND cabinet LIKE ?'
+        params.append(f'%{cabinet}%')
+    if status:
+        query += ' AND status = ?'
+        params.append(status)
+    if user:
+        query += ' AND (from_user LIKE ? OR executor LIKE ? OR assistant LIKE ?)'
+        search_user = f'%{user}%'
+        params.extend([search_user, search_user, search_user])
+    if date_from:
+        query += ' AND deadline >= ?'
+        params.append(date_from)
+    if date_to:
+        query += ' AND deadline <= ?'
+        params.append(date_to)
+
+    query += ' ORDER BY created_date DESC'
+    return query, params
+
+
 @excel_bp.route('/api/report/tasks/excel')
 @login_required
 def export_tasks_excel():
-    """Экспорт заявок в Excel (CSV)"""
+    """Экспорт заявок в CSV с защитой от formula injection."""
     try:
-        # Получаем параметры фильтрации
-        work_type = request.args.get('work_type', '')
-        cabinet = request.args.get('cabinet', '')
-        status = request.args.get('status', '')
-        user = request.args.get('user', '')
-        date_from = request.args.get('date_from', '')
-        date_to = request.args.get('date_to', '')
-
-        # Базовый запрос
-        query = 'SELECT * FROM tasks WHERE 1=1'
-        params = []
-
-        if work_type:
-            query += ' AND work_type = ?'
-            params.append(work_type)
-
-        if cabinet:
-            query += ' AND cabinet LIKE ?'
-            params.append(f'%{cabinet}%')
-
-        if status:
-            query += ' AND status = ?'
-            params.append(status)
-
-        if user:
-            query += ' AND (from_user LIKE ? OR executor LIKE ? OR assistant LIKE ?)'
-            search_user = f'%{user}%'
-            params.extend([search_user, search_user, search_user])
-
-        if date_from:
-            query += ' AND deadline >= ?'
-            params.append(date_from)
-
-        if date_to:
-            query += ' AND deadline <= ?'
-            params.append(date_to)
-
-        query += ' ORDER BY created_date DESC'
-
+        query, params = _build_tasks_query(request.args)
         tasks = db.query(query, params)
 
         # Создаем CSV файл в памяти
         output = io.StringIO()
-        writer = csv.writer(output, delimiter=';')
+        writer = csv.writer(output, delimiter=';', quoting=csv.QUOTE_MINIMAL)
 
         # Заголовки
         writer.writerow([
@@ -137,25 +120,23 @@ def export_tasks_excel():
             'Помощник'
         ])
 
-        # Данные
+        # Данные — каждое значение проходит через sanitize_csv_value
         for i, task in enumerate(tasks, 1):
             writer.writerow([
                 i,
-                task['created_date'] or '',
-                task['deadline'] or '',
-                task['from_user'] or '',
-                task['cabinet'] or '',
-                task['description'] or '',
-                task['work_type'] or '',
-                task['status'] or '',
-                task['priority'] or '',
-                task['executor'] or '',
-                task['assistant'] or ''
+                sanitize_csv_value(task['created_date']),
+                sanitize_csv_value(task['deadline']),
+                sanitize_csv_value(task['from_user']),
+                sanitize_csv_value(task['cabinet']),
+                sanitize_csv_value(task['description']),
+                sanitize_csv_value(task['work_type']),
+                sanitize_csv_value(task['status']),
+                sanitize_csv_value(task['priority']),
+                sanitize_csv_value(task['executor']),
+                sanitize_csv_value(task['assistant']),
             ])
 
-        # Подготавливаем ответ
         output.seek(0)
-
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
 
         return send_file(
@@ -174,43 +155,7 @@ def export_tasks_excel():
 def get_tasks_for_print():
     """Получение заявок для печати"""
     try:
-        work_type = request.args.get('work_type', '')
-        cabinet = request.args.get('cabinet', '')
-        status = request.args.get('status', '')
-        user = request.args.get('user', '')
-        date_from = request.args.get('date_from', '')
-        date_to = request.args.get('date_to', '')
-
-        query = 'SELECT * FROM tasks WHERE 1=1'
-        params = []
-
-        if work_type:
-            query += ' AND work_type = ?'
-            params.append(work_type)
-
-        if cabinet:
-            query += ' AND cabinet LIKE ?'
-            params.append(f'%{cabinet}%')
-
-        if status:
-            query += ' AND status = ?'
-            params.append(status)
-
-        if user:
-            query += ' AND (from_user LIKE ? OR executor LIKE ? OR assistant LIKE ?)'
-            search_user = f'%{user}%'
-            params.extend([search_user, search_user, search_user])
-
-        if date_from:
-            query += ' AND deadline >= ?'
-            params.append(date_from)
-
-        if date_to:
-            query += ' AND deadline <= ?'
-            params.append(date_to)
-
-        query += ' ORDER BY created_date DESC'
-
+        query, params = _build_tasks_query(request.args)
         tasks = db.query(query, params)
         tasks_list = [dict(task) for task in tasks]
 

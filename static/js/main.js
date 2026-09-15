@@ -56,7 +56,9 @@ function checkAuthAndInit() {
 
             // Устанавливаем роль ДО всего
             window.currentUserRole = data.role;
+            window.currentUserFullName = data.full_name;  // 🆕 надёжный источник ФИО
             console.log('Current user role set to:', window.currentUserRole);
+            console.log('Current user name set to:', window.currentUserFullName);
 
             // Настраиваем интерфейс в зависимости от роли
             setupInterfaceByRole(data.role);
@@ -109,6 +111,7 @@ function setupInterfaceByRole(role) {
         $('.sidebar .nav-link[data-page="licenses"]').hide();
         $('.sidebar .nav-link[data-page="contacts"]').hide();
         $('.sidebar .nav-link[data-page="directory"]').hide();
+        $('.sidebar .nav-link[data-page="cabinets-manage"]').hide();
         $('.sidebar .nav-link[data-page="report"]').hide();
 
         // Скрываем статистику
@@ -157,6 +160,7 @@ function loadUserInfo() {
             }
 
             currentUserId = data.id;
+            window.currentUserFullName = data.full_name;  // 🆕 дублируем для надёжности
 
             var userName = data.full_name || 'Неизвестно';
             var userRole = data.role || '';
@@ -241,6 +245,8 @@ function loadPage(pageName) {
             loadContactsPage();
         } else if (pageName === 'directory' && typeof loadDirectoryPage === 'function') {
             loadDirectoryPage();
+        } else if (pageName === 'cabinets-manage' && typeof loadCabinetsManagePage === 'function') {
+            loadCabinetsManagePage();
         } else if (pageName === 'report' && typeof loadReportPage === 'function') {
             loadReportPage();
         } else {

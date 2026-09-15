@@ -15,6 +15,10 @@
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='logo.ico') }}">
     <link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='logo.ico') }}">
 
+    <!-- PWA -->
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='logo.png') }}">
+
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
 
@@ -34,13 +38,95 @@
             --hover-bg: #f8f9fc;
         }
 
+        /* 🌙 Мягкая тёмная тема (по мотивам GitHub Dark / VS Code Dark) */
         [data-theme="dark"] {
-            --bg-color: #1a1a2e;
-            --card-bg: #16213e;
-            --text-color: #e0e0e0;
-            --border-color: #2a2a3e;
-            --table-header-bg: #1f2942;
-            --hover-bg: #1f2942;
+            --bg-color: #1c1c22;
+            --card-bg: #26262e;
+            --text-color: #d0d0d8;
+            --border-color: #383842;
+            --table-header-bg: #2c2c36;
+            --hover-bg: #2f2f3a;
+        }
+
+        /* Сайдбар — приглушённый градиент вместо ярко-синего */
+        [data-theme="dark"] .sidebar {
+            background: linear-gradient(180deg, #2a3054 0%, #1e2340 100%);
+        }
+
+        /* Кнопки — снимаем «неоновый» вид */
+        [data-theme="dark"] .btn-primary {
+            background: linear-gradient(135deg, #4a5aa8 0%, #5c3f8a 100%);
+        }
+        [data-theme="dark"] .btn-primary:hover {
+            box-shadow: 0 4px 15px rgba(74, 90, 168, 0.35);
+        }
+
+        [data-theme="dark"] .btn-success {
+            background: linear-gradient(135deg, #2d7a3e 0%, #1f8a6c 100%);
+        }
+        [data-theme="dark"] .btn-success:hover {
+            box-shadow: 0 4px 15px rgba(45, 122, 62, 0.35);
+        }
+
+        [data-theme="dark"] .btn-danger {
+            background: linear-gradient(135deg, #a12d3a 0%, #b85a1a 100%);
+        }
+        [data-theme="dark"] .btn-danger:hover {
+            box-shadow: 0 4px 15px rgba(161, 45, 58, 0.35);
+        }
+
+        /* Аватар — приглушённый градиент */
+        [data-theme="dark"] .avatar-circle {
+            background: linear-gradient(135deg, #4a5aa8 0%, #5c3f8a 100%);
+            box-shadow: 0 4px 10px rgba(74, 90, 168, 0.3);
+        }
+
+        /* Заголовки карточек — мягче */
+        [data-theme="dark"] .card-header.bg-primary {
+            background-color: #3d4a7a !important;
+        }
+        [data-theme="dark"] .card-header.bg-success {
+            background-color: #2f6640 !important;
+        }
+        [data-theme="dark"] .card-header.bg-info {
+            background-color: #2c6a7a !important;
+        }
+        [data-theme="dark"] .card-header.bg-secondary {
+            background-color: #4a4a56 !important;
+        }
+
+        /* Статусы заявок — приглушённые */
+        [data-theme="dark"] .status-new       { background-color: #1e3a5f; color: #8bb8e8; }
+        [data-theme="dark"] .status-progress  { background-color: #4a3418; color: #f0b667; }
+        [data-theme="dark"] .status-completed { background-color: #1e4a2e; color: #7fd39a; }
+        [data-theme="dark"] .status-cancelled { background-color: #4a1e28; color: #e88a98; }
+
+        /* Строки таблицы — приглушённое hover-подсвечивание */
+        [data-theme="dark"] .task-row:hover {
+            background-color: var(--hover-bg) !important;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+        }
+
+        /* Модалки */
+        [data-theme="dark"] .modal-header.bg-primary,
+        [data-theme="dark"] .modal-header.bg-success,
+        [data-theme="dark"] .modal-header.bg-info {
+            color: #e8e8f0;
+        }
+
+        /* Текстовое поле ввода — не чисто белое */
+        [data-theme="dark"] .form-control:focus,
+        [data-theme="dark"] .form-select:focus {
+            background-color: var(--card-bg);
+            color: var(--text-color);
+        }
+
+        /* Тень у карточек — меньше «света» */
+        [data-theme="dark"] .user-card,
+        [data-theme="dark"] .stats-card,
+        [data-theme="dark"] .filters-section,
+        [data-theme="dark"] .table-container {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
         }
 
         * {
@@ -769,6 +855,21 @@
 
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <!-- PWA: регистрация Service Worker -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/static/sw.js', { scope: '/' })
+                    .then(function(reg) {
+                        console.log('[PWA] Service Worker зарегистрирован:', reg.scope);
+                    })
+                    .catch(function(err) {
+                        console.warn('[PWA] Ошибка регистрации SW:', err);
+                    });
+            });
+        }
+    </script>
 
     {% block scripts %}{% endblock %}
 </body>

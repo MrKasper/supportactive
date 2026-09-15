@@ -1,0 +1,26 @@
+{
+  "name": "Support Active - Система управления заявками",
+  "short_name": "Support Active",
+  "description": "Система управления IT-заявками, картриджами и лицензиями",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#4e73df",
+  "theme_color": "#4e73df",
+  "lang": "ru",
+  "icons": [
+    {
+      "src": "/static/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

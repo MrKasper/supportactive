@@ -109,7 +109,8 @@ function loadTasks() {
     console.log('loadTasks called - role:', role, 'currentUserId:', currentUserId);
 
     if (role === 'Техник') {
-        var userName = $('#userName').text().trim();
+        // 🆕 Берём ФИО из глобальной переменной (устанавливается до вызова loadTasks)
+        var userName = window.currentUserFullName || $('#userName').text().trim();
         if (userName && userName !== 'Неизвестно') {
             params.append('user', userName);
         }
@@ -330,14 +331,17 @@ function displayTaskDetails(task) {
     var canClose = task.status !== 'Выполнено' && task.status !== 'Отменено';
     var canTake = false;
 
-    // Кнопка "Взять в работу" доступна:
-    // - Администратору всегда для новых заявок
-    // - Технику для заявок без исполнителя
+    // 🔧 ИСПРАВЛЕНО: логика для кнопки "Взять в работу"
+    // - Администратор: может взять любую новую заявку
+    // - Техник: может взять, если он назначен исполнителем ИЛИ исполнитель не назначен
     if (task.status === 'Новое') {
         if (window.currentUserRole === 'Администратор') {
             canTake = true;
-        } else if (window.currentUserRole === 'Техник' && !task.executor) {
-            canTake = true;
+        } else if (window.currentUserRole === 'Техник') {
+            var currentName = window.currentUserFullName || '';
+            if (!task.executor || task.executor === currentName) {
+                canTake = true;
+            }
         }
     }
 

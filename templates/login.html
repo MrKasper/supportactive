@@ -205,7 +205,6 @@
         display: block;
     }
 
-    /* Мобильная адаптация */
     @media (max-width: 768px) {
         .login-page {
             flex-direction: column;
@@ -277,7 +276,6 @@
 </style>
 
 <div class="login-page">
-    <!-- Левая сторона с логотипом -->
     <div class="login-left">
         <div class="logo-container">
             <div class="logo-wrapper">
@@ -291,26 +289,22 @@
         </div>
     </div>
 
-    <!-- Правая сторона с формой входа -->
     <div class="login-right">
         <div class="login-form-container">
             <h3>Вход в систему</h3>
             <p class="subtitle">Введите ваш логин и пароль</p>
 
-            <!-- Сообщение об ошибке -->
             <div class="error-message" id="errorMessage">
                 <i class="bi bi-exclamation-circle"></i>
                 <span id="errorText"></span>
             </div>
 
-            <!-- Сообщение об успехе -->
             <div class="success-message" id="successMessage">
                 <i class="bi bi-check-circle"></i>
                 <span id="successText"></span>
             </div>
 
-            <!-- Форма входа -->
-            <form id="loginForm" onsubmit="handleLogin(event)">
+            <form id="loginForm" onsubmit="handleLogin(event)" autocomplete="on">
                 <div class="form-group">
                     <label for="loginInput">Ваш логин</label>
                     <div class="input-wrapper">
@@ -330,7 +324,6 @@
                     </div>
                 </div>
 
-                <!-- Запомнить меня -->
                 <div class="remember-me">
                     <input type="checkbox" id="rememberMe" checked>
                     <label for="rememberMe">Запомнить меня</label>
@@ -345,26 +338,26 @@
 </div>
 
 <script>
-// Загрузка сохраненных данных при открытии страницы
+// 🔒 Безопасность: пароль НЕ хранится в localStorage.
+// При следующем открытии страницы логин подставляется, пароль — нет.
 document.addEventListener('DOMContentLoaded', function() {
     var savedLogin = localStorage.getItem('savedLogin');
-    var savedPassword = localStorage.getItem('savedPassword');
     var savedRemember = localStorage.getItem('rememberMe');
 
-    if (savedRemember === 'true') {
-        if (savedLogin) {
-            document.getElementById('loginInput').value = savedLogin;
-        }
-        if (savedPassword) {
-            document.getElementById('passwordInput').value = savedPassword;
-        }
+    if (savedRemember === 'true' && savedLogin) {
+        document.getElementById('loginInput').value = savedLogin;
         document.getElementById('rememberMe').checked = true;
     } else {
         document.getElementById('rememberMe').checked = false;
     }
+
+    // Удаляем сохранённый пароль из старых версий (миграция)
+    if (localStorage.getItem('savedPassword') !== null) {
+        localStorage.removeItem('savedPassword');
+    }
 });
 
-// Переключение видимости пароля на странице входа
+// Переключение видимости пароля
 function togglePasswordVisibility() {
     var passwordInput = document.getElementById('passwordInput');
     var toggleIcon = document.getElementById('togglePassword');
@@ -382,7 +375,7 @@ function togglePasswordVisibility() {
     }
 }
 
-// Показать/скрыть сообщение об ошибке
+// Показать/скрыть сообщения
 function showError(message) {
     document.getElementById('errorText').textContent = message;
     document.getElementById('errorMessage').classList.add('show');
@@ -413,18 +406,17 @@ function handleLogin(event) {
         return;
     }
 
-    // Сохраняем данные при включенном "Запомнить меня"
+    // 🔒 Сохраняем ТОЛЬКО логин. Пароль не сохраняем никогда.
     if (rememberMe) {
         localStorage.setItem('savedLogin', login);
-        localStorage.setItem('savedPassword', password);
         localStorage.setItem('rememberMe', 'true');
     } else {
         localStorage.removeItem('savedLogin');
-        localStorage.removeItem('savedPassword');
         localStorage.setItem('rememberMe', 'false');
     }
+    // Чистим возможный старый пароль
+    localStorage.removeItem('savedPassword');
 
-    // Показываем загрузку
     Swal.fire({
         title: 'Вход в систему...',
         allowOutsideClick: false,

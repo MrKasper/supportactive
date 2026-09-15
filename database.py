@@ -1,10 +1,20 @@
 # database.py
 import sqlite3
+import os
 from datetime import datetime, timedelta
 
 
 class Database:
-    def __init__(self, db_name='database.db'):
+    def __init__(self, db_name=None):
+        """
+        Если db_name не задан — используем абсолютный путь рядом с файлом database.py.
+        Это устраняет баг: при запуске из другого CWD создавалась новая БД.
+        """
+        if db_name is None:
+            db_name = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)),
+                'database.db'
+            )
         self.db_name = db_name
 
     def init_db(self):
@@ -122,6 +132,12 @@ class Database:
                 created_date TEXT
             )
         ''')
+
+        # Индексы для ускорения частых выборок
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_tasks_executor ON tasks(executor)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_tasks_created_by ON tasks(created_by)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, is_read)')
 
         conn.commit()
         conn.close()
