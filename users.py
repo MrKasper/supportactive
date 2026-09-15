@@ -6,6 +6,7 @@ from utils import login_required, role_required
 import os
 import sqlite3
 import tempfile
+import traceback
 
 users_bp = Blueprint('users', __name__)
 
@@ -244,13 +245,58 @@ def get_user_credentials(user_id):
 
 # ============= ИМПОРТ ИЗ ДРУГОЙ БАЗЫ ДАННЫХ =============
 
+def _normalize_role(raw_role, raw_type_access=''):
+    """
+    Приводит произвольное значение роли к одному из:
+    Администратор / Техник / Пользователь
+    """
+    s = f"{raw_role or ''} {raw_type_access or ''}".strip().lower()
+
+    # Администратор
+    if any(k in s for k in ['admin', 'админ', 'root', 'administrator', 'super']):
+        return 'Администратор'
+    # Техник
+    if any(k in s for k in ['tech', 'техник', 'мастер', 'engineer', 'support']):
+        return 'Техник'
+    # По умолчанию — обычный пользователь
+    return 'Пользователь'
+
+
+def _build_full_name(ext_user):
+    """
+    Собирает ФИО из разных возможных схем:
+    1) Прямое поле full_name (новая схема Support Active).
+    2) family + name + father (классическая советская схема).
+    3) name + family (если father отсутствует).
+    """
+    # Вариант 1: готовая строка
+    direct = (ext_user.get('full_name') or '').strip()
+    if direct:
+        return direct
+
+    # Вариант 2: Фамилия Имя Отчество
+    family = (ext_user.get('family') or ext_user.get('surname') or ext_user.get('last_name') or '').strip()
+    name   = (ext_user.get('name') or ext_user.get('first_name') or '').strip()
+    father = (ext_user.get('father') or ext_user.get('patronymic') or ext_user.get('middle_name') or '').strip()
+
+    parts = [p for p in (family, name, father) if p]
+    if parts:
+        return ' '.join(parts)
+
+    # Вариант 3: непонятная схема — вернём пусто, отфильтруем
+    return ''
+
+
 @users_bp.route('/api/users/import', methods=['POST'])
 @role_required('Администратор')
 def import_users():
     """
     Импорт пользователей из другой SQLite-базы.
-    Ожидается файл БД, в котором есть таблица `users` с колонками:
-    full_name, role, avatar, email, phone, department, login, password, is_active.
+    Поддерживает две схемы:
+      • Новая Support Active: full_name, role, avatar, email, phone,
+        department, login, password, is_active.
+      • Старая (legacy): family, name, father, initials, gender, number,
+        email, depart, position, login, pass, groupUser, image, typeAccess.
     Пользователи с уже существующим логином пропускаются.
     """
     tmp_path = None
@@ -280,35 +326,117 @@ def import_users():
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
 
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
-        if not cursor.fetchone():
+        # Ищем таблицу users (регистронезависимо)
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        all_tables = [r['name'] for r in cursor.fetchall()]
+        users_table = None
+        for t in all_tables:
+            if t.lower() == 'users':
+                users_table = t
+                break
+
+        if not users_table:
             conn.close()
             return jsonify({
                 'success': False,
-                'error': 'В файле нет таблицы `users`. Убедитесь, что это БД Support Active.'
+                'error': f'В файле нет таблицы users. Найдены таблицы: {", ".join(all_tables) or "нет"}'
             }), 400
 
-        cursor.execute("SELECT * FROM users")
+        # Читаем всех
+        cursor.execute(f'SELECT * FROM "{users_table}"')
         external_users = [dict(row) for row in cursor.fetchall()]
         conn.close()
+
+        if not external_users:
+            return jsonify({
+                'success': True,
+                'imported': 0,
+                'skipped': 0,
+                'total': 0,
+                'errors': ['Таблица users пуста'],
+                'message': 'Таблица users пуста'
+            })
+
+        # Определяем схему по первой строке
+        first_row_keys = set(k.lower() for k in external_users[0].keys())
+        is_legacy = ('family' in first_row_keys or 'father' in first_row_keys) and \
+                    'full_name' not in first_row_keys
 
         imported = 0
         skipped = 0
         errors = []
 
         for ext_user in external_users:
-            login = (ext_user.get('login') or '').strip()
-            full_name = (ext_user.get('full_name') or '').strip()
+            # Регистронезависимый доступ к полям
+            u = {k.lower(): v for k, v in ext_user.items()}
 
-            if not login or not full_name:
+            # --- ФИО ---
+            full_name = _build_full_name(u)
+
+            # Добавляем инициалы в конце (если есть и не дублируют)
+            initials = (u.get('initials') or '').strip()
+            if initials and initials not in full_name:
+                full_name = f'{full_name} ({initials})'.strip()
+
+            # --- Логин ---
+            login = (u.get('login') or '').strip()
+
+            if not login:
                 skipped += 1
-                errors.append(f'Пропущен (нет логина или ФИО): id={ext_user.get("id")}')
+                errors.append(f'Пропущен: нет логина (ID={u.get("id")})')
                 continue
 
+            if not full_name:
+                skipped += 1
+                errors.append(f'Пропущен: не удалось собрать ФИО (логин={login})')
+                continue
+
+            # Проверка на дубликат
             existing = db.query('SELECT id FROM users WHERE login = ?', [login], one=True)
             if existing:
                 skipped += 1
                 continue
+
+            # --- Пароль ---
+            password = (
+                u.get('password')
+                or u.get('pass')
+                or ''
+            )
+            password = str(password).strip() if password else ''
+            if not password:
+                password = 'changeme123'
+                errors.append(f'{login}: пароль не найден, установлен временный')
+
+            # --- Роль ---
+            raw_role = u.get('role') or u.get('groupuser') or u.get('group_user') or ''
+            raw_type_access = u.get('typeaccess') or u.get('type_access') or ''
+            role = _normalize_role(raw_role, raw_type_access)
+
+            # --- Отдел ---
+            department = (u.get('department') or u.get('depart') or '').strip()
+            position = (u.get('position') or '').strip()
+            if position and position not in department:
+                department = f'{department} / {position}' if department else position
+
+            # --- Контакты ---
+            email = (u.get('email') or '').strip()
+            phone = (u.get('phone') or u.get('number') or '').strip()
+
+            # --- Аватар ---
+            avatar = (u.get('avatar') or u.get('image') or '').strip()
+            if not avatar:
+                avatar = 'default.png'
+
+            # --- Статус ---
+            is_active = u.get('is_active')
+            if is_active is None:
+                is_active = 1
+            else:
+                try:
+                    is_active = 1 if int(is_active) else 0
+                except (ValueError, TypeError):
+                    is_active = 1
 
             try:
                 db.execute('''
@@ -317,30 +445,37 @@ def import_users():
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', [
                     full_name,
-                    ext_user.get('role') or 'Пользователь',
-                    ext_user.get('avatar') or 'default.png',
-                    ext_user.get('email') or '',
-                    ext_user.get('phone') or '',
-                    ext_user.get('department') or '',
+                    role,
+                    avatar,
+                    email,
+                    phone,
+                    department,
                     login,
-                    ext_user.get('password') or 'changeme123',
-                    ext_user.get('is_active', 1)
+                    password,
+                    is_active
                 ])
                 imported += 1
             except Exception as e:
                 skipped += 1
                 errors.append(f'{login}: {str(e)}')
 
+        schema_note = 'legacy' if is_legacy else 'support_active'
         return jsonify({
             'success': True,
             'imported': imported,
             'skipped': skipped,
             'total': len(external_users),
-            'errors': errors[:20],
-            'message': f'Импортировано: {imported}, пропущено: {skipped}, всего в файле: {len(external_users)}'
+            'schema': schema_note,
+            'errors': errors[:30],
+            'message': (
+                f'Схема: {schema_note}. '
+                f'Импортировано: {imported}, пропущено: {skipped}, '
+                f'всего в файле: {len(external_users)}'
+            )
         })
 
     except Exception as e:
+        traceback.print_exc()
         return jsonify({'success': False, 'error': f'Ошибка импорта: {str(e)}'}), 500
     finally:
         if tmp_path and os.path.exists(tmp_path):

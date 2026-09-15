@@ -437,8 +437,11 @@ function showImportUsersModal() {
             'с таблицей <code>users</code>.</p>' +
             '<div class="alert alert-info small mb-3">' +
             '<i class="bi bi-info-circle"></i> ' +
-            'Пользователи с уже существующими логинами будут пропущены. ' +
-            'Роли, отделы и пароли переносятся как есть.' +
+            'Поддерживаются две схемы:<br>' +
+            '<b>1.</b> Новая Support Active (<code>full_name</code>, <code>role</code>...).<br>' +
+            '<b>2.</b> Старая (<code>family</code>, <code>name</code>, <code>father</code>, ' +
+            '<code>depart</code>, <code>groupUser</code>, <code>pass</code>, <code>number</code>...).<br>' +
+            'Пользователи с уже существующими логинами пропускаются.' +
             '</div>' +
             '<label class="form-label">Файл базы данных</label>' +
             '<input type="file" id="importDbFile" class="form-control" accept=".db,.sqlite,.sqlite3">' +
@@ -472,18 +475,28 @@ function showImportUsersModal() {
 
         fetch('/api/users/import', {
             method: 'POST',
-            body: formData
+            body: formData,
+            credentials: 'same-origin'
         })
         .then(function(r) { return r.json(); })
         .then(function(data) {
             if (data.success) {
                 var errorsHtml = '';
                 if (data.errors && data.errors.length > 0) {
-                    errorsHtml = '<hr><div class="text-start small text-muted">' +
+                    errorsHtml = '<hr><div class="text-start small text-muted" style="max-height: 200px; overflow-y: auto;">' +
                         '<strong>Замечания:</strong><br>' +
-                        data.errors.slice(0, 5).map(escapeHtml).join('<br>') +
-                        (data.errors.length > 5 ? '<br>...и ещё ' + (data.errors.length - 5) : '') +
+                        data.errors.slice(0, 10).map(escapeHtml).join('<br>') +
+                        (data.errors.length > 10 ? '<br>...и ещё ' + (data.errors.length - 10) : '') +
                         '</div>';
+                }
+
+                var schemaLabel = '';
+                if (data.schema === 'legacy') {
+                    schemaLabel = '<p class="small text-muted mb-2"><i class="bi bi-info-circle"></i> ' +
+                                  'Определена <b>старая схема</b> базы данных</p>';
+                } else if (data.schema === 'support_active') {
+                    schemaLabel = '<p class="small text-muted mb-2"><i class="bi bi-info-circle"></i> ' +
+                                  'Определена <b>новая схема</b> Support Active</p>';
                 }
 
                 Swal.fire({
@@ -491,6 +504,7 @@ function showImportUsersModal() {
                     title: 'Импорт завершён',
                     html:
                         '<div class="text-start">' +
+                        schemaLabel +
                         '<p><i class="bi bi-check-circle text-success"></i> ' +
                         '<strong>Импортировано:</strong> ' + data.imported + '</p>' +
                         '<p><i class="bi bi-slash-circle text-warning"></i> ' +
@@ -499,11 +513,16 @@ function showImportUsersModal() {
                         '<strong>Всего в файле:</strong> ' + data.total + '</p>' +
                         errorsHtml +
                         '</div>',
-                    confirmButtonText: 'ОК'
+                    confirmButtonText: 'ОК',
+                    customClass: { popup: 'swal-wide' }
                 });
                 loadUsersPage();
             } else {
-                Swal.fire({ icon: 'error', title: 'Ошибка импорта', text: data.error });
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Ошибка импорта',
+                    html: '<div class="text-start">' + escapeHtml(data.error || 'Неизвестная ошибка') + '</div>'
+                });
             }
         })
         .catch(function(err) {
