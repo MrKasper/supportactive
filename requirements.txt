@@ -3,3 +3,6 @@ Flask-Session==0.5.0
 Werkzeug==2.3.7
 python-dotenv==1.0.0
 gunicorn==21.2.0
+pywebpush==2.0.3
+py-vapid==1.9.1
+cryptography>=41.0.0

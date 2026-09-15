@@ -3,8 +3,12 @@ from flask import Blueprint, request, jsonify, session
 from database import Database
 from datetime import datetime
 from utils import login_required, role_required
+import os
+import sqlite3
+import tempfile
 
 users_bp = Blueprint('users', __name__)
+
 db = Database()
 
 
@@ -236,3 +240,111 @@ def get_user_credentials(user_id):
         })
     except Exception as e:
         return jsonify({'success': False, 'error': f'Ошибка: {str(e)}'}), 500
+
+
+# ============= ИМПОРТ ИЗ ДРУГОЙ БАЗЫ ДАННЫХ =============
+
+@users_bp.route('/api/users/import', methods=['POST'])
+@role_required('Администратор')
+def import_users():
+    """
+    Импорт пользователей из другой SQLite-базы.
+    Ожидается файл БД, в котором есть таблица `users` с колонками:
+    full_name, role, avatar, email, phone, department, login, password, is_active.
+    Пользователи с уже существующим логином пропускаются.
+    """
+    tmp_path = None
+    try:
+        if 'database_file' not in request.files:
+            return jsonify({'success': False, 'error': 'Файл базы данных не выбран'}), 400
+
+        file = request.files['database_file']
+        if not file or file.filename == '':
+            return jsonify({'success': False, 'error': 'Файл не выбран'}), 400
+
+        ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else ''
+        if ext not in ('db', 'sqlite', 'sqlite3'):
+            return jsonify({
+                'success': False,
+                'error': 'Поддерживаются только файлы .db, .sqlite, .sqlite3'
+            }), 400
+
+        # Сохраняем во временный файл
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.db')
+        tmp_path = tmp.name
+        tmp.close()
+        file.save(tmp_path)
+
+        # Открываем внешнюю БД
+        conn = sqlite3.connect(tmp_path)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
+        if not cursor.fetchone():
+            conn.close()
+            return jsonify({
+                'success': False,
+                'error': 'В файле нет таблицы `users`. Убедитесь, что это БД Support Active.'
+            }), 400
+
+        cursor.execute("SELECT * FROM users")
+        external_users = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+
+        imported = 0
+        skipped = 0
+        errors = []
+
+        for ext_user in external_users:
+            login = (ext_user.get('login') or '').strip()
+            full_name = (ext_user.get('full_name') or '').strip()
+
+            if not login or not full_name:
+                skipped += 1
+                errors.append(f'Пропущен (нет логина или ФИО): id={ext_user.get("id")}')
+                continue
+
+            existing = db.query('SELECT id FROM users WHERE login = ?', [login], one=True)
+            if existing:
+                skipped += 1
+                continue
+
+            try:
+                db.execute('''
+                    INSERT INTO users 
+                        (full_name, role, avatar, email, phone, department, login, password, is_active)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', [
+                    full_name,
+                    ext_user.get('role') or 'Пользователь',
+                    ext_user.get('avatar') or 'default.png',
+                    ext_user.get('email') or '',
+                    ext_user.get('phone') or '',
+                    ext_user.get('department') or '',
+                    login,
+                    ext_user.get('password') or 'changeme123',
+                    ext_user.get('is_active', 1)
+                ])
+                imported += 1
+            except Exception as e:
+                skipped += 1
+                errors.append(f'{login}: {str(e)}')
+
+        return jsonify({
+            'success': True,
+            'imported': imported,
+            'skipped': skipped,
+            'total': len(external_users),
+            'errors': errors[:20],
+            'message': f'Импортировано: {imported}, пропущено: {skipped}, всего в файле: {len(external_users)}'
+        })
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Ошибка импорта: {str(e)}'}), 500
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            try:
+                os.unlink(tmp_path)
+            except Exception:
+                pass

@@ -109,6 +109,7 @@ def get_tasks():
         work_type = request.args.get('work_type', '')
         cabinet = request.args.get('cabinet', '')
         status = request.args.get('status', '')
+        exclude_status = request.args.get('exclude_status', '')
         user = request.args.get('user', '')
         priority = request.args.get('priority', '')
         date_from = request.args.get('date_from', '')
@@ -132,6 +133,13 @@ def get_tasks():
         if status:
             query += ' AND status = ?'
             params.append(status)
+        elif exclude_status:
+            # 🆕 Исключаем перечисленные статусы (например, "Выполнено,Отменено")
+            exclude_list = [s.strip() for s in exclude_status.split(',') if s.strip()]
+            if exclude_list:
+                placeholders = ','.join(['?' for _ in exclude_list])
+                query += f' AND status NOT IN ({placeholders})'
+                params.extend(exclude_list)
 
         if priority:
             query += ' AND priority = ?'
@@ -231,7 +239,6 @@ def create_task():
         if executor and deadline:
             new_deadline = None
             try:
-                # Нормализуем дату из HTML input
                 new_deadline_str = deadline.replace('T', ' ') + ':00'
                 new_deadline = datetime.strptime(new_deadline_str, '%Y-%m-%d %H:%M:%S')
             except Exception as e:
@@ -267,9 +274,7 @@ def create_task():
 
                     time_diff = abs((new_deadline - task_deadline).total_seconds())
 
-                    # Проверяем, что заявки в один день
                     if task_deadline.date() == new_deadline.date():
-                        # Проверяем пересечение времени (разница менее 1 часа)
                         if time_diff < 3600:
                             return jsonify({
                                 'success': False,
@@ -343,7 +348,6 @@ def update_task(task_id):
         if not old_task:
             return jsonify({'success': False, 'error': 'Заявка не найдена'}), 404
 
-        # Пользователь может редактировать только свои заявки
         if session.get('user_role') == 'Пользователь' and old_task['created_by'] != session.get('user_id'):
             return jsonify({'success': False, 'error': 'Недостаточно прав'}), 403
 
@@ -379,7 +383,6 @@ def update_task(task_id):
 def close_task(task_id):
     """Закрытие заявки"""
     try:
-        # Только администратор и техник могут закрывать заявки
         if session.get('user_role') not in ('Администратор', 'Техник'):
             return jsonify({'success': False, 'error': 'Недостаточно прав'}), 403
 
@@ -436,7 +439,6 @@ def take_task(task_id):
 
         task_deadline = task['deadline']
 
-        # Проверяем занятость техника на время этой заявки
         if task_deadline:
             new_deadline = None
             try:

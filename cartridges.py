@@ -2,6 +2,8 @@
 from flask import Blueprint, request, jsonify, session
 from database import Database
 from datetime import datetime
+from collections import Counter
+from utils import login_required
 
 # Создаем Blueprint для картриджей
 cartridges_bp = Blueprint('cartridges', __name__)
@@ -10,17 +12,10 @@ cartridges_bp = Blueprint('cartridges', __name__)
 db = Database()
 
 
-# ============= ДЕКОРАТОР ДЛЯ ПРОВЕРКИ АВТОРИЗАЦИИ =============
-def login_required(f):
-    """Декоратор для проверки авторизации пользователя"""
-
-    def decorated_function(*args, **kwargs):
-        if 'user_id' not in session:
-            return jsonify({'error': 'Необходима авторизация'}), 401
-        return f(*args, **kwargs)
-
-    decorated_function.__name__ = f.__name__
-    return decorated_function
+MONTH_NAMES_RU = ['', 'Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн',
+                  'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек']
+MONTH_FULL_RU = ['', 'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+                 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь']
 
 
 # ============= API ДЛЯ УПРАВЛЕНИЯ КАРТРИДЖАМИ =============
@@ -28,23 +23,42 @@ def login_required(f):
 @cartridges_bp.route('/api/cartridges')
 @login_required
 def get_cartridges():
-    """Получение списка всех записей о замене картриджей"""
+    """
+    Получение списка всех записей о замене картриджей.
+    Сортировка: сначала те, где была самая свежая замена.
+    """
     try:
         cartridges = db.query('''
             SELECT id, cabinet, full_name, printer, cartridge, 
                    replacement_dates, notes
-            FROM cartridges 
-            ORDER BY id DESC
+            FROM cartridges
         ''')
+
         result = []
         for cart in cartridges:
             cart_dict = dict(cart)
+
             # Преобразуем строку с датами в массив
+            dates_list = []
             if cart_dict['replacement_dates']:
-                cart_dict['replacement_dates'] = cart_dict['replacement_dates'].split(',')
+                dates_list = [d.strip() for d in cart_dict['replacement_dates'].split(',') if d.strip()]
+
+            cart_dict['replacement_dates'] = dates_list
+
+            # Определяем самую свежую дату
+            if dates_list:
+                try:
+                    cart_dict['latest_date'] = max(dates_list)
+                except Exception:
+                    cart_dict['latest_date'] = dates_list[-1]
             else:
-                cart_dict['replacement_dates'] = []
+                cart_dict['latest_date'] = ''
+
             result.append(cart_dict)
+
+        # Сортировка: сначала самые свежие замены, записи без дат — в конце
+        result.sort(key=lambda x: x['latest_date'] or '0000-00-00 00:00:00', reverse=True)
+
         return jsonify(result)
 
     except Exception as e:
@@ -62,7 +76,9 @@ def get_cartridge(cartridge_id):
 
         cart_dict = dict(cartridge)
         if cart_dict['replacement_dates']:
-            cart_dict['replacement_dates'] = cart_dict['replacement_dates'].split(',')
+            cart_dict['replacement_dates'] = [
+                d.strip() for d in cart_dict['replacement_dates'].split(',') if d.strip()
+            ]
         else:
             cart_dict['replacement_dates'] = []
 
@@ -78,7 +94,6 @@ def create_cartridge():
     """Добавление новой записи о замене картриджа"""
     try:
         data = request.get_json()
-
         if not data:
             return jsonify({'success': False, 'error': 'Нет данных'}), 400
 
@@ -96,33 +111,22 @@ def create_cartridge():
         if not cartridge:
             return jsonify({'success': False, 'error': 'Укажите модель картриджа'}), 400
 
-        # Проверяем, нет ли уже записи с таким же кабинетом, принтером и картриджем
         existing = db.query(
             'SELECT id FROM cartridges WHERE cabinet = ? AND printer = ? AND cartridge = ?',
-            [cabinet, printer, cartridge],
-            one=True
+            [cabinet, printer, cartridge], one=True
         )
-
         if existing:
             return jsonify({
                 'success': False,
-                'error': 'Запись для этого кабинета с таким принтером и картриджем уже существует. Вы можете отредактировать существующую запись.'
+                'error': 'Запись для этого кабинета с таким принтером и картриджем уже существует.'
             }), 400
 
-        # Преобразуем массив дат в строку
         dates_str = ','.join(replacement_dates) if replacement_dates else ''
 
         cartridge_id = db.execute('''
             INSERT INTO cartridges (cabinet, full_name, printer, cartridge, replacement_dates, notes)
             VALUES (?, ?, ?, ?, ?, ?)
-        ''', [
-            cabinet,
-            full_name,
-            printer,
-            cartridge,
-            dates_str,
-            notes
-        ])
+        ''', [cabinet, full_name, printer, cartridge, dates_str, notes])
 
         return jsonify({
             'success': True,
@@ -140,7 +144,6 @@ def update_cartridge(cartridge_id):
     """Обновление записи о замене картриджа"""
     try:
         data = request.get_json()
-
         if not data:
             return jsonify({'success': False, 'error': 'Нет данных'}), 400
 
@@ -148,17 +151,14 @@ def update_cartridge(cartridge_id):
         if not old:
             return jsonify({'success': False, 'error': 'Запись не найдена'}), 404
 
-        # Проверяем на дубликат при изменении кабинета, принтера или картриджа
         cabinet = data.get('cabinet', old['cabinet']).strip()
         printer = data.get('printer', old['printer']).strip()
         cartridge = data.get('cartridge', old['cartridge']).strip()
 
         existing = db.query(
             'SELECT id FROM cartridges WHERE cabinet = ? AND printer = ? AND cartridge = ? AND id != ?',
-            [cabinet, printer, cartridge, cartridge_id],
-            one=True
+            [cabinet, printer, cartridge, cartridge_id], one=True
         )
-
         if existing:
             return jsonify({
                 'success': False,
@@ -183,10 +183,7 @@ def update_cartridge(cartridge_id):
             cartridge_id
         ])
 
-        return jsonify({
-            'success': True,
-            'message': 'Запись успешно обновлена'
-        })
+        return jsonify({'success': True, 'message': 'Запись успешно обновлена'})
 
     except Exception as e:
         return jsonify({'success': False, 'error': f'Ошибка обновления записи: {str(e)}'}), 500
@@ -203,10 +200,7 @@ def delete_cartridge(cartridge_id):
 
         db.execute('DELETE FROM cartridges WHERE id = ?', [cartridge_id])
 
-        return jsonify({
-            'success': True,
-            'message': 'Запись успешно удалена'
-        })
+        return jsonify({'success': True, 'message': 'Запись успешно удалена'})
 
     except Exception as e:
         return jsonify({'success': False, 'error': f'Ошибка удаления записи: {str(e)}'}), 500
@@ -223,49 +217,50 @@ def clear_cartridge_dates(cartridge_id):
 
         db.execute('UPDATE cartridges SET replacement_dates = NULL WHERE id = ?', [cartridge_id])
 
-        return jsonify({
-            'success': True,
-            'message': 'Даты замены очищены'
-        })
+        return jsonify({'success': True, 'message': 'Даты замены очищены'})
 
     except Exception as e:
         return jsonify({'success': False, 'error': f'Ошибка очистки дат: {str(e)}'}), 500
 
 
+# ============= ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ =============
+
+def _collect_all_dates():
+    """Собирает все даты замен из БД в один список."""
+    all_records = db.query(
+        'SELECT replacement_dates FROM cartridges '
+        'WHERE replacement_dates IS NOT NULL AND replacement_dates != ""'
+    )
+    dates = []
+    for record in all_records:
+        if record['replacement_dates']:
+            for d in record['replacement_dates'].split(','):
+                d = d.strip()
+                if d:
+                    dates.append(d)
+    return dates
+
+
+# ============= СТАТИСТИКА =============
+
 @cartridges_bp.route('/api/cartridges/statistics')
 @login_required
 def get_cartridge_statistics():
-    """Получение статистики по заменам картриджей"""
+    """Общая статистика по заменам картриджей"""
     try:
-        # Общее количество записей
         total = db.query('SELECT COUNT(*) as count FROM cartridges', one=True)['count']
 
-        # Общее количество замен (сумма всех дат)
-        all_records = db.query(
-            'SELECT replacement_dates FROM cartridges WHERE replacement_dates IS NOT NULL AND replacement_dates != ""')
-        total_replacements = 0
-        for record in all_records:
-            if record['replacement_dates']:
-                dates = record['replacement_dates'].split(',')
-                total_replacements += len([d for d in dates if d.strip()])
+        all_dates = _collect_all_dates()
+        total_replacements = len(all_dates)
 
-        # Количество замен за текущий месяц
-        current_month = datetime.now().strftime('%Y-%m')
-        month_replacements = 0
-        for record in all_records:
-            if record['replacement_dates']:
-                dates = record['replacement_dates'].split(',')
-                month_replacements += len([d for d in dates if d.strip() and d.startswith(current_month)])
+        now = datetime.now()
+        current_month = now.strftime('%Y-%m')
+        current_year = now.strftime('%Y')
 
-        # Количество замен за текущий год
-        current_year = datetime.now().strftime('%Y')
-        year_replacements = 0
-        for record in all_records:
-            if record['replacement_dates']:
-                dates = record['replacement_dates'].split(',')
-                year_replacements += len([d for d in dates if d.strip() and d.startswith(current_year)])
+        month_replacements = sum(1 for d in all_dates if d.startswith(current_month))
+        year_replacements = sum(1 for d in all_dates if d.startswith(current_year))
 
-        # Статистика по кабинетам (только количество замен)
+        # Статистика по кабинетам
         cabinet_stats = db.query('''
             SELECT cabinet, COUNT(*) as record_count
             FROM cartridges 
@@ -277,15 +272,14 @@ def get_cartridge_statistics():
         cabinet_stats_result = []
         for stat in cabinet_stats:
             cabinet_records = db.query(
-                'SELECT replacement_dates FROM cartridges WHERE cabinet = ? AND replacement_dates IS NOT NULL AND replacement_dates != ""',
+                'SELECT replacement_dates FROM cartridges WHERE cabinet = ? '
+                'AND replacement_dates IS NOT NULL AND replacement_dates != ""',
                 [stat['cabinet']]
             )
             replacements = 0
             for record in cabinet_records:
                 if record['replacement_dates']:
-                    dates = record['replacement_dates'].split(',')
-                    replacements += len([d for d in dates if d.strip()])
-
+                    replacements += len([d for d in record['replacement_dates'].split(',') if d.strip()])
             cabinet_stats_result.append({
                 'cabinet': stat['cabinet'],
                 'replacements': replacements
@@ -312,12 +306,12 @@ def get_cartridge_statistics():
         # Последние замены
         last_replacements = []
         all_with_dates = db.query(
-            'SELECT cabinet, printer, cartridge, replacement_dates FROM cartridges WHERE replacement_dates IS NOT NULL AND replacement_dates != "" ORDER BY id DESC'
+            'SELECT cabinet, printer, cartridge, replacement_dates FROM cartridges '
+            'WHERE replacement_dates IS NOT NULL AND replacement_dates != "" ORDER BY id DESC'
         )
         for record in all_with_dates:
             if record['replacement_dates']:
-                dates = record['replacement_dates'].split(',')
-                for date in dates:
+                for date in record['replacement_dates'].split(','):
                     if date.strip():
                         last_replacements.append({
                             'cabinet': record['cabinet'],
@@ -326,7 +320,6 @@ def get_cartridge_statistics():
                             'replacement_date': date.strip()
                         })
 
-        # Сортируем по дате и берем последние 10
         last_replacements.sort(key=lambda x: x['replacement_date'], reverse=True)
         last_replacements = last_replacements[:10]
 
@@ -343,3 +336,71 @@ def get_cartridge_statistics():
 
     except Exception as e:
         return jsonify({'error': f'Ошибка получения статистики: {str(e)}'}), 500
+
+
+@cartridges_bp.route('/api/cartridges/statistics/monthly')
+@login_required
+def get_cartridge_monthly_stats():
+    """
+    Помесячная статистика замен за последние 12 месяцев +
+    агрегированная статистика по годам.
+    """
+    try:
+        all_dates = _collect_all_dates()
+
+        # Собираем счётчики: по месяцам (YYYY-MM) и по годам (YYYY)
+        month_counter = Counter()
+        year_counter = Counter()
+        for d in all_dates:
+            # ожидаем формат 'YYYY-MM-DD HH:MM:SS'
+            if len(d) >= 7:
+                month_key = d[:7]
+                year_key = d[:4]
+                month_counter[month_key] += 1
+                year_counter[year_key] += 1
+
+        # Формируем 12 последних месяцев (включая текущий)
+        now = datetime.now()
+        months_series = []
+        year = now.year
+        month = now.month
+        # Собираем последовательность из 12 месяцев назад
+        sequence = []
+        for _ in range(12):
+            sequence.append((year, month))
+            month -= 1
+            if month == 0:
+                month = 12
+                year -= 1
+        sequence.reverse()  # от старых к новым
+
+        for (y, m) in sequence:
+            key = f'{y:04d}-{m:02d}'
+            months_series.append({
+                'month': key,
+                'month_name': MONTH_NAMES_RU[m],
+                'month_full': MONTH_FULL_RU[m],
+                'year': y,
+                'count': month_counter.get(key, 0)
+            })
+
+        # Годовая статистика — все годы, что есть в БД, от свежих к старым
+        years_series = []
+        for y in sorted(year_counter.keys(), reverse=True):
+            years_series.append({
+                'year': y,
+                'count': year_counter[y]
+            })
+
+        # Максимум для отрисовки графика
+        max_month = max((m['count'] for m in months_series), default=0)
+
+        return jsonify({
+            'months': months_series,
+            'years': years_series,
+            'max_month': max_month,
+            'total_all_time': len(all_dates)
+        })
+
+    except Exception as e:
+        return jsonify({'error': f'Ошибка получения помесячной статистики: {str(e)}'}), 500

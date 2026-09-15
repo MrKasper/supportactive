@@ -5,7 +5,6 @@
 
 // ============= ЗАГРУЗКА СТАТИСТИКИ =============
 function loadStatistics() {
-    // Для пользователя статистика не загружается
     if (window.currentUserRole === 'Пользователь') {
         return;
     }
@@ -21,7 +20,6 @@ function loadStatistics() {
         .then(function(data) {
             if (!data || data.error) return;
 
-            // Для техника показываем только его статистику
             if (window.currentUserRole === 'Техник') {
                 animateNumber('#statCompleted', data.user_completed || 0);
                 animateNumber('#statNewProgress', data.user_in_progress || 0);
@@ -43,7 +41,6 @@ function loadStatistics() {
 
 // ============= ЗАГРУЗКА ФИЛЬТРОВ =============
 function loadFilters() {
-    // Для пользователя фильтры не загружаются
     if (window.currentUserRole === 'Пользователь') {
         return;
     }
@@ -109,7 +106,7 @@ function loadTasks() {
     console.log('loadTasks called - role:', role, 'currentUserId:', currentUserId);
 
     if (role === 'Техник') {
-        // 🆕 Берём ФИО из глобальной переменной (устанавливается до вызова loadTasks)
+        // Берём ФИО из глобальной переменной (устанавливается до вызова loadTasks)
         var userName = window.currentUserFullName || $('#userName').text().trim();
         if (userName && userName !== 'Неизвестно') {
             params.append('user', userName);
@@ -123,7 +120,15 @@ function loadTasks() {
 
         if (workType) params.append('work_type', workType);
         if (cabinet) params.append('cabinet', cabinet);
-        if (status) params.append('status', status);
+
+        // 🆕 По умолчанию показываем только «Новое» и «В работе».
+        // Если техник явно выбрал статус в фильтре — показываем по фильтру.
+        if (status) {
+            params.append('status', status);
+        } else {
+            params.append('exclude_status', 'Выполнено,Отменено');
+        }
+
         if (filterDate) {
             params.append('date_from', filterDate + ' 00:00:00');
             params.append('date_to', filterDate + ' 23:59:59');
@@ -198,7 +203,6 @@ function renderTasksTable(tasks) {
     var tbody = $('#tasksTableBody');
     tbody.empty();
 
-    // Обновляем заголовки таблицы
     updateTableHeaders();
 
     if (!tasks || tasks.length === 0) {
@@ -254,7 +258,6 @@ function createTaskRow(task) {
     var statusClass = getStatusClass(task.status);
     var priorityClass = getPriorityClass(task.priority);
 
-    // Определяем подсветку строки
     var rowStyle = '';
     var rowClass = '';
     var deadlineHtml = '';
@@ -266,12 +269,10 @@ function createTaskRow(task) {
         var diffHours = diffMs / (1000 * 60 * 60);
 
         if (diffMs < 0) {
-            // Просрочена - красный
             rowClass = 'table-danger';
             rowStyle = 'background-color: #f8d7da !important;';
             deadlineHtml = '<span class="badge bg-danger">Просрочена</span> ' + formatDate(task.deadline);
         } else if (diffHours < 24) {
-            // Менее 24 часов - желтый
             rowClass = 'table-warning';
             rowStyle = 'background-color: #fff3cd !important;';
             deadlineHtml = '<span class="badge bg-warning text-dark">Скоро</span> ' + formatDate(task.deadline);
@@ -284,7 +285,6 @@ function createTaskRow(task) {
 
     var row = '<tr class="task-row ' + rowClass + '" style="' + rowStyle + '" data-task-id="' + task.id + '" onclick="viewTask(' + task.id + ')" oncontextmenu="handleContextMenu(event, ' + task.id + '); return false;">';
 
-    // Чекбокс только для администратора
     if (window.currentUserRole === 'Администратор') {
         row += '<td onclick="event.stopPropagation()"><input type="checkbox" class="task-checkbox" value="' + task.id + '" onchange="toggleTaskSelection(' + task.id + ', this.checked)"></td>';
     }
@@ -331,7 +331,7 @@ function displayTaskDetails(task) {
     var canClose = task.status !== 'Выполнено' && task.status !== 'Отменено';
     var canTake = false;
 
-    // 🔧 ИСПРАВЛЕНО: логика для кнопки "Взять в работу"
+    // 🔧 Логика для кнопки "Взять в работу"
     // - Администратор: может взять любую новую заявку
     // - Техник: может взять, если он назначен исполнителем ИЛИ исполнитель не назначен
     if (task.status === 'Новое') {
@@ -345,7 +345,6 @@ function displayTaskDetails(task) {
         }
     }
 
-    // Для пользователя скрываем кнопки
     if (window.currentUserRole === 'Пользователь') {
         canClose = false;
         canTake = false;
@@ -355,7 +354,6 @@ function displayTaskDetails(task) {
         '<div class="col-md-6">' +
         '<p><strong>Дата создания:</strong> ' + formatDate(task.created_date) + '</p>';
 
-    // Срок с подсветкой
     if (task.status !== 'Выполнено' && task.status !== 'Отменено' && task.deadline) {
         var deadlineDate = new Date(task.deadline.replace(' ', 'T'));
         var now = new Date();
@@ -384,7 +382,6 @@ function displayTaskDetails(task) {
 
     $('#taskDetails').html(html);
 
-    // Показываем/скрываем кнопки
     $('#btnCloseTask').toggle(canClose);
     $('#btnTakeTask').toggle(canTake);
 }
@@ -499,7 +496,6 @@ function handleContextMenu(event, taskId) {
     var menuHtml = '<div id="contextMenu" class="context-menu" style="left: ' + event.pageX + 'px; top: ' + event.pageY + 'px;">' +
         '<div class="context-menu-item" onclick="viewTask(' + taskId + '); $(\'#contextMenu\').remove();"><i class="bi bi-eye"></i> Просмотреть</div>';
 
-    // Кнопка "Закрыть" только для админа и техника
     if (window.currentUserRole === 'Администратор' || window.currentUserRole === 'Техник') {
         menuHtml += '<div class="context-menu-divider"></div>' +
             '<div class="context-menu-item" onclick="currentTaskId=' + taskId + '; closeCurrentTask(); $(\'#contextMenu\').remove();"><i class="bi bi-check-circle"></i> Закрыть</div>';
@@ -609,7 +605,6 @@ function showCreateTaskModal() {
     loadCabinetsForForm();
     loadProblemTypesForForm();
 
-    // Автоматически заполняем поле "От кого" ФИО текущего пользователя
     fetch('/api/current_user')
         .then(function(response) { return response.json(); })
         .then(function(data) {
@@ -617,7 +612,6 @@ function showCreateTaskModal() {
                 $('input[name="from_user"]').val(data.full_name);
             }
 
-            // Для роли "Пользователь" скрываем выбор исполнителя и помощника
             if (data.role === 'Пользователь') {
                 $('select[name="executor"]').closest('.col-md-6').hide();
                 $('select[name="assistant"]').closest('.col-md-6').hide();

@@ -12,7 +12,6 @@ $(document).ready(function() {
         return;
     }
 
-    // Проверяем авторизацию
     checkAuthAndInit();
 
     // Обновление аватарки при вводе ФИО
@@ -53,17 +52,13 @@ function checkAuthAndInit() {
             }
 
             currentUserId = data.id;
-
-            // Устанавливаем роль ДО всего
             window.currentUserRole = data.role;
-            window.currentUserFullName = data.full_name;  // 🆕 надёжный источник ФИО
+            window.currentUserFullName = data.full_name;
             console.log('Current user role set to:', window.currentUserRole);
             console.log('Current user name set to:', window.currentUserFullName);
 
-            // Настраиваем интерфейс в зависимости от роли
             setupInterfaceByRole(data.role);
 
-            // Загружаем данные
             if (typeof loadUserInfo === 'function') loadUserInfo();
             if (typeof loadStatistics === 'function') loadStatistics();
             if (typeof loadFilters === 'function') loadFilters();
@@ -73,6 +68,12 @@ function checkAuthAndInit() {
             if (typeof setupContextMenu === 'function') setupContextMenu();
             if (typeof setupCabinetSearch === 'function') setupCabinetSearch();
 
+            // 🆕 Инициализация кнопки push-уведомлений
+            if (typeof initPushButton === 'function') initPushButton();
+
+            // 🆕 Мягкое предложение подписаться (если ещё не подписан)
+            maybeOfferPushSubscription();
+
             console.log('Application initialized successfully');
         })
         .catch(function(error) {
@@ -81,31 +82,70 @@ function checkAuthAndInit() {
         });
 }
 
+// 🆕 Мягкое предложение подписаться на push-уведомления
+function maybeOfferPushSubscription() {
+    if (typeof isPushSupported !== 'function' || !isPushSupported()) return;
+
+    // Не показываем дважды за сессию
+    if (sessionStorage.getItem('push_offer_shown') === '1') return;
+
+    isPushSubscribed().then(function(subscribed) {
+        if (subscribed) return;
+
+        // На iOS показываем отдельную инструкцию
+        var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        var isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+        var isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+
+        if (isIOS && isSafari && !isStandalone) {
+            // На iOS показываем инструкцию сразу (без ожидания)
+            setTimeout(function() {
+                sessionStorage.setItem('push_offer_shown', '1');
+                if (typeof showIOSHint === 'function') showIOSHint();
+            }, 3000);
+            return;
+        }
+
+        // На других платформах — через 8 секунд
+        if (Notification.permission === 'default') {
+            setTimeout(function() {
+                sessionStorage.setItem('push_offer_shown', '1');
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Включить уведомления?',
+                    text: 'Получайте push-уведомления о новых заявках прямо на телефон.',
+                    showCancelButton: true,
+                    confirmButtonText: '<i class="bi bi-bell"></i> Включить',
+                    cancelButtonText: 'Позже',
+                    confirmButtonColor: '#0d6efd'
+                }).then(function(result) {
+                    if (result.isConfirmed && typeof subscribeToPush === 'function') {
+                        subscribeToPush();
+                    }
+                });
+            }, 8000);
+        }
+    });
+}
+
 // ============= НАСТРОЙКА ИНТЕРФЕЙСА ПО РОЛИ =============
 function setupInterfaceByRole(role) {
     console.log('Setting up interface for role:', role);
 
     if (role === 'Техник') {
-        // Скрываем модули для техника
         $('.sidebar .nav-link[data-page="users"]').hide();
         $('.sidebar .nav-link[data-page="directory"]').hide();
         $('.sidebar .nav-link[data-page="report"]').hide();
 
-        // Скрываем кнопки
-        $('#tasksBlock .btn-danger').hide(); // Закрыть заявки
-        $('#tasksBlock .btn-success').hide(); // Создать заявку
+        $('#tasksBlock .btn-danger').hide();
+        $('#tasksBlock .btn-success').hide();
 
-        // Скрываем фильтр "Пользователь"
-        $('#filterUser').closest('.col-md-2').hide();
+        $('#filterUserBlock').hide();
 
-        // Скрываем блок "Мои заявки" в статистике
         $('#statMyCompleted').closest('.col-3').hide();
-
-        // Перераспределяем оставшиеся 3 блока статистики
         $('.user-card .col-md-6 .col-3').removeClass('col-3').addClass('col-4');
 
     } else if (role === 'Пользователь') {
-        // Скрываем все модули кроме заявок
         $('.sidebar .nav-link[data-page="users"]').hide();
         $('.sidebar .nav-link[data-page="cartridges"]').hide();
         $('.sidebar .nav-link[data-page="licenses"]').hide();
@@ -114,17 +154,12 @@ function setupInterfaceByRole(role) {
         $('.sidebar .nav-link[data-page="cabinets-manage"]').hide();
         $('.sidebar .nav-link[data-page="report"]').hide();
 
-        // Скрываем статистику
         $('.user-card .col-md-6').hide();
-
-        // Скрываем фильтры
         $('.filters-section').hide();
 
-        // Скрываем кнопки "Закрыть заявки" и "Обновить"
         $('.filters-section .btn-danger').hide();
         $('.filters-section .btn-primary').hide();
 
-        // Показываем кнопку "Создать заявку" отдельно над таблицей
         if ($('#userCreateTaskBtn').length === 0) {
             $('.table-container').before(
                 '<div id="userCreateTaskBtn" class="mb-3">' +
@@ -137,7 +172,6 @@ function setupInterfaceByRole(role) {
         $('#userCreateTaskBtn').show();
 
     } else if (role === 'Администратор') {
-        // Скрываем кнопку для пользователя, если она была создана
         $('#userCreateTaskBtn').hide();
     }
 }
@@ -160,7 +194,7 @@ function loadUserInfo() {
             }
 
             currentUserId = data.id;
-            window.currentUserFullName = data.full_name;  // 🆕 дублируем для надёжности
+            window.currentUserFullName = data.full_name;
 
             var userName = data.full_name || 'Неизвестно';
             var userRole = data.role || '';

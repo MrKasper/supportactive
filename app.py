@@ -23,6 +23,7 @@ from contacts import contacts_bp
 from directory import directory_bp
 from excel import excel_bp
 from notifications import notifications_bp
+from webpush import webpush_bp
 
 # ---------- Базовые пути ----------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -39,6 +40,7 @@ app.register_blueprint(contacts_bp)
 app.register_blueprint(directory_bp)
 app.register_blueprint(excel_bp)
 app.register_blueprint(notifications_bp)
+app.register_blueprint(webpush_bp)
 
 # ---------- Конфигурация безопасности ----------
 _secret = os.environ.get('SECRET_KEY')

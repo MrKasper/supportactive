@@ -1,11 +1,11 @@
 // static/sw.js — Service Worker для Support Active PWA
-const CACHE_NAME = 'support-active-v1';
+const CACHE_NAME = 'support-active-v2';
 const STATIC_ASSETS = [
     '/static/logo.png',
     '/static/logo.ico'
 ];
 
-// Установка — кешируем базовые ассеты
+// ============= INSTALL =============
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME)
@@ -14,7 +14,7 @@ self.addEventListener('install', (event) => {
     self.skipWaiting();
 });
 
-// Активация — удаляем старые кеши
+// ============= ACTIVATE =============
 self.addEventListener('activate', (event) => {
     event.waitUntil(
         caches.keys().then((keys) =>
@@ -26,15 +26,13 @@ self.addEventListener('activate', (event) => {
     self.clients.claim();
 });
 
-// Fetch
+// ============= FETCH =============
 self.addEventListener('fetch', (event) => {
     const { request } = event;
     const url = new URL(request.url);
 
-    // Только GET
     if (request.method !== 'GET') return;
 
-    // API, HTML-навигация и авторизация — только сеть
     if (url.pathname.startsWith('/api/') ||
         url.pathname.startsWith('/login') ||
         url.pathname.startsWith('/logout') ||
@@ -42,7 +40,6 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // Всё, что в /static/ — cache-first
     if (url.pathname.startsWith('/static/')) {
         event.respondWith(
             caches.match(request).then((cached) => {
@@ -57,4 +54,71 @@ self.addEventListener('fetch', (event) => {
             })
         );
     }
+});
+
+// ============= PUSH =============
+// Приходит push-сообщение от сервера — показываем уведомление
+self.addEventListener('push', function(event) {
+    console.log('[SW] Push received');
+
+    let data = {
+        title: 'Support Active',
+        body: 'Новое уведомление',
+        url: '/',
+        tag: 'support-active'
+    };
+
+    if (event.data) {
+        try {
+            data = Object.assign(data, event.data.json());
+        } catch (e) {
+            data.body = event.data.text();
+        }
+    }
+
+    const options = {
+        body: data.body,
+        icon: '/static/logo.png',
+        badge: '/static/logo.png',
+        tag: data.tag,
+        renotify: true,
+        vibrate: [200, 100, 200],
+        data: { url: data.url || '/' },
+        actions: [
+            { action: 'open', title: 'Открыть' },
+            { action: 'close', title: 'Закрыть' }
+        ]
+    };
+
+    event.waitUntil(
+        self.registration.showNotification(data.title, options)
+    );
+});
+
+// ============= NOTIFICATION CLICK =============
+// Клик по уведомлению — открываем нужную страницу
+self.addEventListener('notificationclick', function(event) {
+    console.log('[SW] Notification click:', event.action);
+    event.notification.close();
+
+    if (event.action === 'close') return;
+
+    const urlToOpen = (event.notification.data && event.notification.data.url) || '/';
+
+    event.waitUntil(
+        clients.matchAll({ type: 'window', includeUncontrolled: true })
+            .then(function(windowClients) {
+                // Если вкладка уже открыта — фокусируем её
+                for (const client of windowClients) {
+                    if (client.url.includes(self.location.origin) && 'focus' in client) {
+                        client.navigate(urlToOpen);
+                        return client.focus();
+                    }
+                }
+                // Иначе открываем новую
+                if (clients.openWindow) {
+                    return clients.openWindow(urlToOpen);
+                }
+            })
+    );
 });

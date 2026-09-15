@@ -133,11 +133,27 @@ class Database:
             )
         ''')
 
+        # 🆕 Таблица push-подписок (Web Push)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS push_subscriptions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                endpoint TEXT NOT NULL UNIQUE,
+                p256dh TEXT NOT NULL,
+                auth TEXT NOT NULL,
+                user_agent TEXT,
+                created_at TEXT,
+                last_used_at TEXT,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        ''')
+
         # Индексы для ускорения частых выборок
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_tasks_executor ON tasks(executor)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_tasks_created_by ON tasks(created_by)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, is_read)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_push_user ON push_subscriptions(user_id)')
 
         conn.commit()
         conn.close()
@@ -148,12 +164,10 @@ class Database:
         conn = sqlite3.connect(self.db_name)
         cursor = conn.cursor()
 
-        # Проверяем, есть ли уже данные
         cursor.execute("SELECT COUNT(*) FROM users")
         if cursor.fetchone()[0] == 0:
             print("Добавление тестовых данных...")
 
-            # Добавляем пользователей
             users = [
                 ('Иванов Иван Иванович', 'Администратор', 'admin.png',
                  'ivanov@company.ru', '+7-999-123-45-67', 'IT отдел', 'admin', 'admin123', 1),
@@ -174,7 +188,6 @@ class Database:
                                 (full_name, role, avatar, email, phone, department, login, password, is_active) 
                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''', users)
 
-            # Добавляем кабинеты
             cabinets = [
                 ('Кабинет 101', '1 этаж', 'Корпус А', 'Приемная', 'Иванов И.И.', '+7-999-101-10-10', 1),
                 ('Кабинет 102', '1 этаж', 'Корпус А', 'Отдел продаж', 'Козлова А.С.', '+7-999-102-20-20', 1),
@@ -201,7 +214,6 @@ class Database:
                                 (cabinet_number, floor, building, description, responsible_person, phone, is_active) 
                                 VALUES (?, ?, ?, ?, ?, ?, ?)''', cabinets)
 
-            # Добавляем типы проблем
             problem_types = [
                 ('Не включается компьютер', 'Компьютер не реагирует на кнопку включения', 1),
                 ('Нет интернета', 'Отсутствует подключение к сети Интернет', 1),
@@ -256,13 +268,11 @@ if __name__ == '__main__':
     db = Database()
     db.init_db()
 
-    # Проверка существующих таблиц
     tables = db.query("SELECT name FROM sqlite_master WHERE type='table'")
     print(f"\nСуществующие таблицы в базе данных:")
     for table in tables:
         print(f"  - {table['name']}")
 
-    # Если БД пустая - предлагаем добавить тестовые данные
     users_count = db.query('SELECT COUNT(*) as count FROM users', one=True)['count']
     if users_count == 0:
         print("\nБаза данных пуста. Хотите добавить тестовые данные?")

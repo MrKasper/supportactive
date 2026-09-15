@@ -10,7 +10,7 @@
             <i class="bi bi-headset" style="font-size: 2.5rem; color: #667eea; display: none;"></i>
         </div>
         <h4 class="mt-2">Support Active</h4>
-        <small class="text-white-50">v1.3</small>
+        <small class="text-white-50">v1.4</small>
     </div>
 
     <div class="sidebar-menu">
@@ -88,6 +88,11 @@
                         <i class="bi bi-bell"></i>
                         <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notificationBadge" style="display: none;">0</span>
                     </button>
+                    <!-- 🆕 Кнопка push-уведомлений -->
+                    <button class="btn btn-outline-info btn-sm" id="pushToggleBtn"
+                            onclick="togglePushNotifications()" title="Включить push-уведомления">
+                        <i class="bi bi-bell-slash"></i>
+                    </button>
                     <button class="btn btn-outline-warning btn-sm" id="themeToggleBtn" onclick="toggleTheme()" title="Темная тема">
                         <i class="bi bi-moon"></i>
                     </button>
@@ -146,7 +151,7 @@
                         <option value="">Все статусы</option>
                     </select>
                 </div>
-                <div class="col-lg-2 col-md-3 col-sm-4 col-6">
+                <div class="col-lg-2 col-md-3 col-sm-4 col-6" id="filterUserBlock">
                     <label class="form-label">Пользователь</label>
                     <select class="form-select" id="filterUser">
                         <option value="">Все</option>
@@ -517,6 +522,7 @@
 <script src="{{ url_for('static', filename='js/directory.js') }}"></script>
 <script src="{{ url_for('static', filename='js/cabinets_manage.js') }}"></script>
 <script src="{{ url_for('static', filename='js/excel.js') }}"></script>
+<script src="{{ url_for('static', filename='js/webpush.js') }}"></script>
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 
 <script>

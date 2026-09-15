@@ -34,10 +34,13 @@ function loadUsersPage() {
 
             var html = '<div class="card">';
             html += '<div class="card-header bg-primary text-white">';
-            html += '<div class="d-flex justify-content-between align-items-center">';
+            html += '<div class="d-flex justify-content-between align-items-center flex-wrap gap-2">';
             html += '<h5 class="mb-0"><i class="bi bi-people"></i> Пользователи системы</h5>';
-            html += '<div class="d-flex align-items-center gap-2">';
+            html += '<div class="d-flex align-items-center gap-2 flex-wrap">';
             html += '<span class="badge bg-light text-dark fs-6">Всего: ' + users.length + '</span>';
+            html += '<button class="btn btn-sm btn-light" onclick="showImportUsersModal()">';
+            html += '<i class="bi bi-upload"></i> Импорт из БД';
+            html += '</button>';
             html += '<button class="btn btn-sm btn-light" onclick="showAddUserModal()">';
             html += '<i class="bi bi-person-plus"></i> Добавить пользователя';
             html += '</button>';
@@ -195,7 +198,6 @@ function editUserById(userId) {
             $('#editLogin').val(data.login || '');
             $('#editIsActive').prop('checked', data.is_active);
 
-            // Загружаем пароль из базы данных
             fetch('/api/users/' + userId + '/credentials')
                 .then(function(r) { return r.json(); })
                 .then(function(credData) {
@@ -215,7 +217,6 @@ function editUserById(userId) {
             $('#loginPasswordFields').show();
             $('#statusToggleField').show();
 
-            // Сбрасываем аватар
             $('#avatarFileInput').val('');
             $('#editUserForm').data('avatar-file', null);
             $('#editUserForm').data('avatar-is-file', false);
@@ -256,13 +257,11 @@ function showAddUserModal() {
     $('#loginPasswordFields').show();
     $('#statusToggleField').hide();
 
-    // Сбрасываем аватар
     $('#avatarFileInput').val('');
     $('#editUserForm').data('avatar-file', null);
     $('#editUserForm').data('avatar-is-file', false);
     $('#avatarInput').val('default.png');
 
-    // Показываем стандартную иконку пользователя вместо буквы
     $('#editUserAvatar').css({
         'background-image': 'none',
         'background-color': '#858796',
@@ -292,7 +291,7 @@ function generateAvatarSelectorForNewUser() {
     });
 }
 
-// ✅ ИСПРАВЛЕНО: явная передача элемента (this) вместо event.currentTarget
+// Выбор аватара для нового пользователя (явная передача this)
 function selectAvatarForNewUser(avatarName, color, el) {
     $('#avatarFileInput').val('');
     $('#editUserForm').data('avatar-file', null);
@@ -428,6 +427,92 @@ function deleteUser(userId) {
     });
 }
 
+// ============= ИМПОРТ ПОЛЬЗОВАТЕЛЕЙ ИЗ ДРУГОЙ БД =============
+function showImportUsersModal() {
+    Swal.fire({
+        title: 'Импорт пользователей',
+        html:
+            '<div class="text-start">' +
+            '<p>Выберите файл базы данных SQLite (<code>.db</code>, <code>.sqlite</code>) ' +
+            'с таблицей <code>users</code>.</p>' +
+            '<div class="alert alert-info small mb-3">' +
+            '<i class="bi bi-info-circle"></i> ' +
+            'Пользователи с уже существующими логинами будут пропущены. ' +
+            'Роли, отделы и пароли переносятся как есть.' +
+            '</div>' +
+            '<label class="form-label">Файл базы данных</label>' +
+            '<input type="file" id="importDbFile" class="form-control" accept=".db,.sqlite,.sqlite3">' +
+            '</div>',
+        showCancelButton: true,
+        confirmButtonText: '<i class="bi bi-upload"></i> Импортировать',
+        cancelButtonText: 'Отмена',
+        confirmButtonColor: '#0d6efd',
+        customClass: { popup: 'swal-wide' },
+        preConfirm: function() {
+            var fileInput = document.getElementById('importDbFile');
+            if (!fileInput.files || !fileInput.files[0]) {
+                Swal.showValidationMessage('Выберите файл базы данных');
+                return false;
+            }
+            return fileInput.files[0];
+        }
+    }).then(function(result) {
+        if (!result.isConfirmed) return;
+
+        var file = result.value;
+        var formData = new FormData();
+        formData.append('database_file', file);
+
+        Swal.fire({
+            title: 'Импорт...',
+            html: 'Обработка файла <strong>' + file.name + '</strong>...<br>Пожалуйста, подождите.',
+            allowOutsideClick: false,
+            didOpen: function() { Swal.showLoading(); }
+        });
+
+        fetch('/api/users/import', {
+            method: 'POST',
+            body: formData
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                var errorsHtml = '';
+                if (data.errors && data.errors.length > 0) {
+                    errorsHtml = '<hr><div class="text-start small text-muted">' +
+                        '<strong>Замечания:</strong><br>' +
+                        data.errors.slice(0, 5).map(escapeHtml).join('<br>') +
+                        (data.errors.length > 5 ? '<br>...и ещё ' + (data.errors.length - 5) : '') +
+                        '</div>';
+                }
+
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Импорт завершён',
+                    html:
+                        '<div class="text-start">' +
+                        '<p><i class="bi bi-check-circle text-success"></i> ' +
+                        '<strong>Импортировано:</strong> ' + data.imported + '</p>' +
+                        '<p><i class="bi bi-slash-circle text-warning"></i> ' +
+                        '<strong>Пропущено (дубликаты/ошибки):</strong> ' + data.skipped + '</p>' +
+                        '<p><i class="bi bi-file-earmark-text text-info"></i> ' +
+                        '<strong>Всего в файле:</strong> ' + data.total + '</p>' +
+                        errorsHtml +
+                        '</div>',
+                    confirmButtonText: 'ОК'
+                });
+                loadUsersPage();
+            } else {
+                Swal.fire({ icon: 'error', title: 'Ошибка импорта', text: data.error });
+            }
+        })
+        .catch(function(err) {
+            console.error('Import error:', err);
+            Swal.fire({ icon: 'error', title: 'Ошибка', text: 'Не удалось выполнить импорт' });
+        });
+    });
+}
+
 // ============= РЕДАКТИРОВАНИЕ ПРОФИЛЯ =============
 
 function previewAvatarFile(input) {
@@ -526,7 +611,7 @@ function generateAvatarSelector(selectedAvatar, fullName) {
     });
 }
 
-// ✅ ИСПРАВЛЕНО: явная передача элемента (this)
+// Явная передача элемента (this) вместо event.currentTarget
 function selectAvatar(avatarName, color, initials, el) {
     $('#avatarFileInput').val('');
     $('#editUserForm').data('avatar-file', null);
