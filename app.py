@@ -6,12 +6,12 @@ from datetime import datetime, timedelta
 from werkzeug.utils import secure_filename
 import os
 
-# Подгружаем .env, если установлен python-dotenv
+# Подгружаем .env
 try:
     from dotenv import load_dotenv
     load_dotenv()
 except ImportError:
-    pass
+    print("⚠️  python-dotenv не установлен. pip install python-dotenv")
 
 # Импортируем Blueprint
 from login import auth_bp
@@ -27,7 +27,6 @@ from notifications import notifications_bp
 # ---------- Базовые пути ----------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Создаем экземпляр Flask приложения
 app = Flask(__name__)
 
 # Регистрируем Blueprint
@@ -42,43 +41,49 @@ app.register_blueprint(excel_bp)
 app.register_blueprint(notifications_bp)
 
 # ---------- Конфигурация безопасности ----------
-# SECRET_KEY берём из ENV. Если нет — генерируем и предупреждаем.
 _secret = os.environ.get('SECRET_KEY')
 if not _secret:
     _secret = os.urandom(32).hex()
-    print("⚠️  SECRET_KEY не задан в ENV. Сгенерирован временный ключ.")
-    print("    Задайте SECRET_KEY в .env — иначе сессии сбросятся при перезапуске.")
+    print("=" * 60)
+    print("⚠️  ВНИМАНИЕ: SECRET_KEY не задан в .env!")
+    print("   Сгенерирован временный ключ. При перезапуске или в других")
+    print("   воркерах gunicorn сессии будут инвалидироваться!")
+    print("   Задайте SECRET_KEY в .env и перезапустите сервер.")
+    print("=" * 60)
 app.secret_key = _secret
 
-# Защита cookie сессии
+# Flask-Session
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['SESSION_FILE_DIR'] = os.path.join(BASE_DIR, 'flask_session')
 app.config['SESSION_PERMANENT'] = False
 app.config['SESSION_USE_SIGNER'] = True
 app.config['SESSION_KEY_PREFIX'] = 'support_active_'
+app.config['SESSION_FILE_THRESHOLD'] = 500
+
+# Cookie — важно для корректной работы за прокси
+app.config['SESSION_COOKIE_NAME'] = 'support_active_session'
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-# Secure=True только по HTTPS (включается через ENV на проде)
+app.config['SESSION_COOKIE_PATH'] = '/'
+# ⚠️ Secure — только для HTTPS. Для HTTP должно быть False
 app.config['SESSION_COOKIE_SECURE'] = os.environ.get('SESSION_COOKIE_SECURE', 'false').lower() == 'true'
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
 
-# Лимит размера загрузки (5 МБ)
+# Лимит загрузки
 app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
 
 # ---------- Загрузка аватаров ----------
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'static', 'uploads', 'avatars')
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 ALLOWED_MIME_PREFIX = 'image/'
-
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# Инициализация сессий
+# ---------- Инициализация сессий ----------
 os.makedirs(app.config['SESSION_FILE_DIR'], exist_ok=True)
 Session(app)
 
 
 def allowed_file(filename):
-    """Проверка допустимого расширения файла."""
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
@@ -92,27 +97,41 @@ if users_count == 0:
     db.insert_test_data()
 
 
-# ============= ДЕКОРАТОР ДЛЯ ПРОВЕРКИ АВТОРИЗАЦИИ =============
-# Импортируем из общего модуля (устранили дублирование)
 from utils import login_required
+
+
+# ============= ДИАГНОСТИКА (удалить после отладки) =============
+@app.route('/api/_debug/session')
+def debug_session():
+    """Эндпоинт для проверки состояния сессии. Удалить после отладки."""
+    return jsonify({
+        'has_user_id': 'user_id' in session,
+        'user_id': session.get('user_id'),
+        'user_login': session.get('user_login'),
+        'session_cookie_name': app.config['SESSION_COOKIE_NAME'],
+        'session_cookie_secure': app.config['SESSION_COOKIE_SECURE'],
+        'session_cookie_samesite': app.config['SESSION_COOKIE_SAMESITE'],
+        'session_file_dir': app.config['SESSION_FILE_DIR'],
+        'session_dir_exists': os.path.exists(app.config['SESSION_FILE_DIR']),
+        'session_dir_writable': os.access(app.config['SESSION_FILE_DIR'], os.W_OK),
+        'secret_key_set': bool(app.secret_key),
+        'secret_key_from_env': bool(os.environ.get('SECRET_KEY')),
+        'cookies_received': dict(request.cookies)
+    })
 
 
 # ============= МАРШРУТЫ СТРАНИЦ =============
 
 @app.route('/')
 def index():
-    """Главная страница приложения."""
     if 'user_id' not in session:
         return redirect(url_for('auth.login'))
     return render_template('index.html')
 
 
-# ============= API ДЛЯ ПОЛУЧЕНИЯ ДАННЫХ ТЕКУЩЕГО ПОЛЬЗОВАТЕЛЯ =============
-
 @app.route('/api/current_user')
 @login_required
 def get_current_user():
-    """Получение данных текущего пользователя."""
     try:
         return jsonify({
             'id': session.get('user_id'),
@@ -129,12 +148,9 @@ def get_current_user():
         return jsonify({'error': f'Ошибка получения данных: {str(e)}'}), 500
 
 
-# ============= API ДЛЯ ЗАГРУЗКИ АВАТАРА =============
-
 @app.route('/api/upload_avatar', methods=['POST'])
 @login_required
 def upload_avatar():
-    """Загрузка аватара пользователя."""
     try:
         if 'avatar_file' not in request.files:
             return jsonify({'success': False, 'error': 'Файл не найден'}), 400
@@ -147,7 +163,6 @@ def upload_avatar():
         if not file or not allowed_file(file.filename):
             return jsonify({'success': False, 'error': 'Недопустимый формат файла'}), 400
 
-        # Дополнительная проверка MIME (грубая, но отсекает явные не-картинки)
         if not (file.mimetype or '').startswith(ALLOWED_MIME_PREFIX):
             return jsonify({'success': False, 'error': 'Файл не является изображением'}), 400
 
@@ -160,19 +175,15 @@ def upload_avatar():
         file.save(filepath)
 
         avatar_path = f'static/uploads/avatars/{filename}'
-
         return jsonify({'success': True, 'avatar_path': avatar_path})
 
     except Exception as e:
         return jsonify({'success': False, 'error': f'Ошибка загрузки: {str(e)}'}), 500
 
 
-# ============= API ДЛЯ КАБИНЕТОВ =============
-
 @app.route('/api/cabinets')
 @login_required
 def get_cabinets():
-    """Получение списка всех кабинетов."""
     try:
         cabinets = db.query('''
             SELECT id, cabinet_number, floor, building, description, responsible_person, phone
@@ -188,7 +199,6 @@ def get_cabinets():
 @app.route('/api/cabinets/search')
 @login_required
 def search_cabinets():
-    """Поиск кабинетов по номеру или описанию."""
     try:
         query = request.args.get('q', '')
         if not query:
@@ -205,12 +215,9 @@ def search_cabinets():
         return jsonify({'error': f'Ошибка поиска кабинетов: {str(e)}'}), 500
 
 
-# ============= API ДЛЯ ИСПОЛНИТЕЛЕЙ =============
-
 @app.route('/api/executors')
 @login_required
 def get_executors():
-    """Получение списка исполнителей (Техники и Администраторы)."""
     try:
         executors = db.query('''
             SELECT id, full_name, role, department
@@ -224,8 +231,6 @@ def get_executors():
         return jsonify({'error': f'Ошибка получения исполнителей: {str(e)}'}), 500
 
 
-# ============= ОБРАБОТКА ОШИБОК =============
-
 @app.errorhandler(404)
 def not_found_error(error):
     if request.path.startswith('/api/'):
@@ -235,7 +240,6 @@ def not_found_error(error):
 
 @app.errorhandler(413)
 def too_large_error(error):
-    """Файл слишком большой."""
     if request.path.startswith('/api/'):
         return jsonify({'success': False, 'error': 'Файл слишком большой (макс. 5 МБ)'}), 413
     return jsonify({'error': 'Файл слишком большой'}), 413
@@ -248,11 +252,9 @@ def internal_error(error):
     return render_template('500.html'), 500
 
 
-# ============= ЗАПУСК ПРИЛОЖЕНИЯ =============
-
 if __name__ == '__main__':
     print("=" * 50)
-    print("Support Active System v1.3")
+    print("Support Active System v1.2")
     print("=" * 50)
     print("Сервер запущен по адресу: http://localhost:5000")
     print("=" * 50)

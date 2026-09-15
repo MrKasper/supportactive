@@ -1,10 +1,12 @@
 # run.py
 import os
+
 try:
     from dotenv import load_dotenv
-    load_dotenv()
+    # Загружаем .env из корня проекта — до импорта app.py
+    load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
 except ImportError:
-    pass
+    print("⚠️  python-dotenv не установлен. pip install python-dotenv")
 
 from database import Database
 
@@ -16,6 +18,7 @@ if users_count == 0:
     print("База данных пуста. Добавление тестовых данных...")
     db.insert_test_data()
 
+# Импорт app — для gunicorn
 from app import app
 
 if __name__ == '__main__':

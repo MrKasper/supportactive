@@ -175,6 +175,13 @@
         box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
     }
 
+    .btn-login:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+
     .error-message {
         background: #fff5f5;
         color: #c62828;
@@ -205,6 +212,7 @@
         display: block;
     }
 
+    /* Мобильная адаптация */
     @media (max-width: 768px) {
         .login-page {
             flex-direction: column;
@@ -276,6 +284,7 @@
 </style>
 
 <div class="login-page">
+    <!-- Левая сторона с логотипом -->
     <div class="login-left">
         <div class="logo-container">
             <div class="logo-wrapper">
@@ -289,21 +298,25 @@
         </div>
     </div>
 
+    <!-- Правая сторона с формой входа -->
     <div class="login-right">
         <div class="login-form-container">
             <h3>Вход в систему</h3>
             <p class="subtitle">Введите ваш логин и пароль</p>
 
+            <!-- Сообщение об ошибке -->
             <div class="error-message" id="errorMessage">
                 <i class="bi bi-exclamation-circle"></i>
                 <span id="errorText"></span>
             </div>
 
+            <!-- Сообщение об успехе -->
             <div class="success-message" id="successMessage">
                 <i class="bi bi-check-circle"></i>
                 <span id="successText"></span>
             </div>
 
+            <!-- Форма входа -->
             <form id="loginForm" onsubmit="handleLogin(event)" autocomplete="on">
                 <div class="form-group">
                     <label for="loginInput">Ваш логин</label>
@@ -324,12 +337,13 @@
                     </div>
                 </div>
 
+                <!-- Запомнить меня -->
                 <div class="remember-me">
                     <input type="checkbox" id="rememberMe" checked>
                     <label for="rememberMe">Запомнить меня</label>
                 </div>
 
-                <button type="submit" class="btn-login">
+                <button type="submit" class="btn-login" id="loginBtn">
                     <i class="bi bi-box-arrow-in-right"></i> Войти
                 </button>
             </form>
@@ -392,7 +406,18 @@ function showSuccess(message) {
     document.getElementById('errorMessage').classList.remove('show');
 }
 
-// Обработка входа
+function setLoginButtonState(enabled) {
+    var btn = document.getElementById('loginBtn');
+    if (!btn) return;
+    btn.disabled = !enabled;
+    if (enabled) {
+        btn.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> Войти';
+    } else {
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Вход...';
+    }
+}
+
+// 🔧 Обработка входа с credentials + проверкой установки сессии
 function handleLogin(event) {
     event.preventDefault();
     hideError();
@@ -414,22 +439,20 @@ function handleLogin(event) {
         localStorage.removeItem('savedLogin');
         localStorage.setItem('rememberMe', 'false');
     }
-    // Чистим возможный старый пароль
     localStorage.removeItem('savedPassword');
 
-    Swal.fire({
-        title: 'Вход в систему...',
-        allowOutsideClick: false,
-        didOpen: function() {
-            Swal.showLoading();
-        }
-    });
+    setLoginButtonState(false);
 
+    // 🔧 credentials: 'same-origin' — гарантирует отправку/приём cookies
+    // 🔧 cache: 'no-store' — чтобы браузер не кешировал ответы
     fetch('/api/auth/login', {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
         },
+        credentials: 'same-origin',
+        cache: 'no-store',
         body: JSON.stringify({
             login: login,
             password: password,
@@ -440,26 +463,55 @@ function handleLogin(event) {
         return response.json();
     })
     .then(function(data) {
-        Swal.close();
+        if (!data.success) {
+            setLoginButtonState(true);
+            showError(data.error || 'Ошибка входа');
+            return;
+        }
 
-        if (data.success) {
+        // 🔧 Проверяем, что cookie сессии реально установилась —
+        // сразу запрашиваем /api/current_user с тем же credentials.
+        // Если сессия на сервере не сохранилась (проблема с SECRET_KEY,
+        // SESSION_COOKIE_SECURE, правами на flask_session/) — увидим ошибку.
+        return fetch('/api/current_user', {
+            credentials: 'same-origin',
+            cache: 'no-store'
+        })
+        .then(function(r) {
+            if (!r.ok) {
+                throw new Error(
+                    'Сессия не установилась на сервере (код ' + r.status + '). ' +
+                    'Проверьте SECRET_KEY в .env, SESSION_COOKIE_SECURE и права на запись в flask_session/'
+                );
+            }
+            return r.json();
+        })
+        .then(function(user) {
+            if (!user || user.error || !user.id) {
+                throw new Error(
+                    'Сервер не видит сессию после входа. ' +
+                    'Проверьте SECRET_KEY, SESSION_COOKIE_SECURE и права на flask_session/'
+                );
+            }
+
+            showSuccess('Вход выполнен. Перенаправление...');
+
             Swal.fire({
                 icon: 'success',
                 title: 'Добро пожаловать!',
-                text: data.user.full_name,
-                timer: 1500,
+                text: user.full_name || data.user.full_name,
+                timer: 1200,
                 showConfirmButton: false
             }).then(function() {
-                window.location.href = '/';
+                // 🔧 replace вместо href — чтобы кнопка "Назад" не возвращала на форму логина
+                window.location.replace('/');
             });
-        } else {
-            showError(data.error || 'Ошибка входа');
-        }
+        });
     })
     .catch(function(error) {
-        Swal.close();
-        showError('Ошибка соединения с сервером');
-        console.error('Error:', error);
+        setLoginButtonState(true);
+        showError(error.message || 'Ошибка соединения с сервером');
+        console.error('Login error:', error);
     });
 }
 </script>
