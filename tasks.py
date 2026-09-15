@@ -3,82 +3,57 @@ from flask import Blueprint, request, jsonify, session
 from database import Database
 from datetime import datetime
 from utils import login_required, role_required
+from logger import get_logger
 
-# Импортируем функции уведомлений из единого модуля (устранили дублирование)
 from notifications import (
     create_notification,
     notify_new_task,
     notify_task_taken,
     notify_task_completed,
 )
+from audit import log_action, log_task_change, diff_task
 
-# Создаем Blueprint для заявок
+log = get_logger(__name__)
+
 tasks_bp = Blueprint('tasks', __name__)
-
-# Инициализация базы данных
 db = Database()
 
 
-# ============= API ДЛЯ СТАТИСТИКИ =============
+# ============= СТАТИСТИКА =============
 
 @tasks_bp.route('/api/statistics')
 @login_required
 def get_statistics():
-    """Получение статистики по заявкам"""
     try:
-        total_tasks = db.query('SELECT COUNT(*) as count FROM tasks', one=True)['count']
-        completed_tasks = db.query(
-            'SELECT COUNT(*) as count FROM tasks WHERE status = "Выполнено"',
-            one=True
-        )['count']
-        new_tasks = db.query(
-            'SELECT COUNT(*) as count FROM tasks WHERE status = "Новое"',
-            one=True
-        )['count']
-        in_progress_tasks = db.query(
-            'SELECT COUNT(*) as count FROM tasks WHERE status = "В работе"',
-            one=True
-        )['count']
-        cancelled_tasks = db.query(
-            'SELECT COUNT(*) as count FROM tasks WHERE status = "Отменено"',
-            one=True
-        )['count']
+        total_tasks = db.query('SELECT COUNT(*) as c FROM tasks', one=True)['c']
+        completed_tasks = db.query("SELECT COUNT(*) as c FROM tasks WHERE status = 'Выполнено'", one=True)['c']
+        new_tasks = db.query("SELECT COUNT(*) as c FROM tasks WHERE status = 'Новое'", one=True)['c']
+        in_progress_tasks = db.query("SELECT COUNT(*) as c FROM tasks WHERE status = 'В работе'", one=True)['c']
+        cancelled_tasks = db.query("SELECT COUNT(*) as c FROM tasks WHERE status = 'Отменено'", one=True)['c']
 
         user_name = session.get('user_name')
-        user_total_tasks = db.query(
-            'SELECT COUNT(*) as count FROM tasks WHERE executor = ?',
-            [user_name], one=True
-        )['count']
+        user_total = db.query('SELECT COUNT(*) as c FROM tasks WHERE executor = ?', [user_name], one=True)['c']
         user_completed = db.query(
-            'SELECT COUNT(*) as count FROM tasks WHERE status = "Выполнено" AND executor = ?',
+            "SELECT COUNT(*) as c FROM tasks WHERE status = 'Выполнено' AND executor = ?",
             [user_name], one=True
-        )['count']
+        )['c']
         user_in_progress = db.query(
-            'SELECT COUNT(*) as count FROM tasks WHERE status IN ("Новое", "В работе") AND executor = ?',
+            "SELECT COUNT(*) as c FROM tasks WHERE status IN ('Новое','В работе') AND executor = ?",
             [user_name], one=True
-        )['count']
+        )['c']
 
         work_type_stats = db.query('''
-            SELECT work_type, COUNT(*) as count 
-            FROM tasks 
-            WHERE work_type != "" 
-            GROUP BY work_type 
-            ORDER BY count DESC
+            SELECT work_type, COUNT(*) as count FROM tasks
+            WHERE work_type != '' GROUP BY work_type ORDER BY count DESC
         ''')
         cabinet_stats = db.query('''
-            SELECT cabinet, COUNT(*) as count 
-            FROM tasks 
-            WHERE cabinet != "" 
-            GROUP BY cabinet 
-            ORDER BY count DESC 
-            LIMIT 10
+            SELECT cabinet, COUNT(*) as count FROM tasks
+            WHERE cabinet != '' GROUP BY cabinet ORDER BY count DESC LIMIT 10
         ''')
         overdue_tasks = db.query('''
-            SELECT COUNT(*) as count 
-            FROM tasks 
-            WHERE status NOT IN ("Выполнено", "Отменено") 
-            AND deadline < datetime('now')
-        ''', one=True)['count']
+            SELECT COUNT(*) as c FROM tasks
+            WHERE status NOT IN ('Выполнено','Отменено') AND deadline < datetime('now')
+        ''', one=True)['c']
 
         return jsonify({
             'total': total_tasks,
@@ -89,23 +64,26 @@ def get_statistics():
             'new_or_progress': new_tasks + in_progress_tasks,
             'user_completed': user_completed,
             'user_in_progress': user_in_progress,
-            'user_total': user_total_tasks,
+            'user_total': user_total,
             'overdue': overdue_tasks,
-            'work_type_stats': [dict(stat) for stat in work_type_stats],
-            'cabinet_stats': [dict(stat) for stat in cabinet_stats]
+            'work_type_stats': [dict(s) for s in work_type_stats],
+            'cabinet_stats': [dict(s) for s in cabinet_stats]
         })
-
     except Exception as e:
-        return jsonify({'error': f'Ошибка получения статистики: {str(e)}'}), 500
+        log.exception('Ошибка статистики')
+        return jsonify({'error': f'Ошибка: {str(e)}'}), 500
 
 
-# ============= API ДЛЯ РАБОТЫ С ЗАЯВКАМИ =============
+# ============= СПИСОК =============
 
 @tasks_bp.route('/api/tasks')
 @login_required
 def get_tasks():
-    """Получение списка заявок с фильтрацией и сортировкой"""
     try:
+        page = max(1, int(request.args.get('page', 1)))
+        per_page = min(200, max(10, int(request.args.get('per_page', 50))))
+        offset = (page - 1) * per_page
+
         work_type = request.args.get('work_type', '')
         cabinet = request.args.get('cabinet', '')
         status = request.args.get('status', '')
@@ -115,181 +93,170 @@ def get_tasks():
         date_from = request.args.get('date_from', '')
         date_to = request.args.get('date_to', '')
         search = request.args.get('search', '')
+        created_by = request.args.get('created_by', '')
         sort_by = request.args.get('sort_by', 'created_date')
         sort_order = request.args.get('sort_order', 'DESC')
-        created_by = request.args.get('created_by', '')
 
-        query = 'SELECT * FROM tasks WHERE 1=1'
+        where = 'WHERE 1=1'
         params = []
 
         if work_type:
-            query += ' AND work_type = ?'
-            params.append(work_type)
-
+            where += ' AND work_type = ?'; params.append(work_type)
         if cabinet:
-            query += ' AND cabinet LIKE ?'
-            params.append(f'%{cabinet}%')
-
+            where += ' AND cabinet LIKE ?'; params.append(f'%{cabinet}%')
         if status:
-            query += ' AND status = ?'
-            params.append(status)
+            where += ' AND status = ?'; params.append(status)
         elif exclude_status:
-            # 🆕 Исключаем перечисленные статусы (например, "Выполнено,Отменено")
-            exclude_list = [s.strip() for s in exclude_status.split(',') if s.strip()]
-            if exclude_list:
-                placeholders = ','.join(['?' for _ in exclude_list])
-                query += f' AND status NOT IN ({placeholders})'
-                params.extend(exclude_list)
-
+            excl = [s.strip() for s in exclude_status.split(',') if s.strip()]
+            if excl:
+                placeholders = ','.join(['?'] * len(excl))
+                where += f' AND status NOT IN ({placeholders})'
+                params.extend(excl)
         if priority:
-            query += ' AND priority = ?'
-            params.append(priority)
-
+            where += ' AND priority = ?'; params.append(priority)
         if user:
-            query += ' AND (from_user LIKE ? OR executor LIKE ? OR assistant LIKE ?)'
-            search_user = f'%{user}%'
-            params.extend([search_user, search_user, search_user])
-
+            where += ' AND (from_user LIKE ? OR executor LIKE ? OR assistant LIKE ?)'
+            s = f'%{user}%'
+            params.extend([s, s, s])
         if date_from:
-            query += ' AND deadline >= ?'
-            params.append(date_from)
-
+            where += ' AND deadline >= ?'; params.append(date_from)
         if date_to:
-            query += ' AND deadline <= ?'
-            params.append(date_to)
-
+            where += ' AND deadline <= ?'; params.append(date_to)
         if search:
-            query += ' AND (description LIKE ? OR from_user LIKE ? OR cabinet LIKE ?)'
-            search_term = f'%{search}%'
-            params.extend([search_term, search_term, search_term])
-
+            where += ' AND (description LIKE ? OR from_user LIKE ? OR cabinet LIKE ?)'
+            s = f'%{search}%'
+            params.extend([s, s, s])
         if created_by:
-            query += ' AND created_by = ?'
-            params.append(created_by)
+            where += ' AND created_by = ?'; params.append(created_by)
 
-        # Белый список для сортировки — защита от SQL-инъекции
-        allowed_sort_fields = ['created_date', 'deadline', 'status', 'priority', 'from_user', 'cabinet']
-        if sort_by not in allowed_sort_fields:
+        total = db.query(f'SELECT COUNT(*) as c FROM tasks {where}', params, one=True)['c']
+
+        allowed_sort = ['created_date', 'deadline', 'status', 'priority', 'from_user', 'cabinet']
+        if sort_by not in allowed_sort:
             sort_by = 'created_date'
-
-        if sort_order.upper() not in ['ASC', 'DESC']:
+        if sort_order.upper() not in ('ASC', 'DESC'):
             sort_order = 'DESC'
 
-        query += f' ORDER BY {sort_by} {sort_order}'
-
-        tasks = db.query(query, params)
+        rows = db.query(
+            f'SELECT * FROM tasks {where} ORDER BY {sort_by} {sort_order} LIMIT ? OFFSET ?',
+            params + [per_page, offset]
+        )
 
         tasks_list = []
-        for task in tasks:
-            task_dict = dict(task)
-            if task_dict['status'] not in ['Выполнено', 'Отменено'] and task_dict['deadline']:
+        for task in rows:
+            td = dict(task)
+            if td['status'] not in ('Выполнено', 'Отменено') and td['deadline']:
                 try:
-                    deadline_date = datetime.strptime(task_dict['deadline'], '%Y-%m-%d %H:%M:%S')
-                    task_dict['is_overdue'] = deadline_date < datetime.now()
+                    deadline_date = datetime.strptime(td['deadline'], '%Y-%m-%d %H:%M:%S')
+                    td['is_overdue'] = deadline_date < datetime.now()
                 except Exception:
-                    task_dict['is_overdue'] = False
+                    td['is_overdue'] = False
             else:
-                task_dict['is_overdue'] = False
-            tasks_list.append(task_dict)
+                td['is_overdue'] = False
+            tasks_list.append(td)
 
-        return jsonify(tasks_list)
-
+        return jsonify({
+            'items': tasks_list,
+            'total': total,
+            'page': page,
+            'per_page': per_page,
+            'pages': (total + per_page - 1) // per_page
+        })
     except Exception as e:
-        return jsonify({'error': f'Ошибка получения заявок: {str(e)}'}), 500
+        log.exception('Ошибка получения заявок')
+        return jsonify({'error': f'Ошибка: {str(e)}'}), 500
 
+
+# ============= ДЕТАЛИ =============
 
 @tasks_bp.route('/api/task/<int:task_id>')
 @login_required
 def get_task(task_id):
-    """Получение детальной информации о заявке"""
     try:
         task = db.query('SELECT * FROM tasks WHERE id = ?', [task_id], one=True)
         if not task:
             return jsonify({'error': 'Заявка не найдена'}), 404
 
-        # Пользователь видит только свои заявки
         if session.get('user_role') == 'Пользователь' and task['created_by'] != session.get('user_id'):
             return jsonify({'error': 'Недостаточно прав'}), 403
 
-        return jsonify(dict(task))
-    except Exception as e:
-        return jsonify({'error': f'Ошибка получения заявки: {str(e)}'}), 500
+        history = db.query('''
+            SELECT * FROM task_history WHERE task_id = ?
+            ORDER BY created_at DESC, id DESC LIMIT 100
+        ''', [task_id])
 
+        att_count = db.query(
+            'SELECT COUNT(*) as c FROM task_attachments WHERE task_id = ?',
+            [task_id], one=True
+        )['c']
+        com_count = db.query(
+            'SELECT COUNT(*) as c FROM task_comments WHERE task_id = ?',
+            [task_id], one=True
+        )['c']
+
+        result = dict(task)
+        result['history'] = [dict(h) for h in history]
+        result['attachments_count'] = att_count
+        result['comments_count'] = com_count
+        return jsonify(result)
+    except Exception as e:
+        log.exception('Ошибка получения заявки')
+        return jsonify({'error': f'Ошибка: {str(e)}'}), 500
+
+
+# ============= СОЗДАНИЕ =============
 
 @tasks_bp.route('/api/create_task', methods=['POST'])
 @login_required
 def create_task():
-    """Создание новой заявки"""
     try:
         data = request.get_json()
-
         if not data:
-            return jsonify({'success': False, 'error': 'Нет данных для создания заявки'}), 400
+            return jsonify({'success': False, 'error': 'Нет данных'}), 400
 
-        # Валидация обязательных полей
-        required_fields = ['description', 'work_type']
-        for field in required_fields:
-            if field not in data or not data[field]:
-                return jsonify({'success': False, 'error': f'Поле "{field}" обязательно для заполнения'}), 400
+        for field in ('description', 'work_type'):
+            if not data.get(field):
+                return jsonify({'success': False, 'error': f'Поле "{field}" обязательно'}), 400
 
-        # Проверяем занятость исполнителя на выбранное время
         executor = (data.get('executor') or '').strip()
         deadline = (data.get('deadline') or '').strip()
 
         if executor and deadline:
-            new_deadline = None
             try:
                 new_deadline_str = deadline.replace('T', ' ') + ':00'
                 new_deadline = datetime.strptime(new_deadline_str, '%Y-%m-%d %H:%M:%S')
-            except Exception as e:
-                print(f"Ошибка парсинга даты: {e}")
+            except Exception:
+                new_deadline = None
 
             if new_deadline:
-                existing_tasks = db.query('''
-                    SELECT id, deadline, description, status FROM tasks 
-                    WHERE executor = ? 
-                    AND status IN ('Новое', 'В работе')
+                existing = db.query('''
+                    SELECT id, deadline FROM tasks
+                    WHERE executor = ? AND status IN ('Новое','В работе')
                 ''', [executor])
 
-                for task in existing_tasks:
-                    if not task['deadline']:
+                for t in existing:
+                    if not t['deadline']:
                         continue
-
-                    task_deadline = None
-                    formats_to_try = [
-                        '%Y-%m-%d %H:%M:%S',
-                        '%Y-%m-%d %H:%M',
-                        '%Y-%m-%dT%H:%M:%S',
-                        '%Y-%m-%dT%H:%M'
-                    ]
-                    for fmt in formats_to_try:
+                    td = None
+                    for fmt in ('%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M',
+                                '%Y-%m-%dT%H:%M:%S', '%Y-%m-%dT%H:%M'):
                         try:
-                            task_deadline = datetime.strptime(task['deadline'], fmt)
+                            td = datetime.strptime(t['deadline'], fmt)
                             break
                         except Exception:
                             continue
-
-                    if not task_deadline:
-                        continue
-
-                    time_diff = abs((new_deadline - task_deadline).total_seconds())
-
-                    if task_deadline.date() == new_deadline.date():
-                        if time_diff < 3600:
+                    if td and td.date() == new_deadline.date():
+                        if abs((new_deadline - td).total_seconds()) < 3600:
                             return jsonify({
                                 'success': False,
-                                'error': f'Техник в данное время занят! '
-                                         f'У него уже есть заявка №{task["id"]} на {task["deadline"]}'
+                                'error': f'Техник занят! Заявка №{t["id"]} на {t["deadline"]}'
                             }), 400
 
-        # Нормализуем дату для сохранения в БД
         normalized_deadline = (
-            deadline.replace('T', ' ') + ':00'
-            if deadline
+            deadline.replace('T', ' ') + ':00' if deadline
             else datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         )
 
-        # Роль «Пользователь» не может назначать исполнителя/помощника
         if session.get('user_role') == 'Пользователь':
             executor = ''
             assistant = ''
@@ -297,11 +264,10 @@ def create_task():
             assistant = (data.get('assistant') or '').strip()
 
         task_id = db.execute('''
-            INSERT INTO tasks (
-                deadline, from_user, cabinet, description, 
-                work_type, priority, executor, assistant, 
-                status, created_by, created_date
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO tasks
+                (deadline, from_user, cabinet, description, work_type,
+                 priority, executor, assistant, status, created_by, created_date)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', [
             normalized_deadline,
             data.get('from_user', ''),
@@ -309,14 +275,18 @@ def create_task():
             data['description'],
             data['work_type'],
             data.get('priority', 'Средний'),
-            executor,
-            assistant,
-            'Новое',
+            executor, assistant, 'Новое',
             session['user_id'],
             datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         ])
 
-        # Отправляем уведомления о новой заявке
+        log.info(f'Создана заявка №{task_id}')
+        log_action('create', 'task', task_id, {
+            'description': data['description'][:100],
+            'cabinet': data.get('cabinet', ''),
+            'executor': executor,
+        })
+
         notify_new_task(task_id, {
             'description': data['description'],
             'from_user': data.get('from_user', ''),
@@ -327,61 +297,65 @@ def create_task():
         return jsonify({
             'success': True,
             'task_id': task_id,
-            'message': f'Заявка №{task_id} успешно создана'
+            'message': f'Заявка №{task_id} создана'
         }), 201
-
     except Exception as e:
-        print(f"Ошибка создания заявки: {e}")
-        return jsonify({'success': False, 'error': f'Ошибка создания заявки: {str(e)}'}), 500
+        log.exception('Ошибка создания заявки')
+        return jsonify({'success': False, 'error': f'Ошибка: {str(e)}'}), 500
 
+
+# ============= ОБНОВЛЕНИЕ =============
 
 @tasks_bp.route('/api/update_task/<int:task_id>', methods=['POST'])
 @login_required
 def update_task(task_id):
-    """Обновление заявки"""
     try:
         data = request.get_json()
         if not data:
-            return jsonify({'success': False, 'error': 'Нет данных для обновления'}), 400
+            return jsonify({'success': False, 'error': 'Нет данных'}), 400
 
-        old_task = db.query('SELECT * FROM tasks WHERE id = ?', [task_id], one=True)
-        if not old_task:
+        old = db.query('SELECT * FROM tasks WHERE id = ?', [task_id], one=True)
+        if not old:
             return jsonify({'success': False, 'error': 'Заявка не найдена'}), 404
 
-        if session.get('user_role') == 'Пользователь' and old_task['created_by'] != session.get('user_id'):
+        if session.get('user_role') == 'Пользователь' and old['created_by'] != session.get('user_id'):
             return jsonify({'success': False, 'error': 'Недостаточно прав'}), 403
 
+        old_dict = dict(old)
+        changes = diff_task(old_dict, data)
+        for field_name, old_val, new_val in changes:
+            log_task_change(task_id, field_name, old_val, new_val)
+
         db.execute('''
-            UPDATE tasks 
-            SET deadline = ?, from_user = ?, cabinet = ?, description = ?, 
+            UPDATE tasks
+            SET deadline = ?, from_user = ?, cabinet = ?, description = ?,
                 status = ?, executor = ?, assistant = ?, work_type = ?, priority = ?
             WHERE id = ?
         ''', [
-            data.get('deadline', old_task['deadline']),
-            data.get('from_user', old_task['from_user']),
-            data.get('cabinet', old_task['cabinet']),
-            data.get('description', old_task['description']),
-            data.get('status', old_task['status']),
-            data.get('executor', old_task['executor']),
-            data.get('assistant', old_task['assistant']),
-            data.get('work_type', old_task['work_type']),
-            data.get('priority', old_task['priority']),
+            data.get('deadline', old['deadline']),
+            data.get('from_user', old['from_user']),
+            data.get('cabinet', old['cabinet']),
+            data.get('description', old['description']),
+            data.get('status', old['status']),
+            data.get('executor', old['executor']),
+            data.get('assistant', old['assistant']),
+            data.get('work_type', old['work_type']),
+            data.get('priority', old['priority']),
             task_id
         ])
 
-        return jsonify({
-            'success': True,
-            'message': f'Заявка №{task_id} успешно обновлена'
-        })
-
+        log_action('update', 'task', task_id, {'changes': len(changes)})
+        return jsonify({'success': True, 'message': f'Заявка №{task_id} обновлена'})
     except Exception as e:
-        return jsonify({'success': False, 'error': f'Ошибка обновления заявки: {str(e)}'}), 500
+        log.exception('Ошибка обновления заявки')
+        return jsonify({'success': False, 'error': f'Ошибка: {str(e)}'}), 500
 
+
+# ============= ЗАКРЫТИЕ =============
 
 @tasks_bp.route('/api/close_task/<int:task_id>', methods=['POST'])
 @login_required
 def close_task(task_id):
-    """Закрытие заявки"""
     try:
         if session.get('user_role') not in ('Администратор', 'Техник'):
             return jsonify({'success': False, 'error': 'Недостаточно прав'}), 403
@@ -389,34 +363,36 @@ def close_task(task_id):
         task = db.query('SELECT * FROM tasks WHERE id = ?', [task_id], one=True)
         if not task:
             return jsonify({'success': False, 'error': 'Заявка не найдена'}), 404
-
         if task['status'] == 'Выполнено':
             return jsonify({'success': False, 'error': 'Заявка уже закрыта'}), 400
 
         current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        db.execute('''
-            UPDATE tasks 
-            SET status = "Выполнено", completed_date = ? 
-            WHERE id = ?
-        ''', [current_time, task_id])
+        db.execute(
+            'UPDATE tasks SET status = "Выполнено", completed_date = ? WHERE id = ?',
+            [current_time, task_id]
+        )
 
-        updated_task = db.query('SELECT * FROM tasks WHERE id = ?', [task_id], one=True)
-        notify_task_completed(task_id, dict(updated_task))
+        log_task_change(task_id, 'Статус', task['status'], 'Выполнено')
+        log_action('update', 'task', task_id, {'action': 'close'})
+
+        updated = db.query('SELECT * FROM tasks WHERE id = ?', [task_id], one=True)
+        notify_task_completed(task_id, dict(updated))
 
         return jsonify({
             'success': True,
-            'message': f'Заявка №{task_id} успешно закрыта',
+            'message': f'Заявка №{task_id} закрыта',
             'completed_date': current_time
         })
-
     except Exception as e:
-        return jsonify({'success': False, 'error': f'Ошибка закрытия заявки: {str(e)}'}), 500
+        log.exception('Ошибка закрытия заявки')
+        return jsonify({'success': False, 'error': f'Ошибка: {str(e)}'}), 500
 
+
+# ============= ВЗЯТИЕ =============
 
 @tasks_bp.route('/api/task/<int:task_id>/take', methods=['POST'])
 @login_required
 def take_task(task_id):
-    """Взять заявку в работу"""
     try:
         if session.get('user_role') not in ('Администратор', 'Техник'):
             return jsonify({'success': False, 'error': 'Недостаточно прав'}), 403
@@ -424,58 +400,28 @@ def take_task(task_id):
         task = db.query('SELECT * FROM tasks WHERE id = ?', [task_id], one=True)
         if not task:
             return jsonify({'success': False, 'error': 'Заявка не найдена'}), 404
-
         if task['status'] != 'Новое':
             return jsonify({'success': False, 'error': 'Заявка уже в работе или закрыта'}), 400
 
         user_name = session.get('user_name')
 
-        # 🆕 Если заявка уже назначена на другого исполнителя — не разрешаем перехват
         if task['executor'] and task['executor'] != user_name:
             return jsonify({
                 'success': False,
-                'error': f'Заявка уже назначена на исполнителя: {task["executor"]}'
+                'error': f'Заявка уже назначена на {task["executor"]}'
             }), 400
 
-        task_deadline = task['deadline']
+        db.execute(
+            'UPDATE tasks SET status = "В работе", executor = ? WHERE id = ?',
+            [user_name, task_id]
+        )
 
-        if task_deadline:
-            new_deadline = None
-            try:
-                new_deadline = datetime.strptime(task_deadline, '%Y-%m-%d %H:%M:%S')
-            except Exception:
-                new_deadline = None
+        log_task_change(task_id, 'Статус', 'Новое', 'В работе')
+        log_task_change(task_id, 'Исполнитель', task['executor'] or '', user_name)
+        log_action('update', 'task', task_id, {'action': 'take'})
 
-            if new_deadline:
-                existing_tasks = db.query('''
-                    SELECT * FROM tasks 
-                    WHERE executor = ? 
-                    AND id != ?
-                    AND status NOT IN ('Выполнено', 'Отменено')
-                    AND deadline IS NOT NULL
-                ''', [user_name, task_id])
-
-                for existing in existing_tasks:
-                    try:
-                        existing_deadline = datetime.strptime(existing['deadline'], '%Y-%m-%d %H:%M:%S')
-                    except Exception:
-                        continue
-
-                    time_diff = abs((new_deadline - existing_deadline).total_seconds())
-                    if time_diff < 3600:
-                        return jsonify({
-                            'success': False,
-                            'error': 'Техник в данное время занят, выберите другое!'
-                        }), 400
-
-        db.execute('''
-            UPDATE tasks 
-            SET status = "В работе", executor = ?
-            WHERE id = ?
-        ''', [user_name, task_id])
-
-        updated_task = db.query('SELECT * FROM tasks WHERE id = ?', [task_id], one=True)
-        notify_task_taken(task_id, dict(updated_task))
+        updated = db.query('SELECT * FROM tasks WHERE id = ?', [task_id], one=True)
+        notify_task_taken(task_id, dict(updated))
 
         return jsonify({
             'success': True,
@@ -483,48 +429,50 @@ def take_task(task_id):
             'new_status': 'В работе',
             'executor': user_name
         })
-
     except Exception as e:
+        log.exception('Ошибка взятия заявки')
         return jsonify({'success': False, 'error': f'Ошибка: {str(e)}'}), 500
 
+
+# ============= УДАЛЕНИЕ =============
 
 @tasks_bp.route('/api/delete_task/<int:task_id>', methods=['DELETE'])
 @role_required('Администратор')
 def delete_task(task_id):
-    """Удаление заявки (только для администраторов)"""
     try:
         task = db.query('SELECT * FROM tasks WHERE id = ?', [task_id], one=True)
         if not task:
             return jsonify({'success': False, 'error': 'Заявка не найдена'}), 404
 
-        db.execute('DELETE FROM notifications WHERE task_id = ?', [task_id])
-        db.execute('DELETE FROM tasks WHERE id = ?', [task_id])
-
-        return jsonify({
-            'success': True,
-            'message': f'Заявка №{task_id} успешно удалена'
+        log_action('delete', 'task', task_id, {
+            'description': (task['description'] or '')[:100]
         })
 
+        db.execute('DELETE FROM notifications WHERE task_id = ?', [task_id])
+        db.execute('DELETE FROM task_history WHERE task_id = ?', [task_id])
+        db.execute('DELETE FROM tasks WHERE id = ?', [task_id])
+
+        return jsonify({'success': True, 'message': f'Заявка №{task_id} удалена'})
     except Exception as e:
-        return jsonify({'success': False, 'error': f'Ошибка удаления заявки: {str(e)}'}), 500
+        log.exception('Ошибка удаления заявки')
+        return jsonify({'success': False, 'error': f'Ошибка: {str(e)}'}), 500
 
 
-# ============= API ДЛЯ ПОЛУЧЕНИЯ ФИЛЬТРОВ =============
+# ============= ФИЛЬТРЫ =============
 
 @tasks_bp.route('/api/filters')
 @login_required
 def get_filters():
-    """Получение данных для фильтров"""
     try:
-        work_types = [row['name'] for row in db.query(
+        work_types = [r['name'] for r in db.query(
             'SELECT name FROM problem_types WHERE is_active = 1 ORDER BY name'
         )]
-        cabinets = [row['cabinet_number'] for row in db.query(
+        cabinets = [r['cabinet_number'] for r in db.query(
             'SELECT cabinet_number FROM cabinets WHERE is_active = 1 ORDER BY cabinet_number'
         )]
         statuses = ['Новое', 'В работе', 'Выполнено', 'Отменено']
         priorities = ['Высокий', 'Средний', 'Низкий']
-        users = [row['full_name'] for row in db.query(
+        users = [r['full_name'] for r in db.query(
             'SELECT full_name FROM users WHERE is_active = 1 ORDER BY full_name'
         )]
 
@@ -535,6 +483,6 @@ def get_filters():
             'priorities': priorities,
             'users': users
         })
-
     except Exception as e:
-        return jsonify({'error': f'Ошибка получения фильтров: {str(e)}'}), 500
+        log.exception('Ошибка получения фильтров')
+        return jsonify({'error': f'Ошибка: {str(e)}'}), 500

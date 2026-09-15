@@ -1,145 +1,154 @@
 // static/js/excel.js
+// Отчёты: сводная таблица + XLSX-экспорт + печать
 
-// ============= ЗАГРУЗКА СТРАНИЦЫ ОТЧЕТОВ =============
-function loadReportPage() {
-    console.log('Loading report page...');
+(function() {
+    'use strict';
 
-    var $contentBlock = $('#otherPagesBlock');
+    if (!window.App) {
+        console.error('[excel] App не инициализирован');
+        return;
+    }
 
-    $contentBlock.html(
-        '<div class="text-center py-5">' +
-        '<div class="spinner-border text-primary" role="status"></div>' +
-        '<p class="mt-2">Загрузка отчетов...</p>' +
-        '</div>'
-    );
+    var api = window.App.register('Reports');
+    var utils = window.App.utils;
 
-    // Загружаем статистику и заявки
-    Promise.all([
-        fetch('/api/report/tasks').then(function(r) { return r.json(); }),
-        fetch('/api/tasks').then(function(r) { return r.json(); })
-    ])
-    .then(function(results) {
-        var stats = results[0];
-        var tasks = results[1];
+    // ============= СТРАНИЦА =============
+    function loadReportPage() {
+        var $contentBlock = $('#otherPagesBlock');
 
-        var html = '';
+        $contentBlock.html(
+            '<div class="text-center py-5">' +
+            '<div class="spinner-border text-primary"></div>' +
+            '<p class="mt-2">Загрузка отчетов...</p>' +
+            '</div>'
+        );
 
-        // Статистика
-        if (!stats.error) {
-            html += '<div class="row mb-3">';
+        Promise.all([
+            fetch('/api/report/tasks').then(function(r) { return r.json(); }),
+            fetch('/api/tasks?page=1&per_page=200').then(function(r) { return r.json(); })
+        ])
+            .then(function(results) {
+                var stats = results[0];
+                var tasksData = results[1] || {};
+                var tasks = Array.isArray(tasksData) ? tasksData : (tasksData.items || []);
 
-            // Статусы
-            html += '<div class="col-md-6 mb-3"><div class="card"><div class="card-header bg-primary text-white">';
-            html += '<h6 class="mb-0"><i class="bi bi-pie-chart"></i> Статистика по статусам</h6>';
-            html += '</div><div class="card-body"><div class="table-responsive"><table class="table table-sm table-striped">';
-            html += '<thead><tr><th>Статус</th><th>Количество</th></tr></thead><tbody>';
-            if (stats.status_stats) {
-                stats.status_stats.forEach(function(s) {
-                    html += '<tr><td>' + s.status + '</td><td><strong>' + s.count + '</strong></td></tr>';
-                });
-            }
-            html += '</tbody></table></div></div></div></div>';
+                var html = '';
 
-            // Исполнители
-            html += '<div class="col-md-6 mb-3"><div class="card"><div class="card-header bg-success text-white">';
-            html += '<h6 class="mb-0"><i class="bi bi-people"></i> Статистика по исполнителям</h6>';
-            html += '</div><div class="card-body"><div class="table-responsive"><table class="table table-sm table-striped">';
-            html += '<thead><tr><th>Исполнитель</th><th>Всего</th><th>Выполнено</th><th>В работе</th></tr></thead><tbody>';
-            if (stats.executor_stats) {
-                stats.executor_stats.forEach(function(e) {
-                    html += '<tr><td>' + e.executor + '</td><td><strong>' + e.total + '</strong></td><td>' + e.completed + '</td><td>' + e.active + '</td></tr>';
-                });
-            }
-            html += '</tbody></table></div></div></div></div>';
+                if (!stats.error) {
+                    html += renderStatsCards(stats);
+                }
 
-            html += '</div>';
+                html += renderTasksTable(tasks);
+                $contentBlock.html(html);
+            })
+            .catch(function(error) {
+                console.error('[excel] load error:', error);
+                $contentBlock.html(
+                    '<div class="alert alert-danger">Ошибка загрузки отчета: ' +
+                    utils.escapeHtml(error.message) + '</div>'
+                );
+            });
+    }
+
+    // ============= СВОДНЫЕ КАРТОЧКИ =============
+    function renderStatsCards(stats) {
+        var html = '<div class="row mb-3">';
+
+        // Статусы
+        html += '<div class="col-md-6 mb-3"><div class="card">' +
+            '<div class="card-header bg-primary text-white">' +
+            '<h6 class="mb-0"><i class="bi bi-pie-chart"></i> Статистика по статусам</h6>' +
+            '</div><div class="card-body"><div class="table-responsive">' +
+            '<table class="table table-sm table-striped mb-0"><thead><tr>' +
+            '<th>Статус</th><th>Количество</th></tr></thead><tbody>';
+        if (stats.status_stats) {
+            stats.status_stats.forEach(function(s) {
+                html += '<tr><td>' + utils.escapeHtml(s.status) + '</td>' +
+                    '<td><strong>' + s.count + '</strong></td></tr>';
+            });
         }
+        html += '</tbody></table></div></div></div></div>';
 
-        // Таблица заявок с кнопками экспорта
-        html += '<div class="card">';
+        // Исполнители
+        html += '<div class="col-md-6 mb-3"><div class="card">' +
+            '<div class="card-header bg-success text-white">' +
+            '<h6 class="mb-0"><i class="bi bi-people"></i> Статистика по исполнителям</h6>' +
+            '</div><div class="card-body"><div class="table-responsive">' +
+            '<table class="table table-sm table-striped mb-0"><thead><tr>' +
+            '<th>Исполнитель</th><th>Всего</th><th>Выполнено</th><th>В работе</th>' +
+            '</tr></thead><tbody>';
+        if (stats.executor_stats) {
+            stats.executor_stats.forEach(function(e) {
+                html += '<tr><td>' + utils.escapeHtml(e.executor) + '</td>' +
+                    '<td><strong>' + e.total + '</strong></td>' +
+                    '<td>' + e.completed + '</td>' +
+                    '<td>' + e.active + '</td></tr>';
+            });
+        }
+        html += '</tbody></table></div></div></div></div>';
+
+        html += '</div>';
+        return html;
+    }
+
+    // ============= ТАБЛИЦА ЗАЯВОК =============
+    function renderTasksTable(tasks) {
+        var html = '<div class="card">';
         html += '<div class="card-header bg-info text-white">';
-        html += '<div class="d-flex justify-content-between align-items-center">';
+        html += '<div class="d-flex justify-content-between align-items-center flex-wrap gap-2">';
         html += '<h5 class="mb-0"><i class="bi bi-file-text"></i> Отчет по задачам</h5>';
         html += '<div class="d-flex gap-2">';
-        html += '<button class="btn btn-sm btn-light" onclick="loadReportPage()">';
-        html += '<i class="bi bi-arrow-clockwise"></i> Обновить';
-        html += '</button>';
-        html += '<button class="btn btn-sm btn-success" onclick="exportToExcel()">';
-        html += '<i class="bi bi-file-earmark-excel"></i> Экспорт в Excel';
-        html += '</button>';
-        html += '<button class="btn btn-sm btn-primary" onclick="printReport()">';
-        html += '<i class="bi bi-printer"></i> Печать';
-        html += '</button>';
-        html += '</div>';
-        html += '</div>';
-        html += '</div>';
-        html += '<div class="card-body">';
-        html += '<div class="table-responsive">';
+        html += '<button class="btn btn-sm btn-light" onclick="loadReportPage()"><i class="bi bi-arrow-clockwise"></i> Обновить</button>';
+        html += '<button class="btn btn-sm btn-success" onclick="exportToExcel()"><i class="bi bi-file-earmark-excel"></i> Экспорт в Excel</button>';
+        html += '<button class="btn btn-sm btn-primary" onclick="printReport()"><i class="bi bi-printer"></i> Печать</button>';
+        html += '</div></div></div>';
+
+        html += '<div class="card-body"><div class="table-responsive">';
         html += '<table class="table table-striped table-hover table-sm" id="reportTable">';
         html += '<thead><tr>';
-        html += '<th>№</th>';
-        html += '<th>Дата создания</th>';
-        html += '<th>Срок</th>';
-        html += '<th>От кого</th>';
-        html += '<th>Кабинет</th>';
-        html += '<th>Описание</th>';
-        html += '<th>Тип работы</th>';
-        html += '<th>Статус</th>';
-        html += '<th>Приоритет</th>';
-        html += '<th>Исполнитель</th>';
-        html += '<th>Помощник</th>';
-        html += '</tr></thead>';
-        html += '<tbody>';
+        html += '<th>№</th><th>Дата создания</th><th>Срок</th><th>От кого</th>';
+        html += '<th>Кабинет</th><th>Описание</th><th>Тип работы</th>';
+        html += '<th>Статус</th><th>Приоритет</th><th>Исполнитель</th><th>Помощник</th>';
+        html += '</tr></thead><tbody>';
 
         if (!tasks || tasks.length === 0) {
-            html += '<tr><td colspan="11" class="text-center">Нет заявок</td></tr>';
+            html += '<tr><td colspan="11" class="text-center text-muted">Нет заявок</td></tr>';
         } else {
             tasks.forEach(function(task, index) {
                 html += '<tr>';
                 html += '<td>' + (index + 1) + '</td>';
-                html += '<td>' + formatDate(task.created_date) + '</td>';
-                html += '<td>' + formatDate(task.deadline) + '</td>';
-                html += '<td>' + (task.from_user || '-') + '</td>';
-                html += '<td>' + (task.cabinet || '-') + '</td>';
-                html += '<td>' + truncateText(task.description, 50) + '</td>';
-                html += '<td>' + (task.work_type || '-') + '</td>';
-                html += '<td><span class="status-badge ' + getStatusClass(task.status) + '">' + (task.status || '-') + '</span></td>';
-                html += '<td>' + (task.priority || '-') + '</td>';
-                html += '<td>' + (task.executor || '-') + '</td>';
-                html += '<td>' + (task.assistant || '-') + '</td>';
+                html += '<td>' + utils.formatDate(task.created_date) + '</td>';
+                html += '<td>' + utils.formatDate(task.deadline) + '</td>';
+                html += '<td>' + utils.escapeHtml(task.from_user || '-') + '</td>';
+                html += '<td>' + utils.escapeHtml(task.cabinet || '-') + '</td>';
+                html += '<td>' + utils.escapeHtml(utils.truncateText(task.description, 50)) + '</td>';
+                html += '<td>' + utils.escapeHtml(task.work_type || '-') + '</td>';
+                html += '<td><span class="status-badge ' + utils.getStatusClass(task.status) + '">' +
+                    utils.escapeHtml(task.status || '-') + '</span></td>';
+                html += '<td>' + utils.escapeHtml(task.priority || '-') + '</td>';
+                html += '<td>' + utils.escapeHtml(task.executor || '-') + '</td>';
+                html += '<td>' + utils.escapeHtml(task.assistant || '-') + '</td>';
                 html += '</tr>';
             });
         }
 
-        html += '</tbody>';
-        html += '</table>';
-        html += '</div>';
-        html += '</div>';
-        html += '</div>';
+        html += '</tbody></table></div></div></div>';
+        return html;
+    }
 
-        $contentBlock.html(html);
-    })
-    .catch(function(error) {
-        console.error('Error loading report:', error);
-        $contentBlock.html(
-            '<div class="alert alert-danger">Ошибка загрузки отчета: ' + error.message + '</div>'
-        );
-    });
-}
+    // ============= ЭКСПОРТ =============
+    function exportToExcel() {
+        Swal.fire({
+            title: 'Экспорт в Excel',
+            text: 'Скачать файл с текущими заявками?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: '<i class="bi bi-download"></i> Скачать',
+            cancelButtonText: 'Отмена',
+            confirmButtonColor: '#28a745'
+        }).then(function(result) {
+            if (!result.isConfirmed) return;
 
-// Экспорт в Excel
-function exportToExcel() {
-    Swal.fire({
-        title: 'Экспорт в Excel',
-        text: 'Скачать файл с текущими заявками?',
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonText: '<i class="bi bi-download"></i> Скачать',
-        cancelButtonText: 'Отмена',
-        confirmButtonColor: '#28a745'
-    }).then(function(result) {
-        if (result.isConfirmed) {
-            // Собираем текущие фильтры
             var params = new URLSearchParams();
             var workType = $('#filterWorkType').val();
             var cabinet = $('#filterCabinet').val();
@@ -156,7 +165,6 @@ function exportToExcel() {
                 params.append('date_to', filterDate + ' 23:59:59');
             }
 
-            // Создаем ссылку для скачивания
             var downloadUrl = '/api/report/tasks/excel?' + params.toString();
 
             Swal.fire({
@@ -167,25 +175,23 @@ function exportToExcel() {
                 showConfirmButton: false
             });
 
-            // Запускаем скачивание
             window.location.href = downloadUrl;
-        }
-    });
-}
+        });
+    }
 
-// Печать отчета
-function printReport() {
-    Swal.fire({
-        title: 'Печать отчета',
-        text: 'Открыть отчет для печати?',
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonText: '<i class="bi bi-printer"></i> Печать',
-        cancelButtonText: 'Отмена',
-        confirmButtonColor: '#0d6efd'
-    }).then(function(result) {
-        if (result.isConfirmed) {
-            // Собираем текущие фильтры
+    // ============= ПЕЧАТЬ =============
+    function printReport() {
+        Swal.fire({
+            title: 'Печать отчета',
+            text: 'Открыть отчет для печати?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: '<i class="bi bi-printer"></i> Печать',
+            cancelButtonText: 'Отмена',
+            confirmButtonColor: '#0d6efd'
+        }).then(function(result) {
+            if (!result.isConfirmed) return;
+
             var params = new URLSearchParams();
             var workType = $('#filterWorkType').val();
             var cabinet = $('#filterCabinet').val();
@@ -205,58 +211,63 @@ function printReport() {
             fetch('/api/report/tasks/print?' + params.toString())
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
-                    if (data.error) {
-                        showErrorMessage(data.error);
-                        return;
-                    }
+                    if (data.error) { utils.showErrorMessage(data.error); return; }
 
-                    // Создаем окно для печати
-                    var printWindow = window.open('', '_blank', 'width=1200,height=800');
-                    printWindow.document.write('<html><head><title>Отчет по задачам</title>');
-                    printWindow.document.write('<style>');
-                    printWindow.document.write('body { font-family: Arial, sans-serif; padding: 20px; }');
-                    printWindow.document.write('h2 { color: #333; border-bottom: 2px solid #667eea; padding-bottom: 10px; }');
-                    printWindow.document.write('table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 12px; }');
-                    printWindow.document.write('th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }');
-                    printWindow.document.write('th { background-color: #667eea; color: white; }');
-                    printWindow.document.write('tr:nth-child(even) { background-color: #f9f9f9; }');
-                    printWindow.document.write('.header-info { margin-bottom: 20px; }');
-                    printWindow.document.write('@media print { button { display: none; } }');
-                    printWindow.document.write('</style>');
-                    printWindow.document.write('</head><body>');
-                    printWindow.document.write('<h2>Отчет по задачам</h2>');
-                    printWindow.document.write('<div class="header-info">');
-                    printWindow.document.write('<p><strong>Дата формирования:</strong> ' + data.export_date + '</p>');
-                    printWindow.document.write('<p><strong>Всего заявок:</strong> ' + data.total + '</p>');
-                    printWindow.document.write('</div>');
-                    printWindow.document.write('<table>');
-                    printWindow.document.write('<thead><tr>');
-                    printWindow.document.write('<th>№</th><th>Дата создания</th><th>Срок</th><th>От кого</th><th>Кабинет</th><th>Описание</th><th>Тип работы</th><th>Статус</th><th>Приоритет</th><th>Исполнитель</th><th>Помощник</th>');
-                    printWindow.document.write('</tr></thead><tbody>');
+                    var w = window.open('', '_blank', 'width=1200,height=800');
+                    w.document.write('<html><head><title>Отчет по задачам</title>');
+                    w.document.write('<style>');
+                    w.document.write('body{font-family:Arial,sans-serif;padding:20px}');
+                    w.document.write('h2{color:#333;border-bottom:2px solid #667eea;padding-bottom:10px}');
+                    w.document.write('table{width:100%;border-collapse:collapse;margin-top:20px;font-size:12px}');
+                    w.document.write('th,td{border:1px solid #ddd;padding:8px;text-align:left}');
+                    w.document.write('th{background-color:#667eea;color:white}');
+                    w.document.write('tr:nth-child(even){background-color:#f9f9f9}');
+                    w.document.write('.header-info{margin-bottom:20px}');
+                    w.document.write('@media print{button{display:none}}');
+                    w.document.write('</style></head><body>');
+                    w.document.write('<h2>Отчет по задачам</h2>');
+                    w.document.write('<div class="header-info">');
+                    w.document.write('<p><strong>Дата формирования:</strong> ' + data.export_date + '</p>');
+                    w.document.write('<p><strong>Всего заявок:</strong> ' + data.total + '</p>');
+                    w.document.write('</div>');
+                    w.document.write('<table><thead><tr>');
+                    w.document.write('<th>№</th><th>Дата создания</th><th>Срок</th><th>От кого</th>' +
+                        '<th>Кабинет</th><th>Описание</th><th>Тип работы</th><th>Статус</th>' +
+                        '<th>Приоритет</th><th>Исполнитель</th><th>Помощник</th>');
+                    w.document.write('</tr></thead><tbody>');
 
-                    data.tasks.forEach(function(task, index) {
-                        printWindow.document.write('<tr>');
-                        printWindow.document.write('<td>' + (index + 1) + '</td>');
-                        printWindow.document.write('<td>' + (task.created_date || '') + '</td>');
-                        printWindow.document.write('<td>' + (task.deadline || '') + '</td>');
-                        printWindow.document.write('<td>' + (task.from_user || '') + '</td>');
-                        printWindow.document.write('<td>' + (task.cabinet || '') + '</td>');
-                        printWindow.document.write('<td>' + (task.description || '') + '</td>');
-                        printWindow.document.write('<td>' + (task.work_type || '') + '</td>');
-                        printWindow.document.write('<td>' + (task.status || '') + '</td>');
-                        printWindow.document.write('<td>' + (task.priority || '') + '</td>');
-                        printWindow.document.write('<td>' + (task.executor || '') + '</td>');
-                        printWindow.document.write('<td>' + (task.assistant || '') + '</td>');
-                        printWindow.document.write('</tr>');
+                    (data.tasks || []).forEach(function(task, index) {
+                        w.document.write('<tr>');
+                        w.document.write('<td>' + (index + 1) + '</td>');
+                        w.document.write('<td>' + (task.created_date || '') + '</td>');
+                        w.document.write('<td>' + (task.deadline || '') + '</td>');
+                        w.document.write('<td>' + utils.escapeHtml(task.from_user || '') + '</td>');
+                        w.document.write('<td>' + utils.escapeHtml(task.cabinet || '') + '</td>');
+                        w.document.write('<td>' + utils.escapeHtml(task.description || '') + '</td>');
+                        w.document.write('<td>' + utils.escapeHtml(task.work_type || '') + '</td>');
+                        w.document.write('<td>' + utils.escapeHtml(task.status || '') + '</td>');
+                        w.document.write('<td>' + utils.escapeHtml(task.priority || '') + '</td>');
+                        w.document.write('<td>' + utils.escapeHtml(task.executor || '') + '</td>');
+                        w.document.write('<td>' + utils.escapeHtml(task.assistant || '') + '</td>');
+                        w.document.write('</tr>');
                     });
 
-                    printWindow.document.write('</tbody></table>');
-                    printWindow.document.write('<br><button onclick="window.print()" style="padding:10px 20px; font-size:16px; cursor:pointer;">Распечатать</button>');
-                    printWindow.document.write('</body></html>');
-                    printWindow.document.close();
+                    w.document.write('</tbody></table>');
+                    w.document.write('<br><button onclick="window.print()" style="padding:10px 20px;font-size:16px;cursor:pointer;">Распечатать</button>');
+                    w.document.write('</body></html>');
+                    w.document.close();
                 });
-        }
-    });
-}
+        });
+    }
 
-console.log('Excel module loaded');
+    // ============= ЭКСПОРТ =============
+    api.load = loadReportPage;
+    api.exportExcel = exportToExcel;
+    api.print = printReport;
+
+    window.loadReportPage = loadReportPage;
+    window.exportToExcel = exportToExcel;
+    window.printReport = printReport;
+
+    console.log('[excel] Загружено');
+})();

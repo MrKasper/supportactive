@@ -1,0 +1,111 @@
+/* static/css/variables.css */
+/* Переменные темы + базовые стили */
+
+:root {
+    /* Основные цвета */
+    --primary-color: #4e73df;
+    --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+
+    /* Размеры */
+    --sidebar-width: 220px;
+    --mobile-bottom-nav-height: 60px;
+
+    /* Светлая тема */
+    --bg-color: #f8f9fc;
+    --bg-elevated: #ffffff;
+    --card-bg: #ffffff;
+    --text-color: #333333;
+    --text-muted: #858796;
+    --border-color: #e3e6f0;
+    --table-header-bg: #f8f9fc;
+    --hover-bg: #f8f9fc;
+    --shadow-sm: 0 2px 8px rgba(0,0,0,0.05);
+    --shadow-md: 0 4px 15px rgba(0,0,0,0.08);
+    --shadow-lg: 0 10px 40px rgba(0,0,0,0.15);
+
+    /* Статусы заявок */
+    --status-new-bg: #e3f2fd;
+    --status-new-color: #1565c0;
+    --status-progress-bg: #fff3e0;
+    --status-progress-color: #e65100;
+    --status-completed-bg: #e8f5e9;
+    --status-completed-color: #2e7d32;
+    --status-cancelled-bg: #ffebee;
+    --status-cancelled-color: #c62828;
+
+    /* Просроченные/скоро */
+    --danger-bg: #f8d7da;
+    --danger-color: #721c24;
+    --warning-bg: #fff3cd;
+    --warning-color: #856404;
+}
+
+/* 🌙 Мягкая тёмная тема (GitHub Dark / VS Code Dark по мотивам) */
+[data-theme="dark"] {
+    --bg-color: #1c1c22;
+    --bg-elevated: #232330;
+    --card-bg: #26262e;
+    --text-color: #d0d0d8;
+    --text-muted: #8f8fa0;
+    --border-color: #383842;
+    --table-header-bg: #2c2c36;
+    --hover-bg: #2f2f3a;
+    --shadow-sm: 0 2px 8px rgba(0,0,0,0.3);
+    --shadow-md: 0 4px 15px rgba(0,0,0,0.4);
+    --shadow-lg: 0 10px 40px rgba(0,0,0,0.5);
+
+    --status-new-bg: #1e3a5f;
+    --status-new-color: #8bb8e8;
+    --status-progress-bg: #4a3418;
+    --status-progress-color: #f0b667;
+    --status-completed-bg: #1e4a2e;
+    --status-completed-color: #7fd39a;
+    --status-cancelled-bg: #4a1e28;
+    --status-cancelled-color: #e88a98;
+
+    --danger-bg: #3d1a1a;
+    --danger-color: #ff6b6b;
+    --warning-bg: #3d351a;
+    --warning-color: #ffd93d;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    height: 100%;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-size: 14px;
+    overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+/* Скроллбары */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: var(--bg-color);
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Заголовки */
+h1, h2, h3, h4, h5, h6 { color: var(--text-color); }
+.text-muted { color: var(--text-muted) !important; }

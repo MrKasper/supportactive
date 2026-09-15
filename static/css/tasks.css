@@ -1,0 +1,432 @@
+/* static/css/tasks.css */
+/* Стили модалки заявки: вкладки, комментарии, вложения */
+
+/* ============================================================
+   ВКЛАДКИ В МОДАЛКЕ ЗАЯВКИ
+   ============================================================ */
+.task-tabs {
+    border-bottom: 2px solid var(--border-color);
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.task-tabs .nav-link {
+    color: var(--text-color);
+    border: none;
+    border-bottom: 3px solid transparent;
+    padding: 10px 16px;
+    font-weight: 500;
+    cursor: pointer;
+    background: transparent;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+
+.task-tabs .nav-link:hover {
+    border-bottom-color: rgba(102, 126, 234, 0.4);
+    color: var(--primary-color);
+}
+
+.task-tabs .nav-link.active {
+    color: #667eea;
+    border-bottom-color: #667eea;
+    background: transparent;
+    font-weight: 600;
+}
+
+.task-tabs .badge {
+    font-size: 0.7em;
+    margin-left: 6px;
+    background: #667eea;
+    color: white;
+    border-radius: 10px;
+    padding: 3px 8px;
+}
+
+.task-tab-pane { display: none; }
+.task-tab-pane.active { display: block; }
+
+[data-theme="dark"] .task-tabs .nav-link:hover {
+    border-bottom-color: rgba(139, 155, 255, 0.5);
+    color: #8b9bff;
+}
+[data-theme="dark"] .task-tabs .nav-link.active {
+    color: #8b9bff;
+    border-bottom-color: #8b9bff;
+}
+
+/* ============================================================
+   КОММЕНТАРИИ
+   ============================================================ */
+.comment-item {
+    display: flex;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    background: rgba(102, 126, 234, 0.04);
+    transition: background 0.2s;
+    position: relative;
+}
+
+.comment-item:hover {
+    background: rgba(102, 126, 234, 0.08);
+}
+
+[data-theme="dark"] .comment-item {
+    background: rgba(255, 255, 255, 0.03);
+}
+[data-theme="dark"] .comment-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.comment-item.comment-internal {
+    border-left: 4px solid #f6c23e;
+    background: rgba(246, 194, 62, 0.08);
+}
+[data-theme="dark"] .comment-item.comment-internal {
+    background: rgba(246, 194, 62, 0.05);
+}
+
+.comment-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.comment-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.comment-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.comment-author {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text-color);
+}
+
+.comment-time {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.comment-text {
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: var(--text-color);
+}
+
+.comment-actions {
+    opacity: 0;
+    transition: opacity 0.2s;
+    display: flex;
+    gap: 4px;
+}
+
+.comment-item:hover .comment-actions {
+    opacity: 1;
+}
+
+.comment-actions .btn {
+    padding: 2px 6px;
+    font-size: 0.75rem;
+}
+
+.comment-internal-badge {
+    background: #f6c23e;
+    color: #856404;
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-left: 6px;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.comment-form textarea {
+    resize: vertical;
+    min-height: 70px;
+}
+
+/* ============================================================
+   ВЛОЖЕНИЯ
+   ============================================================ */
+
+/* --- Drop zone --- */
+.attachments-drop-zone {
+    border: 2px dashed #667eea;
+    border-radius: 10px;
+    padding: 30px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 15px;
+    background: rgba(102, 126, 234, 0.02);
+    user-select: none;
+}
+
+.attachments-drop-zone:hover,
+.attachments-drop-zone.drag-over {
+    background: rgba(102, 126, 234, 0.1);
+    border-color: #764ba2;
+    transform: translateY(-1px);
+}
+
+.attachments-drop-zone i {
+    font-size: 2.5rem;
+    color: #667eea;
+    display: block;
+    margin-bottom: 8px;
+}
+
+.attachments-drop-zone p {
+    margin: 0;
+    color: var(--text-color);
+    font-size: 0.9rem;
+}
+
+.attachments-drop-zone small {
+    color: var(--text-muted);
+    font-size: 0.78rem;
+}
+
+[data-theme="dark"] .attachments-drop-zone {
+    background: rgba(102, 126, 234, 0.05);
+}
+[data-theme="dark"] .attachments-drop-zone:hover,
+[data-theme="dark"] .attachments-drop-zone.drag-over {
+    background: rgba(102, 126, 234, 0.15);
+}
+
+/* --- Сетка карточек --- */
+.attachments-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
+    margin-top: 15px;
+}
+
+.attachment-card {
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--card-bg);
+    transition: transform 0.2s, box-shadow 0.2s;
+    position: relative;
+}
+
+.attachment-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+}
+
+/* --- Превью --- */
+.attachment-preview {
+    width: 100%;
+    height: 110px;
+    object-fit: cover;
+    background: rgba(0, 0, 0, 0.04);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    overflow: hidden;
+}
+
+.attachment-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.attachment-preview i {
+    font-size: 2.8rem;
+    color: #667eea;
+    opacity: 0.7;
+}
+
+[data-theme="dark"] .attachment-preview {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+/* --- Информация --- */
+.attachment-info {
+    padding: 8px 10px;
+}
+
+.attachment-name {
+    font-weight: 600;
+    font-size: 0.78rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: block;
+    color: var(--text-color);
+}
+
+.attachment-meta {
+    color: var(--text-muted);
+    font-size: 0.7rem;
+    display: block;
+    margin-top: 2px;
+}
+
+/* --- Кнопки действий на карточке --- */
+.attachment-actions {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    opacity: 0;
+    transition: opacity 0.2s;
+    display: flex;
+    gap: 4px;
+    z-index: 2;
+}
+
+.attachment-card:hover .attachment-actions {
+    opacity: 1;
+}
+
+.attachment-actions .btn {
+    padding: 2px 6px;
+    font-size: 0.75rem;
+    border-radius: 6px;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    height: 28px;
+}
+
+/* --- Отсутствующий файл --- */
+.attachment-card.attachment-missing {
+    border-color: #f6c23e;
+    background: rgba(246, 194, 62, 0.05);
+}
+
+.attachment-card.attachment-missing .attachment-preview i {
+    color: #f6c23e;
+    opacity: 1;
+}
+
+[data-theme="dark"] .attachment-card.attachment-missing {
+    background: rgba(246, 194, 62, 0.08);
+    border-color: #8a6318;
+}
+
+/* --- Прогресс загрузки --- */
+.upload-progress {
+    height: 6px;
+    background: var(--border-color);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-top: 10px;
+    display: none;
+}
+
+.upload-progress.active {
+    display: block;
+}
+
+.upload-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    transition: width 0.3s;
+    width: 0;
+}
+
+/* --- Пустое состояние --- */
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-muted);
+}
+
+.empty-state i {
+    font-size: 3rem;
+    display: block;
+    margin-bottom: 10px;
+    opacity: 0.4;
+}
+
+.empty-state p {
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+/* ============================================================
+   АДАПТИВ
+   ============================================================ */
+@media (max-width: 768px) {
+    .task-tabs .nav-link {
+        padding: 8px 10px;
+        font-size: 0.8rem;
+    }
+    .task-tabs .nav-link i {
+        display: none;
+    }
+
+    .comment-avatar {
+        width: 32px;
+        height: 32px;
+        font-size: 14px;
+    }
+
+    .attachments-grid {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 8px;
+    }
+
+    .attachment-preview {
+        height: 90px;
+    }
+
+    .attachment-preview i {
+        font-size: 2rem;
+    }
+
+    .attachments-drop-zone {
+        padding: 20px 15px;
+    }
+
+    .attachments-drop-zone i {
+        font-size: 2rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .task-tabs .nav-link {
+        padding: 6px 8px;
+        font-size: 0.75rem;
+    }
+
+    .comment-item {
+        padding: 8px;
+        gap: 8px;
+    }
+
+    .attachments-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}

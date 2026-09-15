@@ -1,0 +1,10 @@
+# Логи
+logs/
+*.log
+
+# Вложения
+static/uploads/attachments/
+
+# Миграции (если появятся временные)
+*.db-journal
+*.db-wal

@@ -1,0 +1,288 @@
+/* static/css/mobile-ux.css */
+/* Мобильный UX: FAB, свайпы, pull-to-refresh, карточки */
+
+/* ============================================================
+   FAB — Плавающая кнопка действия
+   ============================================================ */
+.mux-fab {
+    position: fixed;
+    right: 20px;
+    bottom: calc(var(--mobile-bottom-nav-height, 60px) + 20px);
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+    font-size: 1.5rem;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 1050;
+    transition: transform 0.2s, box-shadow 0.2s;
+    -webkit-tap-highlight-color: transparent;
+}
+.mux-fab:hover,
+.mux-fab:active {
+    transform: scale(1.08);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.65);
+}
+.mux-fab.mux-fab-hidden {
+    display: none !important;
+}
+
+/* Показываем FAB только на мобильных */
+@media (max-width: 768px) {
+    .mux-fab.mux-fab-active {
+        display: flex;
+    }
+}
+
+/* ============================================================
+   PULL-TO-REFRESH
+   ============================================================ */
+.mux-ptr {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 0;
+    overflow: hidden;
+    background: transparent;
+    z-index: 999;
+    transition: height 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+.mux-ptr.mux-ptr-visible {
+    background: var(--card-bg);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    border-bottom: 1px solid var(--border-color);
+}
+.mux-ptr-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+}
+.mux-ptr-spinner {
+    font-size: 1.5rem;
+    color: #667eea;
+    transition: transform 0.3s;
+}
+.mux-ptr.mux-ptr-refreshing .mux-ptr-spinner {
+    animation: mux-spin 1s linear infinite;
+}
+@keyframes mux-spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+
+/* ============================================================
+   СВАЙП ПО СТРОКЕ ЗАЯВКИ
+   ============================================================ */
+@media (max-width: 768px) {
+    .task-row {
+        position: relative;
+        touch-action: pan-y;
+        transition: transform 0.25s ease-out;
+        background-color: var(--card-bg) !important;
+    }
+    .task-row.mux-swiping {
+        transition: none;
+    }
+
+    /* Действия справа (по свайпу влево) */
+    .mux-swipe-actions {
+        position: absolute;
+        top: 0;
+        right: 0;
+        height: 100%;
+        display: flex;
+        z-index: 1;
+    }
+    .mux-swipe-btn {
+        width: 80px;
+        height: 100%;
+        border: none;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 0.75rem;
+        font-weight: 500;
+        gap: 4px;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+    }
+    .mux-swipe-btn i {
+        font-size: 1.3rem;
+    }
+    .mux-swipe-btn.mux-swipe-take {
+        background: #0d6efd;
+    }
+    .mux-swipe-btn.mux-swipe-close {
+        background: #28a745;
+    }
+    .mux-swipe-btn.mux-swipe-delete {
+        background: #dc3545;
+    }
+
+    /* Обёртка строки, чтобы кнопки не выходили за пределы */
+    .mux-row-wrapper {
+        position: relative;
+        overflow: hidden;
+        margin-bottom: 8px;
+        border-radius: 8px;
+    }
+    .mux-row-wrapper .task-row {
+        position: relative;
+        z-index: 2;
+    }
+}
+
+/* ============================================================
+   МОБИЛЬНЫЕ КАРТОЧКИ ВМЕСТО ТАБЛИЦ
+   ============================================================ */
+@media (max-width: 768px) {
+    .table-container {
+        padding: 8px;
+    }
+    .table-container table {
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+    .table-container table thead {
+        display: none;
+    }
+    .table-container table tbody,
+    .table-container table tr,
+    .table-container table td {
+        display: block;
+        width: 100%;
+    }
+    .table-container table tr {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        padding: 12px;
+        margin-bottom: 10px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+    }
+    .table-container table td {
+        padding: 4px 0;
+        border: none;
+        text-align: left;
+        font-size: 0.85rem;
+    }
+    .table-container table td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: var(--text-muted);
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        display: block;
+        margin-bottom: 2px;
+    }
+    .table-container table td:empty {
+        display: none;
+    }
+    .table-container table td.mux-mobile-hidden {
+        display: none;
+    }
+
+    /* Скрываем колонку с чекбоксом на мобилке */
+    .table-container table td.mux-col-checkbox {
+        display: none;
+    }
+
+    /* Первая колонка — статус и дата, делаем акцент */
+    .table-container table td.mux-col-status {
+        padding-top: 0;
+    }
+    .table-container table td.mux-col-status .status-badge {
+        font-size: 0.75rem;
+    }
+}
+
+/* ============================================================
+   СВАЙП МЕЖДУ ВКЛАДКАМИ В МОДАЛКЕ
+   ============================================================ */
+@media (max-width: 768px) {
+    .modal-body .task-tab-pane {
+        transition: transform 0.3s ease-out, opacity 0.3s;
+    }
+    .modal-body .task-tab-pane.mux-swipe-left {
+        animation: mux-slide-left 0.3s;
+    }
+    .modal-body .task-tab-pane.mux-swipe-right {
+        animation: mux-slide-right 0.3s;
+    }
+}
+@keyframes mux-slide-left {
+    from { transform: translateX(40px); opacity: 0; }
+    to   { transform: translateX(0); opacity: 1; }
+}
+@keyframes mux-slide-right {
+    from { transform: translateX(-40px); opacity: 0; }
+    to   { transform: translateX(0); opacity: 1; }
+}
+
+/* ============================================================
+   ИНДИКАТОР СВАЙПА ПО ВКЛАДКАМ
+   ============================================================ */
+.mux-tab-indicator {
+    display: none;
+    height: 3px;
+    background: #667eea;
+    border-radius: 2px;
+    transition: transform 0.2s, width 0.2s;
+    margin-top: -2px;
+    z-index: 3;
+    position: relative;
+}
+@media (max-width: 768px) {
+    .mux-tab-indicator.mux-tab-indicator-active {
+        display: block;
+    }
+}
+
+/* ============================================================
+   УЛУЧШЕНИЯ ДЛЯ MOBILE
+   ============================================================ */
+@media (max-width: 768px) {
+    /* Больше места для контента */
+    .table-container table tr {
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Верхняя карточка пользователя — компактнее */
+    .user-card {
+        padding: 12px;
+    }
+
+    /* Фильтры — нормальный отступ снизу от FAB */
+    .filters-section {
+        margin-bottom: 15px;
+    }
+
+    /* Кнопка «+ Создать» в filters-section не нужна — есть FAB */
+    .filters-section .btn-success {
+        display: none;
+    }
+
+    /* Больше отступ снизу, чтобы FAB не перекрывал контент */
+    #tasksBlock,
+    #otherPagesBlock {
+        padding-bottom: 90px;
+    }
+}

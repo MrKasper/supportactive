@@ -1,19 +1,34 @@
 # app.py
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for, g
 from flask_session import Session
+from flask_wtf.csrf import CSRFError, generate_csrf
 from database import Database
 from datetime import datetime, timedelta
 from werkzeug.utils import secure_filename
 import os
 
-# Подгружаем .env
+# ---------- Загрузка .env ----------
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ENV_PATH = os.path.join(BASE_DIR, '.env')
 try:
     from dotenv import load_dotenv
-    load_dotenv()
+    if os.path.exists(ENV_PATH):
+        load_dotenv(ENV_PATH, override=True)
 except ImportError:
-    print("⚠️  python-dotenv не установлен. pip install python-dotenv")
+    pass
 
-# Импортируем Blueprint
+# ---------- Логирование ----------
+from logger import setup_logging, get_logger
+setup_logging()
+log = get_logger(__name__)
+
+# ---------- Миграции ----------
+from migrations import run_migrations
+
+# ---------- Расширения ----------
+from extensions import csrf, limiter
+
+# ---------- Blueprints ----------
 from login import auth_bp
 from tasks import tasks_bp
 from users import users_bp
@@ -24,13 +39,15 @@ from directory import directory_bp
 from excel import excel_bp
 from notifications import notifications_bp
 from webpush import webpush_bp
+from audit import audit_bp
+from attachments import attachments_bp
+from comments import comments_bp
 
-# ---------- Базовые пути ----------
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
+# ---------- Создание приложения ----------
 app = Flask(__name__)
 
-# Регистрируем Blueprint
+# ---------- Регистрация Blueprint ----------
 app.register_blueprint(auth_bp)
 app.register_blueprint(tasks_bp)
 app.register_blueprint(users_bp)
@@ -41,85 +58,164 @@ app.register_blueprint(directory_bp)
 app.register_blueprint(excel_bp)
 app.register_blueprint(notifications_bp)
 app.register_blueprint(webpush_bp)
+app.register_blueprint(audit_bp)
+app.register_blueprint(attachments_bp)
+app.register_blueprint(comments_bp)
 
-# ---------- Конфигурация безопасности ----------
+
+# ---------- Секретный ключ ----------
 _secret = os.environ.get('SECRET_KEY')
 if not _secret:
     _secret = os.urandom(32).hex()
-    print("=" * 60)
-    print("⚠️  ВНИМАНИЕ: SECRET_KEY не задан в .env!")
-    print("   Сгенерирован временный ключ. При перезапуске или в других")
-    print("   воркерах gunicorn сессии будут инвалидироваться!")
-    print("   Задайте SECRET_KEY в .env и перезапустите сервер.")
-    print("=" * 60)
+    log.warning(
+        '⚠️  SECRET_KEY не задан в .env. Сгенерирован временный ключ. '
+        'При перезапуске сессии сбросятся!'
+    )
 app.secret_key = _secret
 
-# Flask-Session
+
+# ---------- Сессии ----------
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['SESSION_FILE_DIR'] = os.path.join(BASE_DIR, 'flask_session')
 app.config['SESSION_PERMANENT'] = False
 app.config['SESSION_USE_SIGNER'] = True
 app.config['SESSION_KEY_PREFIX'] = 'support_active_'
 app.config['SESSION_FILE_THRESHOLD'] = 500
-
-# Cookie — важно для корректной работы за прокси
 app.config['SESSION_COOKIE_NAME'] = 'support_active_session'
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['SESSION_COOKIE_PATH'] = '/'
-# ⚠️ Secure — только для HTTPS. Для HTTP должно быть False
 app.config['SESSION_COOKIE_SECURE'] = os.environ.get('SESSION_COOKIE_SECURE', 'false').lower() == 'true'
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
 
-# Лимит загрузки
-app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
+# ---------- Лимит размера загрузки ----------
+app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10 МБ
 
-# ---------- Загрузка аватаров ----------
+# ---------- CSRF ----------
+app.config['WTF_CSRF_ENABLED'] = True
+app.config['WTF_CSRF_TIME_LIMIT'] = None
+app.config['WTF_CSRF_HEADERS'] = ['X-CSRFToken', 'X-CSRF-Token']
+csrf.init_app(app)
+
+# ---------- Rate Limiting ----------
+app.config['RATELIMIT_STORAGE_URI'] = 'memory://'
+app.config['RATELIMIT_HEADERS_ENABLED'] = True
+app.config['RATELIMIT_DEFAULT'] = '1000 per hour;200 per minute'
+limiter.init_app(app)
+
+
+# ---------- Папки для загрузок ----------
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'static', 'uploads', 'avatars')
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
-ALLOWED_MIME_PREFIX = 'image/'
+ATTACHMENTS_FOLDER = os.path.join(BASE_DIR, 'static', 'uploads', 'attachments')
+ALLOWED_AVATAR_EXT = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+ALLOWED_ATTACH_EXT = {'png', 'jpg', 'jpeg', 'gif', 'webp',
+                      'pdf', 'doc', 'docx', 'xls', 'xlsx',
+                      'txt', 'zip', 'rar', '7z'}
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(ATTACHMENTS_FOLDER, exist_ok=True)
 
-# ---------- Инициализация сессий ----------
+
+# ---------- Сессии ----------
 os.makedirs(app.config['SESSION_FILE_DIR'], exist_ok=True)
 Session(app)
 
 
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+def allowed_avatar(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_AVATAR_EXT
 
 
-# ---------- Инициализация БД ----------
+def allowed_attachment(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_ATTACH_EXT
+
+
+# ---------- Инициализация БД + миграции ----------
 db = Database()
-db.init_db()
+log.info('Применяем миграции БД...')
+run_migrations(db.db_name)
 
 users_count = db.query('SELECT COUNT(*) as count FROM users', one=True)['count']
 if users_count == 0:
-    print("База данных пуста. Добавление тестовых данных...")
+    log.info('База данных пуста. Добавляем тестовые данные...')
     db.insert_test_data()
 
 
-from utils import login_required
+# ---------- CSRF-токен во все шаблоны ----------
+@app.context_processor
+def inject_csrf_token():
+    return dict(csrf_token=generate_csrf)
 
 
-# ============= ДИАГНОСТИКА (удалить после отладки) =============
-@app.route('/api/_debug/session')
-def debug_session():
-    """Эндпоинт для проверки состояния сессии. Удалить после отладки."""
-    return jsonify({
-        'has_user_id': 'user_id' in session,
-        'user_id': session.get('user_id'),
-        'user_login': session.get('user_login'),
-        'session_cookie_name': app.config['SESSION_COOKIE_NAME'],
-        'session_cookie_secure': app.config['SESSION_COOKIE_SECURE'],
-        'session_cookie_samesite': app.config['SESSION_COOKIE_SAMESITE'],
-        'session_file_dir': app.config['SESSION_FILE_DIR'],
-        'session_dir_exists': os.path.exists(app.config['SESSION_FILE_DIR']),
-        'session_dir_writable': os.access(app.config['SESSION_FILE_DIR'], os.W_OK),
-        'secret_key_set': bool(app.secret_key),
-        'secret_key_from_env': bool(os.environ.get('SECRET_KEY')),
-        'cookies_received': dict(request.cookies)
-    })
+# ---------- Обработчики ошибок ----------
+@app.errorhandler(CSRFError)
+def handle_csrf_error(e):
+    log.warning(f'CSRF-ошибка: {e.description} | IP={request.remote_addr} | path={request.path}')
+    if request.path.startswith('/api/'):
+        return jsonify({'error': 'CSRF-токен отсутствует или недействителен'}), 400
+    return render_template('500.html'), 400
+
+
+@app.errorhandler(404)
+def not_found_error(error):
+    if request.path.startswith('/api/'):
+        return jsonify({'error': 'Ресурс не найден'}), 404
+    return render_template('404.html'), 404
+
+
+@app.errorhandler(413)
+def too_large_error(error):
+    log.warning(f'Файл слишком большой: {request.path} IP={request.remote_addr}')
+    if request.path.startswith('/api/'):
+        return jsonify({'success': False, 'error': 'Файл слишком большой (макс. 10 МБ)'}), 413
+    return jsonify({'error': 'Файл слишком большой'}), 413
+
+
+@app.errorhandler(429)
+def ratelimit_handler(e):
+    log.warning(f'Rate limit: {request.path} IP={request.remote_addr}')
+    if request.path.startswith('/api/'):
+        return jsonify({'error': 'Слишком много запросов. Попробуйте позже.'}), 429
+    return 'Too many requests', 429
+
+
+@app.errorhandler(500)
+def internal_error(error):
+    log.exception(f'Internal server error на {request.path}')
+    if request.path.startswith('/api/'):
+        return jsonify({'error': 'Внутренняя ошибка сервера'}), 500
+    return render_template('500.html'), 500
+
+
+# ---------- Логирование запросов ----------
+@app.before_request
+def log_request_start():
+    g.request_start = datetime.now()
+
+
+@app.after_request
+def log_response(response):
+    if request.path.startswith('/static/'):
+        return response
+    try:
+        duration = (datetime.now() - g.request_start).total_seconds() * 1000
+    except Exception:
+        duration = 0
+
+    level = 'INFO'
+    if response.status_code >= 500:
+        level = 'ERROR'
+    elif response.status_code >= 400:
+        level = 'WARNING'
+
+    log.log(
+        getattr(__import__('logging'), level),
+        f'{request.method} {request.path} -> {response.status_code} '
+        f'({duration:.0f}ms) IP={request.remote_addr}'
+    )
+    return response
+
+
+# ---------- Декоратор авторизации ----------
+from utils import login_required, role_required
 
 
 # ============= МАРШРУТЫ СТРАНИЦ =============
@@ -130,6 +226,8 @@ def index():
         return redirect(url_for('auth.login'))
     return render_template('index.html')
 
+
+# ============= API ТЕКУЩЕГО ПОЛЬЗОВАТЕЛЯ =============
 
 @app.route('/api/current_user')
 @login_required
@@ -147,8 +245,11 @@ def get_current_user():
             'login_time': session.get('login_time')
         })
     except Exception as e:
+        log.exception('Ошибка в get_current_user')
         return jsonify({'error': f'Ошибка получения данных: {str(e)}'}), 500
 
+
+# ============= API ЗАГРУЗКИ АВАТАРА =============
 
 @app.route('/api/upload_avatar', methods=['POST'])
 @login_required
@@ -158,30 +259,34 @@ def upload_avatar():
             return jsonify({'success': False, 'error': 'Файл не найден'}), 400
 
         file = request.files['avatar_file']
-
         if file.filename == '':
             return jsonify({'success': False, 'error': 'Файл не выбран'}), 400
 
-        if not file or not allowed_file(file.filename):
+        if not file or not allowed_avatar(file.filename):
             return jsonify({'success': False, 'error': 'Недопустимый формат файла'}), 400
 
-        if not (file.mimetype or '').startswith(ALLOWED_MIME_PREFIX):
+        if not (file.mimetype or '').startswith('image/'):
             return jsonify({'success': False, 'error': 'Файл не является изображением'}), 400
 
         user_id = session.get('user_id')
         ext = file.filename.rsplit('.', 1)[1].lower()
-        filename = f'user_{user_id}_{datetime.now().strftime("%Y%m%d%H%M%S")}.{ext}'
-        filename = secure_filename(filename)
-
+        filename = secure_filename(f'user_{user_id}_{datetime.now().strftime("%Y%m%d%H%M%S")}.{ext}')
         filepath = os.path.join(UPLOAD_FOLDER, filename)
         file.save(filepath)
 
-        avatar_path = f'static/uploads/avatars/{filename}'
-        return jsonify({'success': True, 'avatar_path': avatar_path})
+        log.info(f'Загружен аватар: {filename} | user_id={user_id}')
+
+        return jsonify({
+            'success': True,
+            'avatar_path': f'static/uploads/avatars/{filename}'
+        })
 
     except Exception as e:
+        log.exception('Ошибка загрузки аватара')
         return jsonify({'success': False, 'error': f'Ошибка загрузки: {str(e)}'}), 500
 
+
+# ============= API КАБИНЕТОВ =============
 
 @app.route('/api/cabinets')
 @login_required
@@ -193,8 +298,9 @@ def get_cabinets():
             WHERE is_active = 1
             ORDER BY cabinet_number
         ''')
-        return jsonify([dict(cabinet) for cabinet in cabinets])
+        return jsonify([dict(c) for c in cabinets])
     except Exception as e:
+        log.exception('Ошибка получения кабинетов')
         return jsonify({'error': f'Ошибка получения кабинетов: {str(e)}'}), 500
 
 
@@ -212,10 +318,13 @@ def search_cabinets():
                 AND (cabinet_number LIKE ? OR description LIKE ? OR floor LIKE ? OR building LIKE ?)
                 ORDER BY cabinet_number
             ''', [f'%{query}%', f'%{query}%', f'%{query}%', f'%{query}%'])
-        return jsonify([dict(cabinet) for cabinet in cabinets])
+        return jsonify([dict(c) for c in cabinets])
     except Exception as e:
+        log.exception('Ошибка поиска кабинетов')
         return jsonify({'error': f'Ошибка поиска кабинетов: {str(e)}'}), 500
 
+
+# ============= API ИСПОЛНИТЕЛЕЙ =============
 
 @app.route('/api/executors')
 @login_required
@@ -228,36 +337,18 @@ def get_executors():
             AND role IN ('Администратор', 'Техник')
             ORDER BY full_name
         ''')
-        return jsonify([dict(executor) for executor in executors])
+        return jsonify([dict(e) for e in executors])
     except Exception as e:
+        log.exception('Ошибка получения исполнителей')
         return jsonify({'error': f'Ошибка получения исполнителей: {str(e)}'}), 500
 
 
-@app.errorhandler(404)
-def not_found_error(error):
-    if request.path.startswith('/api/'):
-        return jsonify({'error': 'Ресурс не найден'}), 404
-    return render_template('404.html'), 404
-
-
-@app.errorhandler(413)
-def too_large_error(error):
-    if request.path.startswith('/api/'):
-        return jsonify({'success': False, 'error': 'Файл слишком большой (макс. 5 МБ)'}), 413
-    return jsonify({'error': 'Файл слишком большой'}), 413
-
-
-@app.errorhandler(500)
-def internal_error(error):
-    if request.path.startswith('/api/'):
-        return jsonify({'error': 'Внутренняя ошибка сервера'}), 500
-    return render_template('500.html'), 500
-
+# ============= ЗАПУСК =============
 
 if __name__ == '__main__':
-    print("=" * 50)
-    print("Support Active System v1.2")
-    print("=" * 50)
-    print("Сервер запущен по адресу: http://localhost:5000")
-    print("=" * 50)
+    log.info('=' * 60)
+    log.info('Support Active System v2.0')
+    log.info('=' * 60)
+    log.info('Сервер запущен по адресу: http://localhost:5000')
+    log.info('=' * 60)
     app.run(debug=True, host='0.0.0.0', port=5000)

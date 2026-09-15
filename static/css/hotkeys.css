@@ -1,0 +1,227 @@
+/* static/css/hotkeys.css */
+/* Стили командной палитры, help-модалки и подсказок */
+
+/* ============================================================
+   КОМАНДНАЯ ПАЛИТРА (Ctrl+K)
+   ============================================================ */
+.hk-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 10000;
+    display: none;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 12vh;
+    backdrop-filter: blur(2px);
+    animation: hkFadeIn 0.15s ease-out;
+}
+.hk-overlay.hk-open {
+    display: flex;
+}
+
+@keyframes hkFadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+.hk-palette {
+    width: 100%;
+    max-width: 640px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+    overflow: hidden;
+    animation: hkSlideDown 0.2s cubic-bezier(.16, .8, .3, 1);
+}
+
+@keyframes hkSlideDown {
+    from { opacity: 0; transform: translateY(-20px) scale(0.98); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.hk-palette-input {
+    width: 100%;
+    border: none;
+    outline: none;
+    padding: 18px 22px;
+    font-size: 1.05rem;
+    background: transparent;
+    color: var(--text-color);
+    border-bottom: 1px solid var(--border-color);
+    font-family: inherit;
+}
+.hk-palette-input::placeholder {
+    color: var(--text-muted);
+}
+
+.hk-palette-results {
+    max-height: 55vh;
+    overflow-y: auto;
+    padding: 6px 0;
+}
+
+.hk-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 18px;
+    cursor: pointer;
+    transition: background-color 0.1s;
+    color: var(--text-color);
+}
+.hk-item:hover,
+.hk-item.hk-active {
+    background: var(--hover-bg);
+}
+.hk-item.hk-active {
+    box-shadow: inset 3px 0 0 #667eea;
+}
+
+.hk-item-icon {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #667eea;
+    font-size: 1.05rem;
+    flex-shrink: 0;
+}
+
+.hk-item-body {
+    flex: 1;
+    min-width: 0;
+}
+.hk-item-title {
+    font-weight: 500;
+    font-size: 0.92rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.hk-item-subtitle {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.hk-item-kbd {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.hk-empty {
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.hk-palette-footer {
+    padding: 8px 18px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    gap: 16px;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    background: var(--bg-color);
+}
+.hk-palette-footer .hk-kbd-hint {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+/* ============================================================
+   КЛАВИШИ (kbd)
+   ============================================================ */
+kbd, .hk-kbd {
+    display: inline-block;
+    padding: 2px 7px;
+    font-size: 0.72rem;
+    font-family: 'SF Mono', Consolas, monospace;
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    color: var(--text-color);
+    box-shadow: 0 1px 0 var(--border-color);
+    min-width: 22px;
+    text-align: center;
+    line-height: 1.4;
+}
+
+/* ============================================================
+   СПРАВКА ПО ГОРЯЧИМ КЛАВИШАМ (?)
+   ============================================================ */
+.hk-help-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 30px;
+    text-align: left;
+    margin-top: 10px;
+}
+.hk-help-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.88rem;
+}
+.hk-help-row:last-child {
+    border-bottom: none;
+}
+.hk-help-label {
+    color: var(--text-color);
+}
+.hk-help-keys {
+    display: flex;
+    gap: 4px;
+}
+
+.hk-help-section-title {
+    grid-column: 1 / -1;
+    font-weight: 700;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #667eea;
+    margin: 10px 0 -4px;
+}
+
+@media (max-width: 640px) {
+    .hk-help-grid {
+        grid-template-columns: 1fr;
+    }
+    .hk-palette {
+        max-width: 95%;
+    }
+    .hk-item {
+        padding: 10px 12px;
+    }
+    .hk-palette-input {
+        padding: 14px 16px;
+        font-size: 1rem;
+    }
+}
+
+/* Тёмная тема */
+[data-theme="dark"] .hk-palette {
+    background: #26262e;
+    border-color: #383842;
+}
+[data-theme="dark"] kbd,
+[data-theme="dark"] .hk-kbd {
+    background: #1c1c22;
+    border-color: #383842;
+    color: #d0d0d8;
+    box-shadow: 0 1px 0 #383842;
+}
+[data-theme="dark"] .hk-item.hk-active {
+    box-shadow: inset 3px 0 0 #8b9bff;
+}
