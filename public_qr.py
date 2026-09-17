@@ -2,11 +2,11 @@
 """
 Публичные страницы для QR-кодов.
 Без авторизации — показывают только базовую информацию об устройстве.
-Без notes, без внутренних полей, без пользователей.
 """
-from flask import Blueprint, jsonify, render_template
+from flask import Blueprint, render_template
 from database import Database
 from logger import get_logger
+import json
 
 log = get_logger(__name__)
 public_qr_bp = Blueprint('public_qr', __name__)
@@ -18,8 +18,7 @@ def public_pc_card(pc_id):
     """
     Публичная карточка ПК.
     Показывает: название, IP, ОЗУ, диски, ПО, статус, кабинет.
-    НЕ показывает: notes, инвентарный номер (опционально — можно оставить),
-                   пользователей, время последнего пинга.
+    НЕ показывает: notes, служебные поля.
     """
     try:
         pc = db.query('''
@@ -34,17 +33,14 @@ def public_pc_card(pc_id):
         if not pc:
             return render_template('qr/not_found.html'), 404
 
-        # Декодируем JSON-поля
-        import json
         d = dict(pc)
-
         for field in ('ram', 'storage', 'software'):
             try:
                 d[field] = json.loads(d.get(field) or '[]')
             except Exception:
                 d[field] = []
 
-        # Убираем служебные поля
+        # Убираем служебные/приватные поля
         d.pop('notes', None)
         d.pop('last_ping_at', None)
         d.pop('last_ping_status', None)

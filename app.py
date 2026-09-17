@@ -273,6 +273,9 @@ def _register_blueprints(app):
     from comments import comments_bp
     from dashboard import dashboard_bp
 
+    # ⚠️ Публичные страницы для QR
+    from public_qr import public_qr_bp
+
     # Оборудование кабинета
     from equipment_core import bp as equipment_core_bp
     from equipment_network import bp as equipment_network_bp
