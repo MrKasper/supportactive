@@ -1,40 +1,62 @@
 # services/files.py
 """
-Сервис работы с файлами: сохранение, поиск, удаление.
-Проверка magic bytes — содержимое важнее расширения.
+Сервис работы с файлами: сохранение, поиск, удаление, проверка magic bytes.
+Проверка содержимого реализована через puremagic (pure-Python, без libmagic),
+поэтому работает одинаково на Windows, Linux и macOS.
+
+Возможности:
+  • Валидация расширения по белому списку
+  • Проверка magic bytes — содержимое должно соответствовать расширению
+  • Ограничение по размеру
+  • Безопасное сохранение с UUID-именем
+  • Поиск файла среди нескольких папок (включая legacy-пути)
+  • Безопасное удаление
 """
 import os
 import uuid
+
 from werkzeug.utils import secure_filename
 
 from logger import get_logger
 
 log = get_logger(__name__)
 
-# Опциональный python-magic
+
+# ============================================================
+# ОПЦИОНАЛЬНАЯ ПРОВЕРКА СОДЕРЖИМОГО
+# ============================================================
 try:
-    import magic
-    HAS_MAGIC = True
+    import puremagic
+    HAS_PUREMAGIC = True
 except ImportError:
-    HAS_MAGIC = False
+    HAS_PUREMAGIC = False
     log.warning(
-        'python-magic не установлен — проверка содержимого файлов отключена. '
-        'Установите: pip install python-magic (Linux/Mac) '
-        'или python-magic-bin (Windows)'
+        'puremagic не установлен — проверка содержимого файлов отключена. '
+        'Установите: pip install puremagic==1.28'
     )
 
 
 # ============================================================
-# Соответствие расширений ожидаемым MIME
+# Соответствие расширений ожидаемым MIME-типам
 # ============================================================
 _EXPECTED_MIMES = {
+    # Документы
     'pdf':  {'application/pdf'},
     'doc':  {'application/msword'},
-    'docx': {'application/vnd.openxmlformats-officedocument.wordprocessingml.document'},
+    'docx': {
+        'application/vnd.openxmlformats-officedocument'
+        '.wordprocessingml.document',
+    },
     'xls':  {'application/vnd.ms-excel'},
-    'xlsx': {'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'},
+    'xlsx': {
+        'application/vnd.openxmlformats-officedocument'
+        '.spreadsheetml.sheet',
+    },
     'ppt':  {'application/vnd.ms-powerpoint'},
-    'pptx': {'application/vnd.openxmlformats-officedocument.presentationml.presentation'},
+    'pptx': {
+        'application/vnd.openxmlformats-officedocument'
+        '.presentationml.presentation',
+    },
     'txt':  {'text/plain'},
     'csv':  {'text/csv', 'text/plain'},
     'log':  {'text/plain'},
@@ -43,6 +65,7 @@ _EXPECTED_MIMES = {
     'xml':  {'application/xml', 'text/xml', 'text/plain'},
     'rtf':  {'application/rtf', 'text/rtf'},
 
+    # Изображения
     'png':  {'image/png'},
     'jpg':  {'image/jpeg'},
     'jpeg': {'image/jpeg'},
@@ -51,6 +74,7 @@ _EXPECTED_MIMES = {
     'bmp':  {'image/bmp', 'image/x-ms-bmp'},
     'svg':  {'image/svg+xml', 'text/plain'},
 
+    # Архивы
     'zip':  {'application/zip', 'application/x-zip-compressed'},
     'rar':  {'application/x-rar-compressed', 'application/vnd.rar'},
     '7z':   {'application/x-7z-compressed'},
@@ -64,22 +88,34 @@ _EXPECTED_MIMES = {
 # ============================================================
 
 def validate_extension(filename, allowed_ext):
-    """Проверяет расширение. Возвращает (ok, ext | None)."""
+    """
+    Проверяет расширение файла по белому списку.
+
+    Возвращает:
+        (ok: bool, ext: str | None)
+    """
     if not filename or '.' not in filename:
         return False, None
+
     ext = filename.rsplit('.', 1)[1].lower()
     return (ext in allowed_ext), ext
 
 
 def _verify_magic_bytes(file, ext):
     """
-    Читает первые 2 КБ файла и определяет реальный MIME.
-    Возвращает (ok: bool, real_mime: str | None, error: str | None).
-    Не изменяет позицию указателя в конце — файл сбрасывается в начало.
-    """
-    if not HAS_MAGIC:
-        return True, None, None  # проверка недоступна
+    Читает первые 2 КБ файла и определяет реальный MIME-тип через puremagic.
+    Сравнивает с ожидаемым для указанного расширения.
 
+    Возвращает:
+        (ok: bool, real_mime: str | None, error: str | None)
+
+    Позиция файлового указателя восстанавливается в начало.
+    При отсутствии puremagic — возвращает (True, None, None).
+    """
+    if not HAS_PUREMAGIC:
+        return True, None, None
+
+    # Читаем шапку файла
     try:
         file.seek(0)
         head = file.read(2048)
@@ -90,22 +126,47 @@ def _verify_magic_bytes(file, ext):
     if not head:
         return False, None, 'Файл пуст'
 
+    # Определяем MIME через puremagic
     try:
-        real_mime = magic.from_buffer(head, mime=True)
+        matches = puremagic.magic_string(head)
     except Exception as e:
-        log.warning(f'magic.from_buffer error: {e}')
-        return True, None, None  # не блокируем, если magic сломался
+        log.warning(f'puremagic.magic_string error: {e}')
+        # Не блокируем загрузку при сбое определения
+        return True, None, None
 
+    if not matches:
+        # puremagic не распознал формат — пропускаем
+        return True, None, None
+
+    # Берём первое совпадение с непустым MIME
+    real_mime = None
+    for m in matches:
+        mime = getattr(m, 'mime_type', None)
+        if mime:
+            real_mime = mime
+            break
+
+    if not real_mime:
+        return True, None, None
+
+    # Проверяем соответствие
     expected = _EXPECTED_MIMES.get(ext)
     if not expected:
         # Не знаем ожидаемый MIME — пропускаем
         return True, real_mime, None
 
-    # Разрешаем text/plain как fallback для текстовых форматов
-    if real_mime in expected:
+    # Нормализуем: убираем параметры (например, "; charset=utf-8")
+    real_mime_norm = real_mime.split(';')[0].strip().lower()
+
+    if real_mime_norm in expected:
         return True, real_mime, None
 
-    # Иначе — несоответствие
+    # Разрешаем любые text/* для .txt, .csv, .md, .log, .json, .xml
+    # (кодировки бывают разными: text/x-python, text/x-c и т.п.)
+    if 'text/plain' in expected and real_mime_norm.startswith('text/'):
+        return True, real_mime, None
+
+    # Несоответствие
     return False, real_mime, (
         f'Содержимое файла не соответствует расширению .{ext} '
         f'(определено: {real_mime})'
@@ -119,8 +180,25 @@ def _verify_magic_bytes(file, ext):
 def save_upload(file, target_folder, allowed_ext, max_size_bytes):
     """
     Сохраняет загруженный файл с проверкой magic bytes.
-    Возвращает dict с полями:
-      ok, error, original_name, unique_name, rel_path, abs_path, size, mime
+
+    Параметры:
+        file            — объект из request.files[...]
+        target_folder   — абсолютный путь к папке назначения
+        allowed_ext     — set разрешённых расширений (без точки)
+        max_size_bytes  — максимальный размер в байтах
+
+    Возвращает dict:
+        {
+          ok:            bool,
+          error:         str | None,
+          original_name: str,
+          unique_name:   str,
+          rel_path:      str,        # имя внутри target_folder
+          abs_path:      str,
+          size:          int,
+          mime:          str,
+          real_mime:     str | None, # определённый puremagic
+        }
     """
     result = {
         'ok': False,
@@ -134,10 +212,12 @@ def save_upload(file, target_folder, allowed_ext, max_size_bytes):
         'real_mime': None,
     }
 
+    # ---------- Проверка наличия файла ----------
     if not file or not file.filename:
         result['error'] = 'Файл не выбран'
         return result
 
+    # ---------- Проверка расширения ----------
     ok, ext = validate_extension(file.filename, allowed_ext)
     if not ok:
         result['error'] = (
@@ -146,17 +226,25 @@ def save_upload(file, target_folder, allowed_ext, max_size_bytes):
         )
         return result
 
-    # Размер
-    file.seek(0, os.SEEK_END)
-    size = file.tell()
-    file.seek(0)
+    # ---------- Проверка размера ----------
+    try:
+        file.seek(0, os.SEEK_END)
+        size = file.tell()
+        file.seek(0)
+    except Exception as e:
+        result['error'] = f'Не удалось определить размер файла: {e}'
+        return result
+
+    if size == 0:
+        result['error'] = 'Файл пуст'
+        return result
 
     if size > max_size_bytes:
         mb = max_size_bytes // 1024 // 1024
         result['error'] = f'Файл слишком большой (макс. {mb} МБ)'
         return result
 
-    # Проверка содержимого
+    # ---------- Проверка содержимого (magic bytes) ----------
     ok, real_mime, err = _verify_magic_bytes(file, ext)
     if not ok:
         log.warning(
@@ -168,15 +256,27 @@ def save_upload(file, target_folder, allowed_ext, max_size_bytes):
 
     result['real_mime'] = real_mime
 
-    # Сохранение
+    # ---------- Сохранение ----------
     original_name = file.filename
     unique_name = secure_filename(f'{uuid.uuid4().hex}.{ext}')
     if not unique_name:
+        # Если secure_filename вернул пусто (крайне редко)
         unique_name = f'{uuid.uuid4().hex}.{ext}'
 
+    try:
+        os.makedirs(target_folder, exist_ok=True)
+    except OSError as e:
+        result['error'] = f'Не удалось создать папку: {e}'
+        return result
+
     abs_path = os.path.join(target_folder, unique_name)
-    os.makedirs(target_folder, exist_ok=True)
-    file.save(abs_path)
+
+    try:
+        file.save(abs_path)
+    except Exception as e:
+        log.exception(f'Ошибка сохранения файла {abs_path}')
+        result['error'] = f'Не удалось сохранить файл: {e}'
+        return result
 
     result.update({
         'ok': True,
@@ -195,16 +295,32 @@ def save_upload(file, target_folder, allowed_ext, max_size_bytes):
 # ============================================================
 
 def resolve_file_path(stored_path, search_folders):
-    """Ищет реальный путь к файлу."""
+    """
+    Ищет реальный путь к файлу среди возможных папок.
+
+    Нужен из-за legacy-записей в БД: раньше файлы лежали в других местах
+    (например, static/uploads/attachments), теперь — в private_uploads/.
+
+    Параметры:
+        stored_path     — то, что хранится в БД (относительный путь или basename)
+        search_folders  — список папок для поиска
+
+    Возвращает:
+        abs_path: str | None
+    """
     if not stored_path:
         return None
 
-    stored_path = stored_path.strip()
+    stored_path = str(stored_path).strip()
     basename = os.path.basename(stored_path)
 
     candidates = []
     for folder in search_folders:
+        if not folder:
+            continue
+        # Полный относительный путь
         candidates.append(os.path.join(folder, stored_path))
+        # Только имя файла (на случай вложенных путей)
         candidates.append(os.path.join(folder, basename))
 
     for c in candidates:
@@ -214,14 +330,41 @@ def resolve_file_path(stored_path, search_folders):
 
 
 def delete_file_safe(path):
-    """Удаляет файл, если он существует."""
+    """
+    Удаляет файл, если он существует.
+    Никогда не бросает исключение — только возвращает True/False.
+    """
     if not path:
         return False
+
     if not os.path.exists(path):
-        return True
+        return True  # уже нет — считаем успехом
+
     try:
         os.remove(path)
         return True
     except Exception as e:
         log.warning(f'Не удалось удалить файл {path}: {e}')
         return False
+
+
+# ============================================================
+# ХЕЛПЕР: человекочитаемый размер
+# ============================================================
+
+def human_size(bytes_count):
+    """Возвращает размер в читаемом виде: '1.2 МБ'."""
+    if not bytes_count:
+        return '0 Б'
+
+    k = 1024
+    sizes = ['Б', 'КБ', 'МБ', 'ГБ', 'ТБ']
+    i = 0
+    val = float(bytes_count)
+    while val >= k and i < len(sizes) - 1:
+        val /= k
+        i += 1
+
+    if i == 0:
+        return f'{int(val)} {sizes[i]}'
+    return f'{val:.1f} {sizes[i]}'
