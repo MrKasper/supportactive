@@ -1,5 +1,4 @@
 // static/js/contacts.js
-// Внешние контакты
 
 (function() {
     'use strict';
@@ -42,16 +41,15 @@
                 html += '<div class="card-body"><div class="table-responsive">';
                 html += '<table class="table table-striped table-hover">';
                 html += '<thead><tr>';
-                html += '<th>ID</th><th>Категория</th><th>Организация</th><th>Сотрудник</th>';
+                html += '<th>Категория</th><th>Организация</th><th>Сотрудник</th>';
                 html += '<th>Должность</th><th>Телефон</th><th>Почта</th><th>Примечание</th><th>Действия</th>';
                 html += '</tr></thead><tbody>';
 
                 if (contacts.length === 0) {
-                    html += '<tr><td colspan="9" class="text-center">Нет контактов</td></tr>';
+                    html += '<tr><td colspan="8" class="text-center">Нет контактов</td></tr>';
                 } else {
                     contacts.forEach(function(c) {
                         html += '<tr>';
-                        html += '<td>' + c.id + '</td>';
                         html += '<td>' + utils.escapeHtml(c.category || '-') + '</td>';
                         html += '<td><strong>' + utils.escapeHtml(c.company_name || '-') + '</strong></td>';
                         html += '<td>' + utils.escapeHtml(c.contact_person || '-') + '</td>';
@@ -218,5 +216,5 @@
     window.editContact = editContact;
     window.deleteContact = deleteContact;
 
-    console.log('[contacts] Загружено');
+    console.log('[contacts] Загружено (без ID)');
 })();

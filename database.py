@@ -1,7 +1,7 @@
 # database.py
 import sqlite3
 import os
-from datetime import datetime, timedelta
+from contextlib import contextmanager
 
 
 class Database:
@@ -14,12 +14,10 @@ class Database:
         self.db_name = db_name
 
     def init_db(self):
-        """Устаревшая инициализация — теперь всё делают миграции."""
         from migrations import run_migrations
         run_migrations(self.db_name)
 
     def insert_test_data(self):
-        """Вставка тестовых данных (если БД пустая)."""
         from passwords import hash_password
 
         conn = sqlite3.connect(self.db_name)
@@ -53,56 +51,37 @@ class Database:
                  'volkov', hash_password('volkov123'), 1)
             ]
             cursor.executemany('''INSERT INTO users 
-                                (full_name, role, avatar, email, phone, department, login, password, is_active) 
-                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''', users)
+                (full_name, role, avatar, email, phone, department, login, password, is_active) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''', users)
 
             cabinets = [
                 ('Кабинет 101', '1 этаж', 'Корпус А', 'Приемная', 'Иванов И.И.', '+7-999-101-10-10', 1),
                 ('Кабинет 102', '1 этаж', 'Корпус А', 'Отдел продаж', 'Козлова А.С.', '+7-999-102-20-20', 1),
-                ('Кабинет 103', '1 этаж', 'Корпус А', 'Бухгалтерия', '', '+7-999-103-30-30', 1),
                 ('Кабинет 201', '2 этаж', 'Корпус А', 'Отдел разработки', 'Петров П.П.', '+7-999-201-10-10', 1),
-                ('Кабинет 202', '2 этаж', 'Корпус А', 'Отдел тестирования', 'Сидоров С.С.', '+7-999-202-20-20', 1),
-                ('Кабинет 203', '2 этаж', 'Корпус А', 'Серверная', 'Морозов Д.А.', '+7-999-203-30-30', 1),
                 ('Кабинет 204', '2 этаж', 'Корпус А', 'IT отдел', 'Иванов И.И.', '+7-999-204-40-40', 1),
-                ('Кабинет 205', '2 этаж', 'Корпус А', 'Переговорная', '', '+7-999-205-50-50', 1),
                 ('Кабинет 301', '3 этаж', 'Корпус А', 'Кабинет директора', 'Иванов И.И.', '+7-999-301-10-10', 1),
-                ('Кабинет 302', '3 этаж', 'Корпус А', 'Конференц-зал', '', '+7-999-302-20-20', 1),
-                ('Кабинет 303', '3 этаж', 'Корпус А', 'Архив', '', '+7-999-303-30-30', 1),
-                ('Кабинет 304', '3 этаж', 'Корпус А', 'Отдел кадров', 'Соколова М.И.', '+7-999-304-40-40', 1),
-                ('Кабинет 305', '3 этаж', 'Корпус А', 'Учебный класс', 'Волков А.Н.', '+7-999-305-50-50', 1),
                 ('Кабинет 401', '4 этаж', 'Корпус Б', 'Склад', '', '+7-999-401-10-10', 1),
-                ('Кабинет 402', '4 этаж', 'Корпус Б', 'Технический отдел', 'Петров П.П.', '+7-999-402-20-20', 1),
-                ('Кабинет 403', '4 этаж', 'Корпус Б', 'Лаборатория', 'Морозов Д.А.', '+7-999-403-30-30', 1),
-                ('Кабинет 404', '4 этаж', 'Корпус Б', 'Отдел закупок', '', '+7-999-404-40-40', 1),
-                ('Кабинет 405', '4 этаж', 'Корпус Б', 'Резервный кабинет', '', '+7-999-405-50-50', 1),
-                ('Кабинет 501', '5 этаж', 'Корпус Б', 'Столовая', '', '+7-999-501-10-10', 1),
-                ('Кабинет 502', '5 этаж', 'Корпус Б', 'Комната отдыха', '', '+7-999-502-20-20', 1)
             ]
             cursor.executemany('''INSERT INTO cabinets 
-                                (cabinet_number, floor, building, description, responsible_person, phone, is_active) 
-                                VALUES (?, ?, ?, ?, ?, ?, ?)''', cabinets)
+                (cabinet_number, floor, building, description, responsible_person, phone, is_active) 
+                VALUES (?, ?, ?, ?, ?, ?, ?)''', cabinets)
 
             problem_types = [
                 ('Не включается компьютер', 'Компьютер не реагирует на кнопку включения', 1),
                 ('Нет интернета', 'Отсутствует подключение к сети Интернет', 1),
                 ('Не работает принтер', 'Принтер не печатает, выдает ошибку', 1),
                 ('Зависает программа', 'Программа не отвечает, зависает', 1),
-                ('Нет доступа к сетевой папке', 'Отсутствует доступ к общим ресурсам', 1),
                 ('Вирус', 'Подозрение на заражение вирусом', 1),
                 ('Медленная работа', 'Компьютер работает медленно', 1),
-                ('Не устанавливается ПО', 'Ошибка при установке программного обеспечения', 1),
                 ('Ремонт оборудования', 'Ремонт компьютерной техники', 1),
                 ('Установка ПО', 'Установка приложений', 1),
                 ('Настройка ПО', 'Настройка приложений', 1),
                 ('Замена картриджа', 'Замена картриджа', 1),
-                ('Замена устройства', 'Замена устройства', 1),
-                ('Проведение мероприятия', 'Проведение мероприятия', 1),
                 ('Консультация', 'Консультация', 1),
                 ('Диагностика', 'Диагностика', 1),
-                ('Настройка оборудования', 'Настройка оборудования', 1)
             ]
             cursor.executemany(
-                '''INSERT INTO problem_types (name, description, is_active) VALUES (?, ?, ?)''',
+                'INSERT INTO problem_types (name, description, is_active) VALUES (?, ?, ?)',
                 problem_types)
 
             print("Тестовые данные успешно добавлены")
@@ -130,15 +109,61 @@ class Database:
         conn.close()
         return last_id
 
+    # ============================================================
+    # 🆕 ТРАНЗАКЦИИ
+    # ============================================================
+
+    @contextmanager
+    def transaction(self, immediate=False):
+        """
+        Контекстный менеджер для атомарных операций.
+
+        Использование:
+            with db.transaction() as tx:
+                task_id = tx.execute('INSERT INTO tasks ...', [...])
+                tx.execute('INSERT INTO task_history ...', [...])
+                # при выходе — commit
+                # при исключении — rollback
+
+        Параметр immediate=True использует BEGIN IMMEDIATE для
+        блокировки БД при записи (защита от race condition).
+        """
+        conn = sqlite3.connect(self.db_name)
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+        try:
+            cur.execute('BEGIN IMMEDIATE' if immediate else 'BEGIN')
+
+            class TransactionWrapper:
+                def __init__(self, cursor):
+                    self._cur = cursor
+
+                def execute(self, sql, params=()):
+                    self._cur.execute(sql, params)
+                    return self._cur.lastrowid
+
+                def query(self, sql, params=(), one=False):
+                    self._cur.execute(sql, params)
+                    rows = self._cur.fetchall()
+                    return (rows[0] if rows else None) if one else rows
+
+                def query_all(self, sql, params=()):
+                    self._cur.execute(sql, params)
+                    return self._cur.fetchall()
+
+            yield TransactionWrapper(cur)
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+
 
 if __name__ == '__main__':
     db = Database()
     db.init_db()
-
     tables = db.query("SELECT name FROM sqlite_master WHERE type='table'")
-    print(f"\nСуществующие таблицы в базе данных:")
-    for table in tables:
-        print(f"  - {table['name']}")
-
-    users_count = db.query('SELECT COUNT(*) as count FROM users', one=True)['count']
-    print(f"\nПользователей в базе: {users_count}")
+    print(f"\nТаблицы:")
+    for t in tables:
+        print(f"  - {t['name']}")

@@ -10,16 +10,18 @@
     }
 
     var api = window.App.register('Hotkeys');
-    var state = window.App.state;
+    var utils = window.App.utils;
 
-    // ============= КОМАНДЫ =============
     var commands = [];
     var selectedIndex = 0;
     var filteredCommands = [];
+    var pendingG = false;
+    var pendingGTimer = null;
 
-    // ---------- Регистрация команд ----------
+    // ============================================================
+    // РЕГИСТРАЦИЯ КОМАНД
+    // ============================================================
     function registerCommand(cmd) {
-        // cmd: { id, title, subtitle, icon, keys, action, when }
         commands.push(cmd);
     }
 
@@ -63,7 +65,7 @@
             action: function() { window.loadPage('directory'); }
         });
         registerCommand({
-            id: 'nav.cabinets', title: 'Управление кабинетами', subtitle: 'Справочник кабинетов',
+            id: 'nav.cabinets', title: 'Управление кабинетами', subtitle: 'Оборудование кабинетов',
             icon: 'bi-door-closed',
             when: function() { return window.currentUserRole !== 'Пользователь'; },
             action: function() { window.loadPage('cabinets-manage'); }
@@ -85,7 +87,6 @@
         registerCommand({
             id: 'action.newTask', title: 'Создать заявку', subtitle: 'Открыть форму новой заявки',
             icon: 'bi-plus-circle', keys: ['N'],
-            when: function() { return window.currentUserRole !== 'Пользователь' || true; },
             action: function() {
                 if (typeof showCreateTaskModal === 'function') showCreateTaskModal();
             }
@@ -133,7 +134,9 @@
         });
     }
 
-    // ============= КОМАНДНАЯ ПАЛИТРА =============
+    // ============================================================
+    // КОМАНДНАЯ ПАЛИТРА
+    // ============================================================
     function openPalette() {
         buildCommands();
         selectedIndex = 0;
@@ -141,8 +144,6 @@
 
         var overlay = document.getElementById('hkOverlay');
         var input = document.getElementById('hkInput');
-        var results = document.getElementById('hkResults');
-
         if (!overlay) return;
 
         input.value = '';
@@ -195,9 +196,9 @@
             html += '<div class="hk-item' + isActive + '" data-index="' + idx + '" data-cmd-id="' + cmd.id + '">';
             html += '<div class="hk-item-icon"><i class="bi ' + cmd.icon + '"></i></div>';
             html += '<div class="hk-item-body">';
-            html += '<div class="hk-item-title">' + escapeHtml(cmd.title) + '</div>';
+            html += '<div class="hk-item-title">' + utils.escapeHtml(cmd.title) + '</div>';
             if (cmd.subtitle) {
-                html += '<div class="hk-item-subtitle">' + escapeHtml(cmd.subtitle) + '</div>';
+                html += '<div class="hk-item-subtitle">' + utils.escapeHtml(cmd.subtitle) + '</div>';
             }
             html += '</div>';
             html += keysHtml;
@@ -206,7 +207,6 @@
 
         results.innerHTML = html;
 
-        // Клик по элементу
         results.querySelectorAll('.hk-item').forEach(function(el) {
             el.addEventListener('click', function() {
                 var idx = parseInt(el.getAttribute('data-index'), 10);
@@ -224,7 +224,6 @@
         items.forEach(function(el, idx) {
             el.classList.toggle('hk-active', idx === selectedIndex);
         });
-        // Прокрутка к активному
         var active = document.querySelector('#hkResults .hk-item.hk-active');
         if (active) active.scrollIntoView({ block: 'nearest' });
     }
@@ -243,7 +242,9 @@
         }, 50);
     }
 
-    // ============= ПОМОЩЬ =============
+    // ============================================================
+    // ПОМОЩЬ
+    // ============================================================
     function showHelp() {
         var html =
             '<div class="hk-help-grid">' +
@@ -277,31 +278,24 @@
     function helpRow(label, keys) {
         var keysHtml = keys.map(function(k) { return '<kbd>' + k + '</kbd>'; }).join('');
         return '<div class="hk-help-row">' +
-            '<span class="hk-help-label">' + escapeHtml(label) + '</span>' +
+            '<span class="hk-help-label">' + utils.escapeHtml(label) + '</span>' +
             '<span class="hk-help-keys">' + keysHtml + '</span>' +
             '</div>';
     }
 
-    // ============= УТИЛИТЫ =============
-    function escapeHtml(s) {
-        if (s === null || s === undefined) return '';
-        var d = document.createElement('div');
-        d.appendChild(document.createTextNode(String(s)));
-        return d.innerHTML;
-    }
-
+    // ============================================================
+    // УТИЛИТЫ
+    // ============================================================
     function focusSearch() {
         var $input = $('#taskSearchInput');
         if ($input.length && $input.is(':visible')) {
             $input.focus().select();
         } else {
-            // Если мы не на странице задач — сначала переходим
             window.loadPage('tasks');
             setTimeout(function() { $('#taskSearchInput').focus(); }, 200);
         }
     }
 
-    // ============= ПРОВЕРКИ КОНТЕКСТА =============
     function isTypingTarget(el) {
         if (!el) return false;
         var tag = (el.tagName || '').toLowerCase();
@@ -320,13 +314,10 @@
         return overlay && overlay.classList.contains('hk-open');
     }
 
-    // ============= ОБРАБОТЧИК КЛАВИШ =============
-    // Стек для G-команд (например, G затем T)
-    var pendingG = false;
-    var pendingGTimer = null;
-
+    // ============================================================
+    // ОБРАБОТЧИК КЛАВИШ
+    // ============================================================
     function onKeyDown(e) {
-        // --- Командная палитра ---
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
             e.preventDefault();
             if (isPaletteOpen()) closePalette();
@@ -334,7 +325,6 @@
             return;
         }
 
-        // --- Внутри палитры ---
         if (isPaletteOpen()) {
             if (e.key === 'Escape') {
                 e.preventDefault();
@@ -358,32 +348,22 @@
             return;
         }
 
-        // --- Ctrl+Q — выход ---
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'q') {
             e.preventDefault();
             if (typeof changeUser === 'function') changeUser();
             return;
         }
 
-        // --- Не срабатываем при вводе текста ---
         if (isTypingTarget(e.target)) {
-            // Только Esc внутри input
-            if (e.key === 'Escape') {
-                e.target.blur();
-            }
+            if (e.key === 'Escape') e.target.blur();
             return;
         }
 
-        // --- Модалки открыты — только Esc ---
-        if (isModalOpen()) {
-            return;
-        }
+        if (isModalOpen()) return;
 
-        // --- Обычные клавиши ---
         var key = e.key;
         var lower = key.toLowerCase();
 
-        // G + next
         if (pendingG) {
             pendingG = false;
             if (pendingGTimer) clearTimeout(pendingGTimer);
@@ -447,7 +427,9 @@
         }
     }
 
-    // ============= HTML ПАЛИТРЫ =============
+    // ============================================================
+    // HTML ПАЛИТРЫ
+    // ============================================================
     function buildPaletteHtml() {
         if (document.getElementById('hkOverlay')) return;
 
@@ -467,19 +449,19 @@
 
         document.body.insertAdjacentHTML('beforeend', html);
 
-        // Обработчики внутри палитры
         var input = document.getElementById('hkInput');
         input.addEventListener('input', function() {
             filterCommands(this.value);
         });
 
-        // Клик по оверлею — закрыть
         document.getElementById('hkOverlay').addEventListener('click', function(e) {
             if (e.target === this) closePalette();
         });
     }
 
-    // ============= ИНИЦИАЛИЗАЦИЯ =============
+    // ============================================================
+    // ИНИЦИАЛИЗАЦИЯ
+    // ============================================================
     function init() {
         buildPaletteHtml();
         buildCommands();
@@ -487,7 +469,9 @@
         console.log('[hotkeys] Горячие клавиши активированы. Нажмите ? для справки.');
     }
 
-    // ============= ЭКСПОРТ =============
+    // ============================================================
+    // ЭКСПОРТ
+    // ============================================================
     api.init = init;
     api.openPalette = openPalette;
     api.closePalette = closePalette;

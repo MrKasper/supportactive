@@ -35,17 +35,17 @@
 
                 html += buildTable(
                     'Кабинеты', 'cabinet', 'bi bi-door-open',
-                    ['ID', 'Номер кабинета', 'Этаж', 'Корпус', 'Описание', 'Статус'],
+                    ['Номер кабинета', 'Этаж', 'Корпус', 'Описание', 'Статус'],
                     cabinets,
-                    ['id', 'cabinet_number', 'floor', 'building', 'description'],
+                    ['cabinet_number', 'floor', 'building', 'description'],
                     'cabinets'
                 );
 
                 html += buildTable(
                     'Типы проблем', 'problem-type', 'bi bi-exclamation-triangle',
-                    ['ID', 'Название', 'Описание', 'Статус'],
+                    ['Название', 'Описание', 'Статус'],
                     problemTypes,
-                    ['id', 'name', 'description'],
+                    ['name', 'description'],
                     'problem-types'
                 );
 
@@ -87,7 +87,6 @@
                 fields.forEach(function(field) {
                     html += '<td>' + utils.escapeHtml(item[field] !== null && item[field] !== undefined ? item[field] : '-') + '</td>';
                 });
-                // Статус
                 if (!fields.includes('is_active') && item.is_active !== undefined) {
                     html += '<td>' +
                         (item.is_active
@@ -280,5 +279,5 @@
     window.showEditDirectoryItem = showEditDirectoryItem;
     window.deleteDirectoryItem = deleteDirectoryItem;
 
-    console.log('[directory] Загружено');
+    console.log('[directory] Загружено (без ID)');
 })();

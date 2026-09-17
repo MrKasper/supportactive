@@ -18,20 +18,12 @@ db = Database()
 def create_notification(user_id, task_id, title, message, notification_type):
     """
     Создание уведомления с группировкой по заявке.
-
-    Логика:
-      • Если у пользователя уже есть НЕПРОЧИТАННОЕ уведомление
-        по этой заявке — обновляем его:
-          - title / message → последнее событие
-          - created_date → текущее время
-          - count += 1
-          - notification_type → последний тип (для иконки)
-      • Иначе — создаём новое.
+    Если есть непрочитанное уведомление по этой заявке у этого пользователя —
+    обновляем его (count++, новое сообщение, новое время).
     """
     try:
         now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-        # Ищем существующее непрочитанное уведомление по этой заявке
         existing = None
         if task_id:
             existing = db.query('''
@@ -40,8 +32,6 @@ def create_notification(user_id, task_id, title, message, notification_type):
                 ORDER BY id DESC LIMIT 1
             ''', [user_id, task_id], one=True)
         else:
-            # Для уведомлений без task_id (например, системных)
-            # группируем по типу
             existing = db.query('''
                 SELECT id, count FROM notifications
                 WHERE user_id = ? AND (task_id IS NULL OR task_id = 0)
@@ -50,47 +40,39 @@ def create_notification(user_id, task_id, title, message, notification_type):
             ''', [user_id, notification_type], one=True)
 
         if existing:
-            # Обновляем существующее
             current_count = existing['count'] or 1
             db.execute('''
                 UPDATE notifications
-                SET title = ?,
-                    message = ?,
-                    notification_type = ?,
-                    count = ?,
-                    created_date = ?
+                SET title = ?, message = ?, notification_type = ?,
+                    count = ?, created_date = ?
                 WHERE id = ?
-            ''', [title, message, notification_type, current_count + 1, now, existing['id']])
-            log.debug(f'Обновлено уведомление #{existing["id"]} (×{current_count + 1}) для user_id={user_id}')
+            ''', [title, message, notification_type,
+                  current_count + 1, now, existing['id']])
         else:
-            # Создаём новое
             db.execute('''
                 INSERT INTO notifications
                     (user_id, task_id, title, message, notification_type,
                      is_read, count, created_date)
                 VALUES (?, ?, ?, ?, ?, 0, 1, ?)
             ''', [user_id, task_id, title, message, notification_type, now])
-            log.debug(f'Создано новое уведомление для user_id={user_id}, task_id={task_id}')
 
         # Web Push
         try:
             from webpush import send_web_push
             url = f'/?task={task_id}' if task_id else '/'
-            send_web_push(user_id, title, message, url=url,
-                          tag=f'task-{task_id}')  # Один tag на заявку → обновляет на телефоне
+            send_web_push(user_id, title, message, url=url, tag=f'task-{task_id}')
         except Exception as push_err:
-            print(f"[Push] Ошибка: {push_err}")
+            log.warning(f'Ошибка Web Push: {push_err}')
 
     except Exception as e:
         log.exception(f'Ошибка создания уведомления: {e}')
 
 
 # ============================================================
-# ХЕЛПЕРЫ ДЛЯ РАЗНЫХ СОБЫТИЙ
+# ХЕЛПЕРЫ
 # ============================================================
 
 def notify_new_task(task_id, task_data):
-    """Уведомление о новой заявке."""
     try:
         notified = set()
         admins = db.query("SELECT id FROM users WHERE role = 'Администратор' AND is_active = 1")
@@ -137,7 +119,6 @@ def notify_new_task(task_id, task_data):
 
 
 def notify_task_taken(task_id, task_data):
-    """Уведомление о взятии заявки в работу."""
     try:
         notified = set()
         admins = db.query("SELECT id FROM users WHERE role = 'Администратор' AND is_active = 1")
@@ -165,7 +146,6 @@ def notify_task_taken(task_id, task_data):
 
 
 def notify_task_completed(task_id, task_data):
-    """Уведомление о выполнении заявки."""
     try:
         notified = set()
         admins = db.query("SELECT id FROM users WHERE role = 'Администратор' AND is_active = 1")
@@ -195,7 +175,11 @@ def notify_task_completed(task_id, task_data):
 def notify_new_comment(comment_id, task_id, task, author_id, text_preview):
     """
     Уведомление о новом комментарии.
-    Группируется вместе с другими событиями заявки.
+    - Администраторы — всегда
+    - Исполнитель заявки — да
+    - Создатель заявки — да
+    - Автор комментария — НЕ получает
+    - Внутренние — только админам и исполнителю
     """
     try:
         notified = set()

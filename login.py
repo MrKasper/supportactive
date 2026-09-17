@@ -1,32 +1,98 @@
 # login.py
 from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for
 from database import Database
-from datetime import datetime
+from datetime import datetime, timedelta
 from utils import get_client_ip
 from extensions import limiter
 from logger import get_logger
-from passwords import verify_password, hash_password, save_plain
+from passwords import verify_password, hash_password
 
 log = get_logger(__name__)
 
 auth_bp = Blueprint('auth', __name__)
 db = Database()
 
-# Ключ: login, Значение: {"count": int, "last_attempt": datetime}
-# ⚠️ В памяти процесса. Для multi-worker (Gunicorn) нужно хранить в Redis/БД.
-failed_attempts = {}
-
-MAX_ATTEMPTS = 3               # для обычных пользователей и техников
-MAX_ATTEMPTS_ADMIN = 10        # для админов — мягче, но всё равно ограничено
+MAX_ATTEMPTS = 3
+MAX_ATTEMPTS_ADMIN = 10
 BLOCK_MINUTES = 15
 
 
-def _reset_attempts_if_expired(login):
-    """Сбрасывает счётчик, если прошло больше BLOCK_MINUTES минут."""
-    if login in failed_attempts:
-        elapsed = (datetime.now() - failed_attempts[login]["last_attempt"]).total_seconds()
-        if elapsed >= BLOCK_MINUTES * 60:
-            del failed_attempts[login]
+# ============================================================
+# РАБОТА СО СЧЁТЧИКОМ ПОПЫТОК (в БД)
+# ============================================================
+
+def _get_attempt(login, ip):
+    """Возвращает запись счётчика или None."""
+    return db.query(
+        'SELECT * FROM login_attempts WHERE login = ? AND ip = ?',
+        [login, ip], one=True
+    )
+
+
+def _reset_attempt(login, ip):
+    """Сбрасывает счётчик после успешного входа."""
+    db.execute('DELETE FROM login_attempts WHERE login = ? AND ip = ?', [login, ip])
+
+
+def _is_blocked(login, ip):
+    """Проверяет, заблокирован ли доступ. Возвращает (blocked: bool, minutes_left: int)."""
+    a = _get_attempt(login, ip)
+    if not a or not a['blocked_until']:
+        return False, 0
+
+    try:
+        blocked_until = datetime.strptime(a['blocked_until'], '%Y-%m-%d %H:%M:%S')
+    except Exception:
+        return False, 0
+
+    if blocked_until > datetime.now():
+        delta = blocked_until - datetime.now()
+        return True, max(1, int(delta.total_seconds() // 60) + 1)
+
+    # Время блокировки истекло — сбрасываем
+    db.execute('DELETE FROM login_attempts WHERE id = ?', [a['id']])
+    return False, 0
+
+
+def _register_failure(login, ip, max_attempts):
+    """
+    Регистрирует неудачную попытку.
+    Возвращает (blocked: bool, attempts_left: int).
+    """
+    now = datetime.now()
+    a = _get_attempt(login, ip)
+
+    if not a:
+        # Первая попытка — создаём запись
+        db.execute('''
+            INSERT INTO login_attempts (login, ip, failed_count, last_attempt, created_at)
+            VALUES (?, ?, 1, ?, ?)
+        ''', [login, ip, now.strftime('%Y-%m-%d %H:%M:%S'), now.strftime('%Y-%m-%d %H:%M:%S')])
+        return False, max_attempts - 1
+
+    new_count = (a['failed_count'] or 0) + 1
+
+    if new_count >= max_attempts:
+        # Блокируем
+        blocked_until = now + timedelta(minutes=BLOCK_MINUTES)
+        db.execute('''
+            UPDATE login_attempts
+            SET failed_count = ?, last_attempt = ?, blocked_until = ?
+            WHERE id = ?
+        ''', [
+            new_count,
+            now.strftime('%Y-%m-%d %H:%M:%S'),
+            blocked_until.strftime('%Y-%m-%d %H:%M:%S'),
+            a['id']
+        ])
+        return True, 0
+    else:
+        db.execute('''
+            UPDATE login_attempts
+            SET failed_count = ?, last_attempt = ?
+            WHERE id = ?
+        ''', [new_count, now.strftime('%Y-%m-%d %H:%M:%S'), a['id']])
+        return False, max_attempts - new_count
 
 
 # ============================================================
@@ -49,14 +115,13 @@ def logout():
 
 
 # ============================================================
-# API: ВХОД ПО ЛОГИНУ/ПАРОЛЮ
+# ВХОД
 # ============================================================
 
 @auth_bp.route('/api/auth/login', methods=['POST'])
 @limiter.limit('10 per minute')
 @limiter.limit('30 per 5 minute')
 def auth_login():
-    """Авторизация по логину и паролю с защитой от перебора."""
     try:
         data = request.get_json()
         if not data:
@@ -65,10 +130,19 @@ def auth_login():
         login = (data.get('login') or '').strip()
         password = (data.get('password') or '').strip()
         remember = bool(data.get('remember', False))
-        ip = get_client_ip()
+        ip = get_client_ip() or 'unknown'
 
         if not login or not password:
             return jsonify({'success': False, 'error': 'Введите логин и пароль'}), 400
+
+        # Проверка блокировки в БД
+        blocked, minutes_left = _is_blocked(login, ip)
+        if blocked:
+            log.warning(f'Попытка входа в заблокированную учётку: {login} | IP={ip}')
+            return jsonify({
+                'success': False,
+                'error': f'Слишком много попыток. Повторите через {minutes_left} мин.'
+            }), 429
 
         user = db.query('SELECT * FROM users WHERE login = ?', [login], one=True)
 
@@ -86,65 +160,40 @@ def auth_login():
                 'error': 'Учетная запись заблокирована. Обратитесь к администратору.'
             }), 403
 
-        # Определяем лимит попыток в зависимости от роли
         max_attempts = MAX_ATTEMPTS_ADMIN if user['role'] == 'Администратор' else MAX_ATTEMPTS
 
-        # Проверяем блокировку по счётчику попыток
-        _reset_attempts_if_expired(login)
-        if login in failed_attempts and failed_attempts[login]["count"] >= max_attempts:
-            elapsed = (datetime.now() - failed_attempts[login]["last_attempt"]).total_seconds()
-            remaining = int((BLOCK_MINUTES * 60 - elapsed) // 60) + 1
-            log.warning(f'Попытка входа в заблокированную (по попыткам) учётку: {login} | IP={ip}')
-            return jsonify({
-                'success': False,
-                'error': f'Слишком много попыток. Повторите через {remaining} мин.'
-            }), 429
-
-        # Проверка пароля (с авто-миграцией plaintext → hash)
+        # Проверка пароля
         ok, need_rehash = verify_password(user['password'], password)
 
         if not ok:
-            # Счётчик неудачных попыток — для всех, включая админов
-            if login not in failed_attempts:
-                failed_attempts[login] = {"count": 0, "last_attempt": datetime.now()}
-            failed_attempts[login]["count"] += 1
-            failed_attempts[login]["last_attempt"] = datetime.now()
+            blocked, attempts_left = _register_failure(login, ip, max_attempts)
 
-            remaining = max_attempts - failed_attempts[login]["count"]
-
-            if failed_attempts[login]["count"] >= max_attempts:
-                log.error(
-                    f'Учётка временно заблокирована после {max_attempts} неверных попыток: '
-                    f'{login} | IP={ip}'
-                )
-                # ⚠️ НЕ отключаем is_active — только временная блокировка через счётчик
+            if blocked:
+                log.error(f'Учётка временно заблокирована: {login} | IP={ip}')
                 return jsonify({
                     'success': False,
-                    'error': f'Слишком много попыток входа. '
-                             f'Повторите через {BLOCK_MINUTES} мин.'
+                    'error': f'Слишком много попыток входа. Повторите через {BLOCK_MINUTES} мин.'
                 }), 429
 
-            log.warning(f'Неверный пароль: {login} (осталось: {remaining}) | IP={ip}')
+            log.warning(f'Неверный пароль: {login} (осталось: {attempts_left}) | IP={ip}')
             return jsonify({
                 'success': False,
-                'error': f'Неверный пароль. Осталось попыток: {remaining}'
+                'error': f'Неверный пароль. Осталось попыток: {attempts_left}'
             }), 401
 
-        # ---- Успешный вход ----
-        failed_attempts.pop(login, None)
+        # Успех — сбрасываем счётчик
+        _reset_attempt(login, ip)
 
-        # Автомиграция plaintext → hash (если в БД был старый plain-пароль)
+        # Автомиграция plaintext → hash
         if need_rehash:
             try:
-                new_hash = hash_password(password)
                 db.execute('UPDATE users SET password = ? WHERE id = ?',
-                           [new_hash, user['id']])
-                save_plain(db, user['id'], password)
-                log.info(f'Пароль пользователя {login} перехеширован (миграция)')
+                           [hash_password(password), user['id']])
+                log.info(f'Пароль пользователя {login} перехеширован')
             except Exception as e:
                 log.warning(f'Не удалось перехешировать пароль: {e}')
 
-        # Сохраняем данные пользователя в сессии
+        # Сессия
         session['user_id'] = user['id']
         session['user_name'] = user['full_name']
         session['user_role'] = user['role']
@@ -175,22 +224,17 @@ def auth_login():
         return jsonify({'success': False, 'error': f'Ошибка сервера: {str(e)}'}), 500
 
 
-# ============================================================
-# API: ВХОД ПО ID (legacy)
-# ============================================================
-
 @auth_bp.route('/api/login', methods=['POST'])
 @limiter.limit('10 per minute')
 def api_login():
-    """Вход по ID пользователя (устаревший, оставлен для совместимости)."""
+    """Legacy — вход по ID."""
     try:
         data = request.get_json()
         if not data or 'user_id' not in data:
             return jsonify({'success': False, 'error': 'Не указан ID пользователя'}), 400
 
         user_id = data['user_id']
-        user = db.query('SELECT * FROM users WHERE id = ? AND is_active = 1',
-                        [user_id], one=True)
+        user = db.query('SELECT * FROM users WHERE id = ? AND is_active = 1', [user_id], one=True)
 
         if user:
             session['user_id'] = user['id']
@@ -204,21 +248,12 @@ def api_login():
             session['login_time'] = datetime.now().isoformat()
 
             log.info(f'Вход по ID (legacy): {user["login"]} | IP={get_client_ip()}')
-
             return jsonify({
                 'success': True,
-                'user': {
-                    'id': user['id'],
-                    'full_name': user['full_name'],
-                    'role': user['role']
-                }
+                'user': {'id': user['id'], 'full_name': user['full_name'], 'role': user['role']}
             })
 
-        return jsonify({
-            'success': False,
-            'error': 'Пользователь не найден или неактивен'
-        }), 404
-
+        return jsonify({'success': False, 'error': 'Пользователь не найден или неактивен'}), 404
     except Exception as e:
         log.exception('Ошибка api_login')
         return jsonify({'success': False, 'error': f'Ошибка сервера: {str(e)}'}), 500

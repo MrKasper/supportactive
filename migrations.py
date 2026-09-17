@@ -51,11 +51,13 @@ def _set_version(conn, version):
 
 def _column_exists(conn, table, column):
     """Проверяет, существует ли колонка в таблице."""
-    cur = conn.execute(f'PRAGMA table_info({table})')
-    for row in cur.fetchall():
-        # row: (cid, name, type, notnull, dflt_value, pk)
-        if row[1] == column:
-            return True
+    try:
+        cur = conn.execute(f'PRAGMA table_info({table})')
+        for row in cur.fetchall():
+            if row[1] == column:
+                return True
+    except sqlite3.OperationalError:
+        return False
     return False
 
 
@@ -296,10 +298,9 @@ def migrate_7_task_history(conn):
 
 def migrate_8_soft_delete_users(conn):
     """v8: поле deleted_at для мягкого удаления пользователей."""
-    cur = conn.cursor()
     if not _column_exists(conn, 'users', 'deleted_at'):
         try:
-            cur.execute('ALTER TABLE users ADD COLUMN deleted_at TEXT DEFAULT NULL')
+            conn.execute('ALTER TABLE users ADD COLUMN deleted_at TEXT DEFAULT NULL')
         except sqlite3.OperationalError:
             pass
     conn.commit()
@@ -307,10 +308,9 @@ def migrate_8_soft_delete_users(conn):
 
 def migrate_9_task_duration(conn):
     """v9: длительность заявки в минутах."""
-    cur = conn.cursor()
     if not _column_exists(conn, 'tasks', 'duration_minutes'):
         try:
-            cur.execute('ALTER TABLE tasks ADD COLUMN duration_minutes INTEGER DEFAULT 60')
+            conn.execute('ALTER TABLE tasks ADD COLUMN duration_minutes INTEGER DEFAULT 60')
         except sqlite3.OperationalError:
             pass
     conn.commit()
@@ -318,30 +318,19 @@ def migrate_9_task_duration(conn):
 
 def migrate_10_soft_delete_entities(conn):
     """v10: мягкое удаление для задач, комментариев, вложений, картриджей, лицензий, контактов."""
-    cur = conn.cursor()
-    tables = [
-        'tasks',
-        'task_comments',
-        'task_attachments',
-        'cartridges',
-        'licenses',
-        'contacts',
-    ]
-    for table in tables:
+    for table in ['tasks', 'task_comments', 'task_attachments', 'cartridges', 'licenses', 'contacts']:
         if _table_exists(conn, table) and not _column_exists(conn, table, 'deleted_at'):
             try:
-                cur.execute(f'ALTER TABLE {table} ADD COLUMN deleted_at TEXT DEFAULT NULL')
+                conn.execute(f'ALTER TABLE {table} ADD COLUMN deleted_at TEXT DEFAULT NULL')
             except sqlite3.OperationalError:
                 pass
     conn.commit()
 
 
 def migrate_11_unique_executor_deadline(conn):
-    """v11: уникальный индекс на (executor, deadline) для активных заявок —
-    защита от race condition при создании заявок."""
-    cur = conn.cursor()
+    """v11: уникальный индекс на (executor, deadline) для активных заявок."""
     try:
-        cur.execute('''
+        conn.execute('''
             CREATE UNIQUE INDEX IF NOT EXISTS idx_tasks_executor_deadline
             ON tasks (executor, deadline)
             WHERE executor IS NOT NULL
@@ -354,9 +343,7 @@ def migrate_11_unique_executor_deadline(conn):
 
 
 def migrate_12_password_plain(conn):
-    """v12: таблица для хранения plain-копии пароля.
-    Используется для административных нужд (печать учётных данных).
-    Управляется флагом STORE_PLAIN_PASSWORDS в .env."""
+    """v12: таблица для plain-копии (удалена в v15)."""
     cur = conn.cursor()
     cur.execute('''
         CREATE TABLE IF NOT EXISTS user_password_plain (
@@ -367,39 +354,27 @@ def migrate_12_password_plain(conn):
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         )
     ''')
-    cur.execute('CREATE INDEX IF NOT EXISTS idx_plain_user ON user_password_plain(user_id)')
     conn.commit()
 
 
 def migrate_13_notifications_grouping(conn):
-    """v13: счётчик событий и последний тип для группировки уведомлений по заявке."""
-    cur = conn.cursor()
-
+    """v13: счётчик событий и последний тип для группировки уведомлений."""
     if not _column_exists(conn, 'notifications', 'count'):
         try:
-            cur.execute('ALTER TABLE notifications ADD COLUMN count INTEGER DEFAULT 1')
+            conn.execute('ALTER TABLE notifications ADD COLUMN count INTEGER DEFAULT 1')
         except sqlite3.OperationalError:
             pass
-
     if not _column_exists(conn, 'notifications', 'last_type'):
         try:
-            cur.execute('ALTER TABLE notifications ADD COLUMN last_type TEXT DEFAULT NULL')
+            conn.execute('ALTER TABLE notifications ADD COLUMN last_type TEXT DEFAULT NULL')
         except sqlite3.OperationalError:
             pass
-
     try:
-        cur.execute('UPDATE notifications SET count = 1 WHERE count IS NULL')
+        conn.execute('UPDATE notifications SET count = 1 WHERE count IS NULL')
+        conn.execute('''CREATE INDEX IF NOT EXISTS idx_notifications_task
+                        ON notifications(user_id, task_id, is_read)''')
     except sqlite3.OperationalError:
         pass
-
-    try:
-        cur.execute('''
-            CREATE INDEX IF NOT EXISTS idx_notifications_task
-            ON notifications(user_id, task_id, is_read)
-        ''')
-    except sqlite3.OperationalError:
-        pass
-
     conn.commit()
 
 
@@ -407,7 +382,6 @@ def migrate_14_cabinet_equipment(conn):
     """v14: оборудование кабинетов — сеть, ПК, принтеры."""
     cur = conn.cursor()
 
-    # ============ Сетевое оборудование ============
     cur.execute('''
         CREATE TABLE IF NOT EXISTS cabinet_network_devices (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -424,7 +398,6 @@ def migrate_14_cabinet_equipment(conn):
     ''')
     cur.execute('CREATE INDEX IF NOT EXISTS idx_net_cabinet ON cabinet_network_devices(cabinet_id)')
 
-    # ============ Компьютеры ============
     cur.execute('''
         CREATE TABLE IF NOT EXISTS cabinet_computers (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -445,7 +418,6 @@ def migrate_14_cabinet_equipment(conn):
     ''')
     cur.execute('CREATE INDEX IF NOT EXISTS idx_pc_cabinet ON cabinet_computers(cabinet_id)')
 
-    # ============ Принтеры ============
     cur.execute('''
         CREATE TABLE IF NOT EXISTS cabinet_printers (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -467,8 +439,109 @@ def migrate_14_cabinet_equipment(conn):
     conn.commit()
 
 
+def migrate_15_login_attempts_and_remove_plain(conn):
+    """v15: таблица попыток входа + удаление plain-паролей."""
+    cur = conn.cursor()
+
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS login_attempts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            login TEXT NOT NULL,
+            ip TEXT,
+            failed_count INTEGER DEFAULT 0,
+            last_attempt TEXT,
+            blocked_until TEXT DEFAULT NULL,
+            created_at TEXT,
+            UNIQUE(login, ip)
+        )
+    ''')
+    cur.execute('CREATE INDEX IF NOT EXISTS idx_login_attempts_login ON login_attempts(login)')
+    cur.execute('CREATE INDEX IF NOT EXISTS idx_login_attempts_blocked ON login_attempts(blocked_until)')
+
+    if _table_exists(conn, 'user_password_plain'):
+        cur.execute('DROP TABLE user_password_plain')
+        log.info('  → Таблица user_password_plain удалена')
+
+    conn.commit()
+
+
+def migrate_16_computer_extras(conn):
+    """v16: сокет материнской платы + установленное ПО для ПК."""
+    cur = conn.cursor()
+
+    if not _column_exists(conn, 'cabinet_computers', 'motherboard_socket'):
+        try:
+            cur.execute('ALTER TABLE cabinet_computers ADD COLUMN motherboard_socket TEXT DEFAULT NULL')
+            log.info('  → Добавлена колонка cabinet_computers.motherboard_socket')
+        except sqlite3.OperationalError as e:
+            log.warning(f'  → Не удалось добавить motherboard_socket: {e}')
+
+    if not _column_exists(conn, 'cabinet_computers', 'software'):
+        try:
+            cur.execute('ALTER TABLE cabinet_computers ADD COLUMN software TEXT DEFAULT NULL')
+            log.info('  → Добавлена колонка cabinet_computers.software')
+        except sqlite3.OperationalError as e:
+            log.warning(f'  → Не удалось добавить software: {e}')
+
+    conn.commit()
+
+
+def migrate_17_ping_stats(conn):
+    """
+    v17: статистика пингов ПК.
+      • ping_count — всего проверок
+      • ping_success_count — успешных
+      • last_ping_at — время последней проверки
+      • last_ping_status — результат последней (online/offline)
+    """
+    cur = conn.cursor()
+
+    fields = [
+        ('ping_count', 'INTEGER DEFAULT 0'),
+        ('ping_success_count', 'INTEGER DEFAULT 0'),
+        ('last_ping_at', 'TEXT DEFAULT NULL'),
+        ('last_ping_status', 'TEXT DEFAULT NULL'),
+    ]
+
+    for name, ddl in fields:
+        if not _column_exists(conn, 'cabinet_computers', name):
+            try:
+                cur.execute(f'ALTER TABLE cabinet_computers ADD COLUMN {name} {ddl}')
+                log.info(f'  → Добавлена колонка cabinet_computers.{name}')
+            except sqlite3.OperationalError as e:
+                log.warning(f'  → Не удалось добавить {name}: {e}')
+
+    conn.commit()
+
+
+def migrate_18_license_documents(conn):
+    """
+    v18: документы, привязанные к ПО в кабинете.
+    Хранят сертификаты, лицензионные соглашения, чеки и т.п.
+    """
+    cur = conn.cursor()
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS license_documents (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            license_id INTEGER,
+            cabinet_number TEXT,
+            software_name TEXT,
+            filename TEXT NOT NULL,
+            original_name TEXT,
+            file_size INTEGER,
+            mime_type TEXT,
+            uploaded_by INTEGER,
+            uploaded_at TEXT,
+            FOREIGN KEY (license_id) REFERENCES licenses(id) ON DELETE SET NULL
+        )
+    ''')
+    cur.execute('CREATE INDEX IF NOT EXISTS idx_licdoc_license ON license_documents(license_id)')
+    cur.execute('CREATE INDEX IF NOT EXISTS idx_licdoc_cabinet ON license_documents(cabinet_number)')
+    conn.commit()
+
+
 # ============================================================
-# РЕЕСТР МИГРАЦИЙ (строго по порядку)
+# РЕЕСТР МИГРАЦИЙ
 # ============================================================
 MIGRATIONS = [
     (1,  migrate_1_initial),
@@ -485,6 +558,10 @@ MIGRATIONS = [
     (12, migrate_12_password_plain),
     (13, migrate_13_notifications_grouping),
     (14, migrate_14_cabinet_equipment),
+    (15, migrate_15_login_attempts_and_remove_plain),
+    (16, migrate_16_computer_extras),
+    (17, migrate_17_ping_stats),
+    (18, migrate_18_license_documents),
 ]
 
 

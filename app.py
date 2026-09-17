@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from werkzeug.utils import secure_filename
 import os
 
+# ---------- .env ----------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ENV_PATH = os.path.join(BASE_DIR, '.env')
 try:
@@ -16,13 +17,18 @@ try:
 except ImportError:
     pass
 
+# ---------- Логирование ----------
 from logger import setup_logging, get_logger
 setup_logging()
 log = get_logger(__name__)
 
+# ---------- Миграции ----------
 from migrations import run_migrations
-from extensions import csrf, limiter
 
+# ---------- Расширения ----------
+from extensions import csrf, limiter, cache
+
+# ---------- Blueprints ----------
 from login import auth_bp
 from tasks import tasks_bp
 from users import users_bp
@@ -36,10 +42,11 @@ from webpush import webpush_bp
 from audit import audit_bp
 from attachments import attachments_bp
 from comments import comments_bp
-from equipment import equipment_bp
+from equipment import equipment_bp, start_ping_scheduler
 
 app = Flask(__name__)
 
+# ---------- Регистрация Blueprint ----------
 app.register_blueprint(auth_bp)
 app.register_blueprint(tasks_bp)
 app.register_blueprint(users_bp)
@@ -56,6 +63,7 @@ app.register_blueprint(comments_bp)
 app.register_blueprint(equipment_bp)
 
 
+# ---------- Секретный ключ ----------
 _secret = os.environ.get('SECRET_KEY')
 if not _secret:
     _secret = os.urandom(32).hex()
@@ -63,6 +71,7 @@ if not _secret:
 app.secret_key = _secret
 
 
+# ---------- Сессии ----------
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['SESSION_FILE_DIR'] = os.path.join(BASE_DIR, 'flask_session')
 app.config['SESSION_PERMANENT'] = False
@@ -76,23 +85,37 @@ app.config['SESSION_COOKIE_PATH'] = '/'
 app.config['SESSION_COOKIE_SECURE'] = os.environ.get('SESSION_COOKIE_SECURE', 'false').lower() == 'true'
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
 
-app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024
+# ---------- Лимит загрузки ----------
+app.config['MAX_CONTENT_LENGTH'] = 20 * 1024 * 1024
 
+# ---------- CSRF ----------
 app.config['WTF_CSRF_ENABLED'] = True
 app.config['WTF_CSRF_TIME_LIMIT'] = None
 app.config['WTF_CSRF_HEADERS'] = ['X-CSRFToken', 'X-CSRF-Token']
 csrf.init_app(app)
 
+# ---------- Rate Limiting ----------
 app.config['RATELIMIT_STORAGE_URI'] = 'memory://'
 app.config['RATELIMIT_HEADERS_ENABLED'] = True
 app.config['RATELIMIT_DEFAULT'] = '1000 per hour;200 per minute'
 limiter.init_app(app)
 
+# ---------- 🆕 Кеширование ----------
+# TTL из ENV или 300 сек по умолчанию
+_default_cache_timeout = int(os.environ.get('CACHE_DEFAULT_TIMEOUT', 300))
 
+app.config['CACHE_TYPE'] = os.environ.get('CACHE_TYPE', 'SimpleCache')
+app.config['CACHE_DEFAULT_TIMEOUT'] = _default_cache_timeout
+app.config['CACHE_NO_NULL_WARNING'] = True  # убираем предупреждение про NullCache
+
+cache.init_app(app)
+log.info(f'Кеш: {app.config["CACHE_TYPE"]}, TTL по умолчанию: {_default_cache_timeout} сек')
+
+
+# ---------- Папки ----------
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'static', 'uploads', 'avatars')
 ALLOWED_AVATAR_EXT = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
 
 os.makedirs(app.config['SESSION_FILE_DIR'], exist_ok=True)
 Session(app)
@@ -102,6 +125,7 @@ def allowed_avatar(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_AVATAR_EXT
 
 
+# ---------- БД + миграции ----------
 db = Database()
 log.info('Применяем миграции БД...')
 run_migrations(db.db_name)
@@ -111,12 +135,20 @@ if users_count == 0:
     log.info('База пуста. Добавляем тестовые данные...')
     db.insert_test_data()
 
+# ---------- Планировщик пинга ----------
+try:
+    start_ping_scheduler()
+except Exception as _ping_err:
+    log.warning(f'Не удалось запустить планировщик пинга: {_ping_err}')
 
+
+# ---------- CSRF-токен в шаблоны ----------
 @app.context_processor
 def inject_csrf_token():
     return dict(csrf_token=generate_csrf)
 
 
+# ---------- Обработчики ошибок ----------
 @app.errorhandler(CSRFError)
 def handle_csrf_error(e):
     log.warning(f'CSRF-ошибка: {e.description} | IP={request.remote_addr} | path={request.path}')
@@ -136,7 +168,7 @@ def not_found_error(error):
 def too_large_error(error):
     log.warning(f'Файл слишком большой: {request.path} IP={request.remote_addr}')
     if request.path.startswith('/api/'):
-        return jsonify({'success': False, 'error': 'Файл слишком большой (макс. 10 МБ)'}), 413
+        return jsonify({'success': False, 'error': 'Файл слишком большой (макс. 20 МБ)'}), 413
     return jsonify({'error': 'Файл слишком большой'}), 413
 
 
@@ -156,6 +188,7 @@ def internal_error(error):
     return render_template('500.html'), 500
 
 
+# ---------- Логирование + заголовки безопасности ----------
 @app.before_request
 def log_request_start():
     g.request_start = datetime.now()
@@ -163,7 +196,6 @@ def log_request_start():
 
 @app.after_request
 def log_response(response):
-    # 🔒 Заголовки безопасности
     response.headers['X-Frame-Options'] = 'SAMEORIGIN'
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
@@ -192,6 +224,10 @@ def log_response(response):
 
 from utils import login_required, role_required
 
+
+# ============================================================
+# МАРШРУТЫ СТРАНИЦ
+# ============================================================
 
 @app.route('/')
 def index():
@@ -247,8 +283,13 @@ def upload_avatar():
         return jsonify({'success': False, 'error': f'Ошибка: {str(e)}'}), 500
 
 
+# ============================================================
+# API КАБИНЕТОВ (кешируется)
+# ============================================================
+
 @app.route('/api/cabinets')
 @login_required
+@cache.cached(timeout=300, key_prefix='api_cabinets')
 def get_cabinets():
     try:
         cabinets = db.query('''
@@ -264,6 +305,7 @@ def get_cabinets():
 @app.route('/api/cabinets/search')
 @login_required
 def search_cabinets():
+    """Поиск не кешируется — параметры динамические."""
     try:
         query = request.args.get('q', '')
         if not query:
@@ -281,13 +323,19 @@ def search_cabinets():
         return jsonify({'error': f'Ошибка: {str(e)}'}), 500
 
 
+# ============================================================
+# API ИСПОЛНИТЕЛЕЙ (кешируется)
+# ============================================================
+
 @app.route('/api/executors')
 @login_required
+@cache.cached(timeout=60, key_prefix='api_executors')
 def get_executors():
     try:
         executors = db.query('''
             SELECT id, full_name, role, department FROM users
             WHERE is_active = 1 AND role IN ('Администратор', 'Техник')
+              AND deleted_at IS NULL
             ORDER BY full_name
         ''')
         return jsonify([dict(e) for e in executors])
@@ -297,8 +345,10 @@ def get_executors():
 
 
 if __name__ == '__main__':
+    debug_mode = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
     log.info('=' * 60)
-    log.info('Support Active System v2.3')
+    log.info('Support Active System v2.2')
+    log.info(f'Режим: {"DEBUG" if debug_mode else "PRODUCTION"}')
     log.info('Сервер запущен: http://localhost:5000')
     log.info('=' * 60)
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=debug_mode, host='0.0.0.0', port=5000, use_reloader=debug_mode)

@@ -14,11 +14,18 @@ comments_bp = Blueprint('comments', __name__)
 db = Database()
 
 
+# ============================================================
+# СПИСОК
+# ============================================================
+
 @comments_bp.route('/api/tasks/<int:task_id>/comments', methods=['GET'])
 @login_required
 def list_comments(task_id):
     try:
-        task = db.query('SELECT * FROM tasks WHERE id = ?', [task_id], one=True)
+        task = db.query(
+            'SELECT * FROM tasks WHERE id = ? AND deleted_at IS NULL',
+            [task_id], one=True
+        )
         if not task:
             return jsonify({'error': 'Заявка не найдена'}), 404
         if session.get('user_role') == 'Пользователь' and task['created_by'] != session.get('user_id'):
@@ -36,11 +43,18 @@ def list_comments(task_id):
         return jsonify({'error': str(e)}), 500
 
 
+# ============================================================
+# СОЗДАНИЕ
+# ============================================================
+
 @comments_bp.route('/api/tasks/<int:task_id>/comments', methods=['POST'])
 @login_required
 def create_comment(task_id):
     try:
-        task = db.query('SELECT * FROM tasks WHERE id = ?', [task_id], one=True)
+        task = db.query(
+            'SELECT * FROM tasks WHERE id = ? AND deleted_at IS NULL',
+            [task_id], one=True
+        )
         if not task:
             return jsonify({'success': False, 'error': 'Заявка не найдена'}), 404
 
@@ -60,18 +74,19 @@ def create_comment(task_id):
         is_internal = 1 if (data.get('is_internal')
                             and session.get('user_role') in ('Администратор', 'Техник')) else 0
 
-        comment_id = db.execute('''
-            INSERT INTO task_comments
-                (task_id, user_id, user_name, text, created_at, is_internal)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', [
-            task_id,
-            session.get('user_id'),
-            session.get('user_name', ''),
-            text,
-            datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            is_internal
-        ])
+        with db.transaction(immediate=True) as tx:
+            comment_id = tx.execute('''
+                INSERT INTO task_comments
+                    (task_id, user_id, user_name, text, created_at, is_internal)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', [
+                task_id,
+                session.get('user_id'),
+                session.get('user_name', ''),
+                text,
+                datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                is_internal
+            ])
 
         try:
             from audit import log_action
@@ -79,7 +94,7 @@ def create_comment(task_id):
         except Exception:
             pass
 
-        # === Уведомления о новом комментарии ===
+        # Уведомления о новом комментарии (вызов из notifications.py)
         try:
             from notifications import notify_new_comment
             notify_new_comment(comment_id, task_id, dict(task),
@@ -97,11 +112,18 @@ def create_comment(task_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+# ============================================================
+# РЕДАКТИРОВАНИЕ
+# ============================================================
+
 @comments_bp.route('/api/comments/<int:comment_id>', methods=['PUT'])
 @login_required
 def update_comment(comment_id):
     try:
-        c = db.query('SELECT * FROM task_comments WHERE id = ?', [comment_id], one=True)
+        c = db.query(
+            'SELECT * FROM task_comments WHERE id = ? AND deleted_at IS NULL',
+            [comment_id], one=True
+        )
         if not c:
             return jsonify({'success': False, 'error': 'Комментарий не найден'}), 404
         if c['user_id'] != session.get('user_id'):
@@ -114,18 +136,27 @@ def update_comment(comment_id):
         if len(text) > 5000:
             return jsonify({'success': False, 'error': 'Слишком длинный'}), 400
 
-        db.execute('UPDATE task_comments SET text = ? WHERE id = ?', [text, comment_id])
+        with db.transaction(immediate=True) as tx:
+            tx.execute('UPDATE task_comments SET text = ? WHERE id = ?', [text, comment_id])
+
         return jsonify({'success': True, 'message': 'Обновлено'})
     except Exception as e:
         log.exception('Ошибка редактирования комментария')
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+# ============================================================
+# УДАЛЕНИЕ (мягкое)
+# ============================================================
+
 @comments_bp.route('/api/comments/<int:comment_id>', methods=['DELETE'])
 @login_required
 def delete_comment(comment_id):
     try:
-        c = db.query('SELECT * FROM task_comments WHERE id = ?', [comment_id], one=True)
+        c = db.query(
+            'SELECT * FROM task_comments WHERE id = ? AND deleted_at IS NULL',
+            [comment_id], one=True
+        )
         if not c:
             return jsonify({'success': False, 'error': 'Комментарий не найден'}), 404
 
@@ -134,13 +165,16 @@ def delete_comment(comment_id):
         if not (is_admin or is_author):
             return jsonify({'success': False, 'error': 'Недостаточно прав'}), 403
 
-        # Мягкое удаление — можно восстановить
         now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        db.execute('UPDATE task_comments SET deleted_at = ? WHERE id = ?', [now, comment_id])
+
+        with db.transaction(immediate=True) as tx:
+            tx.execute('UPDATE task_comments SET deleted_at = ? WHERE id = ?', [now, comment_id])
 
         try:
             from audit import log_action
-            log_action('delete', 'comment', comment_id, {'task_id': c['task_id'], 'soft': True})
+            log_action('delete', 'comment', comment_id, {
+                'task_id': c['task_id'], 'soft': True
+            })
         except Exception:
             pass
 
@@ -154,13 +188,26 @@ def delete_comment(comment_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+# ============================================================
+# ВОССТАНОВЛЕНИЕ
+# ============================================================
+
 @comments_bp.route('/api/comments/<int:comment_id>/restore', methods=['POST'])
 @login_required
 def restore_comment(comment_id):
     try:
         if session.get('user_role') != 'Администратор':
             return jsonify({'success': False, 'error': 'Недостаточно прав'}), 403
-        db.execute('UPDATE task_comments SET deleted_at = NULL WHERE id = ?', [comment_id])
+
+        with db.transaction(immediate=True) as tx:
+            tx.execute('UPDATE task_comments SET deleted_at = NULL WHERE id = ?', [comment_id])
+
+        try:
+            from audit import log_action
+            log_action('update', 'comment', comment_id, {'action': 'restore'})
+        except Exception:
+            pass
+
         return jsonify({'success': True, 'message': 'Комментарий восстановлен'})
     except Exception as e:
         log.exception('Ошибка восстановления комментария')

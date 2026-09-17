@@ -1,5 +1,4 @@
 // static/js/cabinets_manage.js
-// Управление кабинетами (только Администратор и Техник)
 
 (function() {
     'use strict';
@@ -14,7 +13,7 @@
 
     var cabinetsCache = [];
 
-    // ============= СТРАНИЦА =============
+    // ============= СПИСОК =============
     function loadCabinetsManagePage() {
         var $contentBlock = $('#otherPagesBlock');
 
@@ -56,7 +55,7 @@
                 html += '<div class="table-responsive">';
                 html += '<table class="table table-striped table-hover align-middle">';
                 html += '<thead><tr>';
-                html += '<th>ID</th><th>Номер</th><th>Этаж</th><th>Корпус</th>';
+                html += '<th>Номер</th><th>Этаж</th><th>Корпус</th>';
                 html += '<th>Описание</th><th>Ответственный</th><th>Телефон</th>';
                 html += '<th>Статус</th><th>Действия</th>';
                 html += '</tr></thead><tbody id="cabinetsTableBody"></tbody></table></div>';
@@ -77,7 +76,7 @@
         $tbody.empty();
 
         if (!cabinets || cabinets.length === 0) {
-            $tbody.append('<tr><td colspan="9" class="text-center py-4 text-muted">Кабинеты не найдены</td></tr>');
+            $tbody.append('<tr><td colspan="8" class="text-center py-4 text-muted">Кабинеты не найдены</td></tr>');
             return;
         }
 
@@ -87,7 +86,6 @@
                 : '<span class="badge bg-danger">Неактивен</span>';
 
             var row = '<tr>';
-            row += '<td>' + cab.id + '</td>';
             row += '<td><strong>' + utils.escapeHtml(cab.cabinet_number || '-') + '</strong></td>';
             row += '<td>' + utils.escapeHtml(cab.floor || '-') + '</td>';
             row += '<td>' + utils.escapeHtml(cab.building || '-') + '</td>';
@@ -96,7 +94,6 @@
             row += '<td>' + utils.escapeHtml(cab.phone || '-') + '</td>';
             row += '<td>' + statusBadge + '</td>';
             row += '<td><div class="btn-group btn-group-sm">';
-            // 🆕 Главная кнопка — открыть карточку с оборудованием
             row += '<button class="btn btn-primary" onclick="openCabinetDetails(' + cab.id + ')" title="Оборудование кабинета">' +
                    '<i class="bi bi-cpu"></i> Открыть</button>';
             row += '<button class="btn btn-outline-success" onclick="editCabinet(' + cab.id + ')" title="Редактировать"><i class="bi bi-pencil"></i></button>';
@@ -121,7 +118,6 @@
         renderRows(filtered);
     }
 
-    // ============= ОТКРЫТЬ ДЕТАЛЬНУЮ СТРАНИЦУ КАБИНЕТА =============
     function openCabinetDetails(cabinetId) {
         if (window.App.CabinetDetails && typeof window.App.CabinetDetails.open === 'function') {
             window.App.CabinetDetails.open(cabinetId);
@@ -130,7 +126,7 @@
         }
     }
 
-    // ============= МОДАЛКА РЕДАКТИРОВАНИЯ КАБИНЕТА =============
+    // ============= МОДАЛКА =============
     function showAddCabinetModal() {
         $('#cabinetId').val('');
         $('#cabinetNumber').val('');
@@ -248,5 +244,5 @@
     window.filterCabinetsTable = filterCabinetsTable;
     window.openCabinetDetails = openCabinetDetails;
 
-    console.log('[cabinets_manage] Загружено');
+    console.log('[cabinets_manage] Загружено (без ID)');
 })();

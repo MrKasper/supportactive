@@ -3,17 +3,22 @@ from flask import Blueprint, request, jsonify, session
 from database import Database
 from datetime import datetime
 from utils import login_required, role_required
-from passwords import hash_password, save_plain, get_plain, generate_password
+from passwords import hash_password, generate_password
+from logger import get_logger
 import os
 import sqlite3
 import tempfile
 import traceback
 
+log = get_logger(__name__)
+
 users_bp = Blueprint('users', __name__)
 db = Database()
 
 
-# ============= API УПРАВЛЕНИЯ =============
+# ============================================================
+# СПИСОК ПОЛЬЗОВАТЕЛЕЙ
+# ============================================================
 
 @users_bp.route('/api/users')
 @login_required
@@ -22,10 +27,12 @@ def get_users():
         users = db.query('''
             SELECT id, full_name, role, avatar, email, phone, department, login, is_active
             FROM users
+            WHERE deleted_at IS NULL
             ORDER BY full_name
         ''')
         return jsonify([dict(user) for user in users])
     except Exception as e:
+        log.exception('Ошибка получения пользователей')
         return jsonify({'error': f'Ошибка получения пользователей: {str(e)}'}), 500
 
 
@@ -33,7 +40,10 @@ def get_users():
 @login_required
 def get_user(user_id):
     try:
-        user = db.query('SELECT * FROM users WHERE id = ?', [user_id], one=True)
+        user = db.query(
+            'SELECT * FROM users WHERE id = ? AND deleted_at IS NULL',
+            [user_id], one=True
+        )
         if not user:
             return jsonify({'error': 'Пользователь не найден'}), 404
 
@@ -47,13 +57,18 @@ def get_user(user_id):
         ''', [user['full_name']], one=True)
 
         user_dict = dict(user)
-        user_dict.pop('password', None)
+        user_dict.pop('password', None)  # никогда не отдаём хеш
         user_dict['statistics'] = dict(user_stats) if user_stats else {}
 
         return jsonify(user_dict)
     except Exception as e:
-        return jsonify({'error': f'Ошибка получения пользователя: {str(e)}'}), 500
+        log.exception('Ошибка получения пользователя')
+        return jsonify({'error': f'Ошибка: {str(e)}'}), 500
 
+
+# ============================================================
+# ОБНОВЛЕНИЕ
+# ============================================================
 
 @users_bp.route('/api/users/<int:user_id>', methods=['PUT'])
 @login_required
@@ -63,23 +78,24 @@ def update_user(user_id):
         is_admin = session.get('user_role') == 'Администратор'
 
         if not is_self and not is_admin:
-            return jsonify({'success': False, 'error': 'Недостаточно прав для редактирования'}), 403
+            return jsonify({'success': False, 'error': 'Недостаточно прав'}), 403
 
         data = request.get_json()
         if not data:
-            return jsonify({'success': False, 'error': 'Нет данных для обновления'}), 400
+            return jsonify({'success': False, 'error': 'Нет данных'}), 400
 
-        user = db.query('SELECT * FROM users WHERE id = ?', [user_id], one=True)
+        user = db.query('SELECT * FROM users WHERE id = ? AND deleted_at IS NULL',
+                        [user_id], one=True)
         if not user:
             return jsonify({'success': False, 'error': 'Пользователь не найден'}), 404
 
         new_full_name = data.get('full_name', user['full_name'])
         new_role = user['role']
         new_login = data.get('login', user['login'])
-        new_password = user['password']
+        new_password = user['password']  # текущий хеш
         password_changed = False
 
-        # Пароль обновляем ТОЛЬКО если передан непустой
+        # Пароль обновляем только если передан непустой
         if data.get('password') and str(data['password']).strip():
             new_password = hash_password(str(data['password']).strip())
             password_changed = True
@@ -93,7 +109,7 @@ def update_user(user_id):
         # Проверка уникальности логина
         if new_login and new_login != user['login']:
             existing = db.query(
-                'SELECT id FROM users WHERE login = ? AND id != ?',
+                'SELECT id FROM users WHERE login = ? AND id != ? AND deleted_at IS NULL',
                 [new_login, user_id], one=True
             )
             if existing:
@@ -102,27 +118,24 @@ def update_user(user_id):
                     'error': 'Пользователь с таким логином уже существует'
                 }), 400
 
-        db.execute('''
-            UPDATE users
-            SET full_name = ?, role = ?, avatar = ?, email = ?, phone = ?, department = ?,
-                login = ?, password = ?, is_active = ?
-            WHERE id = ?
-        ''', [
-            new_full_name,
-            new_role,
-            data.get('avatar', user['avatar']),
-            data.get('email', user['email']),
-            data.get('phone', user['phone']),
-            data.get('department', user['department']),
-            new_login,
-            new_password,
-            new_is_active,
-            user_id
-        ])
-
-        # Сохраняем plain-копию, если пароль был изменён
-        if password_changed:
-            save_plain(db, user_id, str(data['password']).strip())
+        with db.transaction(immediate=True) as tx:
+            tx.execute('''
+                UPDATE users
+                SET full_name = ?, role = ?, avatar = ?, email = ?, phone = ?,
+                    department = ?, login = ?, password = ?, is_active = ?
+                WHERE id = ?
+            ''', [
+                new_full_name,
+                new_role,
+                data.get('avatar', user['avatar']),
+                data.get('email', user['email']),
+                data.get('phone', user['phone']),
+                data.get('department', user['department']),
+                new_login,
+                new_password,
+                new_is_active,
+                user_id
+            ])
 
         # Обновление сессии, если правит сам себя
         if is_self:
@@ -134,10 +147,25 @@ def update_user(user_id):
             session['user_department'] = data.get('department', user['department'])
             session['user_login'] = new_login
 
+        # Лог в аудит
+        try:
+            from audit import log_action
+            log_action('update', 'user', user_id, {
+                'password_changed': password_changed,
+                'role': new_role,
+            })
+        except Exception:
+            pass
+
         return jsonify({'success': True, 'message': 'Профиль успешно обновлен'})
     except Exception as e:
-        return jsonify({'success': False, 'error': f'Ошибка обновления профиля: {str(e)}'}), 500
+        log.exception('Ошибка обновления профиля')
+        return jsonify({'success': False, 'error': f'Ошибка: {str(e)}'}), 500
 
+
+# ============================================================
+# СОЗДАНИЕ
+# ============================================================
 
 @users_bp.route('/api/users', methods=['POST'])
 @role_required('Администратор')
@@ -165,14 +193,19 @@ def create_user():
         if db.query('SELECT id FROM users WHERE login = ?', [login], one=True):
             return jsonify({'success': False, 'error': 'Пользователь с таким логином уже существует'}), 400
 
-        user_id = db.execute('''
-            INSERT INTO users (full_name, role, login, password, email, phone, department, avatar, is_active)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', [full_name, role, login, hash_password(password),
-              email, phone, department, 'default.png', 1])
+        with db.transaction(immediate=True) as tx:
+            user_id = tx.execute('''
+                INSERT INTO users 
+                    (full_name, role, login, password, email, phone, department, avatar, is_active)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', [full_name, role, login, hash_password(password),
+                  email, phone, department, 'default.png', 1])
 
-        # Сохраняем plain-копию
-        save_plain(db, user_id, password)
+        try:
+            from audit import log_action
+            log_action('create', 'user', user_id, {'login': login, 'role': role})
+        except Exception:
+            pass
 
         return jsonify({
             'success': True,
@@ -180,8 +213,13 @@ def create_user():
             'message': 'Пользователь успешно создан'
         }), 201
     except Exception as e:
-        return jsonify({'success': False, 'error': f'Ошибка создания пользователя: {str(e)}'}), 500
+        log.exception('Ошибка создания пользователя')
+        return jsonify({'success': False, 'error': f'Ошибка: {str(e)}'}), 500
 
+
+# ============================================================
+# БЛОКИРОВКА / РАЗБЛОКИРОВКА
+# ============================================================
 
 @users_bp.route('/api/users/<int:user_id>/toggle', methods=['POST'])
 @role_required('Администратор')
@@ -190,22 +228,37 @@ def toggle_user_status(user_id):
         if session.get('user_id') == user_id:
             return jsonify({'success': False, 'error': 'Нельзя заблокировать свою учетную запись'}), 400
 
-        user = db.query('SELECT id, full_name, is_active FROM users WHERE id = ?', [user_id], one=True)
+        user = db.query('SELECT id, full_name, is_active FROM users WHERE id = ? AND deleted_at IS NULL',
+                        [user_id], one=True)
         if not user:
             return jsonify({'success': False, 'error': 'Пользователь не найден'}), 404
 
         new_status = 0 if user['is_active'] else 1
-        db.execute('UPDATE users SET is_active = ? WHERE id = ?', [new_status, user_id])
+
+        with db.transaction(immediate=True) as tx:
+            tx.execute('UPDATE users SET is_active = ? WHERE id = ?', [new_status, user_id])
 
         status_text = 'разблокирован' if new_status else 'заблокирован'
+
+        try:
+            from audit import log_action
+            log_action('update', 'user', user_id, {'action': 'toggle', 'new_status': new_status})
+        except Exception:
+            pass
+
         return jsonify({
             'success': True,
             'is_active': new_status,
             'message': f'Пользователь {user["full_name"]} {status_text}'
         })
     except Exception as e:
+        log.exception('Ошибка toggle_user_status')
         return jsonify({'success': False, 'error': f'Ошибка: {str(e)}'}), 500
 
+
+# ============================================================
+# УДАЛЕНИЕ
+# ============================================================
 
 @users_bp.route('/api/users/<int:user_id>', methods=['DELETE'])
 @role_required('Администратор')
@@ -214,44 +267,64 @@ def delete_user(user_id):
         if session.get('user_id') == user_id:
             return jsonify({'success': False, 'error': 'Нельзя удалить свою учетную запись'}), 400
 
-        user = db.query('SELECT id, full_name FROM users WHERE id = ?', [user_id], one=True)
+        user = db.query('SELECT id, full_name FROM users WHERE id = ? AND deleted_at IS NULL',
+                        [user_id], one=True)
         if not user:
             return jsonify({'success': False, 'error': 'Пользователь не найден'}), 404
 
-        db.execute('DELETE FROM users WHERE id = ?', [user_id])
-        return jsonify({'success': True, 'message': f'Пользователь {user["full_name"]} успешно удален'})
+        # Мягкое удаление
+        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        with db.transaction(immediate=True) as tx:
+            tx.execute('UPDATE users SET deleted_at = ? WHERE id = ?', [now, user_id])
+
+        try:
+            from audit import log_action
+            log_action('delete', 'user', user_id, {'full_name': user['full_name'], 'soft': True})
+        except Exception:
+            pass
+
+        return jsonify({
+            'success': True,
+            'message': f'Пользователь {user["full_name"]} удалён'
+        })
     except Exception as e:
+        log.exception('Ошибка удаления пользователя')
         return jsonify({'success': False, 'error': f'Ошибка: {str(e)}'}), 500
 
 
-# ============= УЧЁТНЫЕ ДАННЫЕ =============
+# ============================================================
+# УЧЁТНЫЕ ДАННЫЕ
+# ============================================================
 
 @users_bp.route('/api/users/<int:user_id>/credentials')
 @role_required('Администратор')
 def get_user_credentials(user_id):
     """
-    Возвращает логин и пароль пользователя.
-    Пароль — из plain-копии (если включено в .env).
-    Если plain нет — возвращает None и предлагает сбросить.
+    Возвращает логин пользователя.
+    Пароль недоступен — хранится в виде необратимого хеша.
+    Для получения нового пароля используйте /reset-password.
     """
     try:
-        user = db.query('SELECT id, full_name, login FROM users WHERE id = ?',
-                        [user_id], one=True)
+        user = db.query(
+            'SELECT id, full_name, login FROM users WHERE id = ? AND deleted_at IS NULL',
+            [user_id], one=True
+        )
         if not user:
             return jsonify({'success': False, 'error': 'Пользователь не найден'}), 404
-
-        plain = get_plain(db, user_id)
 
         return jsonify({
             'success': True,
             'credentials': {
                 'full_name': user['full_name'],
                 'login': user['login'],
-                'password': plain,           # None, если plain-копии нет
-                'available': plain is not None
+                'password': None,
+                'available': False,
+                'message': 'Пароль хранится в виде хеша и не может быть восстановлен. '
+                           'Для получения нового пароля нажмите «Сбросить».'
             }
         })
     except Exception as e:
+        log.exception('Ошибка get_user_credentials')
         return jsonify({'success': False, 'error': f'Ошибка: {str(e)}'}), 500
 
 
@@ -259,26 +332,30 @@ def get_user_credentials(user_id):
 @role_required('Администратор')
 def reset_user_password(user_id):
     """
-    Сброс пароля: генерирует новый, сохраняет хеш + plain-копию,
-    возвращает новый пароль в открытом виде (один раз).
+    Сброс пароля: генерирует новый, сохраняет только хеш,
+    возвращает новый пароль один раз в открытом виде.
     """
     try:
-        user = db.query('SELECT id, full_name, login FROM users WHERE id = ?',
-                        [user_id], one=True)
+        user = db.query(
+            'SELECT id, full_name, login FROM users WHERE id = ? AND deleted_at IS NULL',
+            [user_id], one=True
+        )
         if not user:
             return jsonify({'success': False, 'error': 'Пользователь не найден'}), 404
 
         new_plain = generate_password(10)
-        db.execute('UPDATE users SET password = ? WHERE id = ?',
-                   [hash_password(new_plain), user_id])
-        save_plain(db, user_id, new_plain)
 
-        # Лог в аудит
+        with db.transaction(immediate=True) as tx:
+            tx.execute('UPDATE users SET password = ? WHERE id = ?',
+                       [hash_password(new_plain), user_id])
+
         try:
             from audit import log_action
             log_action('update', 'user', user_id, {'action': 'reset_password'})
         except Exception:
             pass
+
+        log.info(f'Сброшен пароль пользователя {user["login"]} (ID={user_id})')
 
         return jsonify({
             'success': True,
@@ -290,10 +367,13 @@ def reset_user_password(user_id):
             'message': 'Пароль сброшен'
         })
     except Exception as e:
+        log.exception('Ошибка reset_user_password')
         return jsonify({'success': False, 'error': f'Ошибка: {str(e)}'}), 500
 
 
-# ============= ИМПОРТ =============
+# ============================================================
+# ИМПОРТ ИЗ ДРУГОЙ БД
+# ============================================================
 
 def _normalize_role(raw_role, raw_type_access=''):
     s = f"{raw_role or ''} {raw_type_access or ''}".strip().lower()
@@ -310,7 +390,7 @@ def _build_full_name(ext_user):
         return direct
 
     family = (ext_user.get('family') or ext_user.get('surname') or ext_user.get('last_name') or '').strip()
-    name   = (ext_user.get('name') or ext_user.get('first_name') or '').strip()
+    name = (ext_user.get('name') or ext_user.get('first_name') or '').strip()
     father = (ext_user.get('father') or ext_user.get('patronymic') or ext_user.get('middle_name') or '').strip()
 
     parts = [p for p in (family, name, father) if p]
@@ -333,8 +413,10 @@ def import_users():
 
         ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else ''
         if ext not in ('db', 'sqlite', 'sqlite3'):
-            return jsonify({'success': False,
-                            'error': 'Поддерживаются только .db, .sqlite, .sqlite3'}), 400
+            return jsonify({
+                'success': False,
+                'error': 'Поддерживаются только .db, .sqlite, .sqlite3'
+            }), 400
 
         tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.db')
         tmp_path = tmp.name
@@ -355,16 +437,20 @@ def import_users():
 
         if not users_table:
             conn.close()
-            return jsonify({'success': False,
-                            'error': f'В файле нет таблицы users. Найдены: {", ".join(all_tables) or "нет"}'}), 400
+            return jsonify({
+                'success': False,
+                'error': f'В файле нет таблицы users. Найдены: {", ".join(all_tables) or "нет"}'
+            }), 400
 
         cursor.execute(f'SELECT * FROM "{users_table}"')
         external_users = [dict(row) for row in cursor.fetchall()]
         conn.close()
 
         if not external_users:
-            return jsonify({'success': True, 'imported': 0, 'skipped': 0, 'total': 0,
-                            'errors': ['Таблица users пуста'], 'message': 'Таблица users пуста'})
+            return jsonify({
+                'success': True, 'imported': 0, 'skipped': 0, 'total': 0,
+                'errors': ['Таблица users пуста'], 'message': 'Таблица users пуста'
+            })
 
         first_row_keys = set(k.lower() for k in external_users[0].keys())
         is_legacy = ('family' in first_row_keys or 'father' in first_row_keys) and \
@@ -388,7 +474,6 @@ def import_users():
                 skipped += 1
                 errors.append(f'Пропущен: нет логина (ID={u.get("id")})')
                 continue
-
             if not full_name:
                 skipped += 1
                 errors.append(f'Пропущен: не удалось собрать ФИО (логин={login})')
@@ -415,7 +500,6 @@ def import_users():
 
             email = (u.get('email') or '').strip()
             phone = (u.get('phone') or u.get('number') or '').strip()
-
             avatar = (u.get('avatar') or u.get('image') or '').strip() or 'default.png'
 
             is_active = u.get('is_active')
@@ -428,20 +512,25 @@ def import_users():
                     is_active = 1
 
             try:
-                new_id = db.execute('''
-                    INSERT INTO users 
-                        (full_name, role, avatar, email, phone, department, login, password, is_active)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ''', [
-                    full_name, role, avatar, email, phone, department, login,
-                    hash_password(password), is_active
-                ])
-                # Сохраняем plain
-                save_plain(db, new_id, password)
+                with db.transaction(immediate=True) as tx:
+                    tx.execute('''
+                        INSERT INTO users 
+                            (full_name, role, avatar, email, phone, department, login, password, is_active)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ''', [
+                        full_name, role, avatar, email, phone, department, login,
+                        hash_password(password), is_active
+                    ])
                 imported += 1
             except Exception as e:
                 skipped += 1
                 errors.append(f'{login}: {str(e)}')
+
+        try:
+            from audit import log_action
+            log_action('import', 'user', None, {'imported': imported, 'skipped': skipped})
+        except Exception:
+            pass
 
         schema_note = 'legacy' if is_legacy else 'support_active'
         return jsonify({

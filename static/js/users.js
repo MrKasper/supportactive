@@ -44,7 +44,7 @@
                 html += '<div class="card-body"><div class="table-responsive">';
                 html += '<table class="table table-striped table-hover">';
                 html += '<thead><tr>';
-                html += '<th>ID</th><th>ФИО</th><th>Логин</th><th>Роль</th>';
+                html += '<th>ФИО</th><th>Логин</th><th>Роль</th>';
                 html += '<th>Email</th><th>Телефон</th><th>Отдел</th>';
                 html += '<th>Статус</th><th>Действия</th>';
                 html += '</tr></thead><tbody>';
@@ -63,7 +63,6 @@
                     }
 
                     html += '<tr>';
-                    html += '<td>' + user.id + '</td>';
                     html += '<td><strong>' + utils.escapeHtml(user.full_name) + '</strong></td>';
                     html += '<td>' + utils.escapeHtml(user.login || '-') + '</td>';
                     html += '<td>' + roleBadge + '</td>';
@@ -134,9 +133,8 @@
             });
     }
 
-    // ============= РЕДАКТИРОВАНИЕ (обновлено) =============
+    // ============= РЕДАКТИРОВАНИЕ =============
     function editUserById(userId) {
-        // Загружаем данные пользователя и его учётные данные параллельно
         Promise.all([
             fetch('/api/users/' + userId).then(function(r) { return r.json(); }),
             fetch('/api/users/' + userId + '/credentials').then(function(r) { return r.json(); })
@@ -155,61 +153,27 @@
                 $('#editLogin').val(data.login || '');
                 $('#editIsActive').prop('checked', data.is_active);
 
-                // 🔑 Подставляем пароль
+                // Подставляем поле пароля: плейсхолдер + кнопка сброса
+                var passwordHtml =
+                    '<div class="input-group">' +
+                    '<input type="password" class="form-control" name="password" id="editPassword" ' +
+                    'placeholder="•••••• (оставьте пустым, чтобы не менять)" minlength="6">' +
+                    '<button class="btn btn-outline-secondary" type="button" ' +
+                    'onclick="togglePasswordVisibility(\'editPassword\', \'editPasswordEye\')" title="Показать/скрыть">' +
+                    '<i class="bi bi-eye" id="editPasswordEye"></i></button>' +
+                    '<button class="btn btn-outline-warning" type="button" ' +
+                    'onclick="resetUserPassword(' + userId + ')" title="Сгенерировать новый пароль">' +
+                    '<i class="bi bi-arrow-clockwise"></i></button>' +
+                    '</div>' +
+                    '<small class="text-muted">Пароль хранится в виде необратимого хеша. ' +
+                    'Для получения нового нажмите 🔄.</small>';
+
+                // Ищем контейнер поля пароля и заменяем содержимое
                 var $pwdField = $('#editPassword');
-                var passwordHtml = '';
-
-                if (cred.success && cred.credentials) {
-                    if (cred.credentials.available && cred.credentials.password) {
-                        // Plain доступен — показываем его
-                        passwordHtml =
-                            '<div class="input-group">' +
-                            '<input type="text" class="form-control" name="password" id="editPassword" ' +
-                            'value="' + utils.escapeHtml(cred.credentials.password) + '" minlength="6">' +
-                            '<button class="btn btn-outline-secondary" type="button" ' +
-                            'onclick="togglePasswordVisibility(\'editPassword\')" title="Показать/скрыть">' +
-                            '<i class="bi bi-eye" id="editPasswordEye"></i></button>' +
-                            '<button class="btn btn-outline-warning" type="button" ' +
-                            'onclick="resetUserPassword(' + userId + ', this)" title="Сбросить пароль">' +
-                            '<i class="bi bi-arrow-clockwise"></i></button>' +
-                            '</div>' +
-                            '<small class="text-muted">Текущий пароль. Изменение сохранит новый.</small>';
-                    } else {
-                        // Plain недоступен (например, STORE_PLAIN_PASSWORDS=false)
-                        passwordHtml =
-                            '<div class="input-group">' +
-                            '<input type="text" class="form-control" name="password" id="editPassword" ' +
-                            'placeholder="•••••••• (не сохраняется в открытом виде)" minlength="6">' +
-                            '<button class="btn btn-outline-secondary" type="button" ' +
-                            'onclick="togglePasswordVisibility(\'editPassword\')" title="Показать/скрыть">' +
-                            '<i class="bi bi-eye" id="editPasswordEye"></i></button>' +
-                            '<button class="btn btn-outline-warning" type="button" ' +
-                            'onclick="resetUserPassword(' + userId + ', this)" title="Сбросить пароль">' +
-                            '<i class="bi bi-arrow-clockwise"></i></button>' +
-                            '</div>' +
-                            '<small class="text-muted">Пароль недоступен. Оставьте пустым, чтобы не менять. ' +
-                            'Нажмите 🔄 для сброса на новый.</small>';
-                    }
-                } else {
-                    passwordHtml =
-                        '<input type="text" class="form-control" name="password" id="editPassword" ' +
-                        'placeholder="Введите пароль" minlength="6">';
-                }
-
-                // Заменяем содержимое поля пароля
-                var $field = $('#editPassword');
-                if ($field.length === 0) {
-                    // Если поля нет (шаблон содержит только input) — вставляем
-                    $('#loginPasswordFields').find('.mb-3:has(#editPassword)').html(
-                        '<label class="form-label">Пароль *</label>' + passwordHtml
-                    );
-                } else {
-                    // Оборачиваем в группу
-                    var $parent = $field.parent();
-                    if (!$parent.hasClass('input-group')) {
-                        $parent.html(passwordHtml);
-                    } else {
-                        $parent.html(passwordHtml.replace(/^<div class="input-group">|<\/div><small[^>]*>.*?<\/small>$/g, ''));
+                if ($pwdField.length > 0) {
+                    var $wrapper = $pwdField.closest('.mb-3');
+                    if ($wrapper.length > 0) {
+                        $wrapper.html('<label class="form-label">Пароль</label>' + passwordHtml);
                     }
                 }
 
@@ -242,13 +206,13 @@
     }
 
     // ============= СБРОС ПАРОЛЯ =============
-    function resetUserPassword(userId, btn) {
+    function resetUserPassword(userId) {
         Swal.fire({
-            title: 'Сбросить пароль?',
-            text: 'Будет сгенерирован новый пароль. Старый станет недоступен.',
+            title: 'Сгенерировать новый пароль?',
+            text: 'Старый пароль станет недействительным.',
             icon: 'question',
             showCancelButton: true,
-            confirmButtonText: 'Да, сбросить',
+            confirmButtonText: 'Да, сгенерировать',
             cancelButtonText: 'Отмена',
             confirmButtonColor: '#f6c23e'
         }).then(function(result) {
@@ -258,9 +222,6 @@
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
                     if (data.success) {
-                        // Обновляем поле в открытой форме
-                        $('#editPassword').val(data.credentials.password);
-
                         Swal.fire({
                             icon: 'success',
                             title: 'Пароль сброшен',
@@ -269,9 +230,12 @@
                                 '<p><strong>Логин:</strong> ' + utils.escapeHtml(data.credentials.login) + '</p>' +
                                 '<p><strong>Новый пароль:</strong> <code>' +
                                 utils.escapeHtml(data.credentials.password) + '</code></p>' +
-                                '<p class="text-muted small">Сообщите пароль пользователю.</p>' +
+                                '<p class="text-muted small">Сообщите пароль пользователю — он больше не будет показан.</p>' +
                                 '</div>',
-                            confirmButtonText: 'Скопировать пароль'
+                            showCancelButton: true,
+                            confirmButtonText: 'Скопировать и закрыть',
+                            cancelButtonText: 'Закрыть',
+                            confirmButtonColor: '#0d6efd'
                         }).then(function(res) {
                             if (res.isConfirmed) {
                                 navigator.clipboard.writeText(data.credentials.password);
@@ -285,7 +249,7 @@
         });
     }
 
-    // ============= ПЕЧАТЬ УЧЁТНЫХ ДАННЫХ (обновлено) =============
+    // ============= ПЕЧАТЬ УЧЁТНЫХ ДАННЫХ =============
     function printUserCredentials(userId) {
         fetch('/api/users/' + userId + '/credentials')
             .then(function(r) { return r.json(); })
@@ -293,15 +257,15 @@
                 if (!data.success) { utils.showErrorMessage(data.error || 'Ошибка'); return; }
                 var creds = data.credentials;
 
-                // Если пароль недоступен — предложить сбросить
+                // Пароль недоступен — предлагаем сбросить
                 if (!creds.available || !creds.password) {
                     Swal.fire({
                         icon: 'warning',
                         title: 'Пароль недоступен',
                         html:
-                            '<p>Пароль хранится в виде хеша и не может быть восстановлен.</p>' +
+                            '<p>Пароль хранится в виде необратимого хеша и не может быть восстановлен.</p>' +
                             '<p class="text-muted small">Чтобы распечатать учётные данные, ' +
-                            'нужно сбросить пароль на новый.</p>',
+                            'сначала сбросьте пароль на новый.</p>',
                         showCancelButton: true,
                         confirmButtonText: '<i class="bi bi-arrow-clockwise"></i> Сбросить и распечатать',
                         cancelButtonText: 'Отмена',
@@ -380,7 +344,7 @@
     function deleteUser(userId) {
         Swal.fire({
             title: 'Удалить пользователя?',
-            text: 'Это действие нельзя отменить!',
+            text: 'Пользователь будет помечен как удалённый.',
             icon: 'warning',
             showCancelButton: true,
             confirmButtonText: 'Да, удалить',
@@ -643,14 +607,16 @@
             });
     }
 
-    // ============= УТИЛИТА: показать/скрыть пароль =============
-    function togglePasswordVisibility(fieldId) {
+    // ============= УТИЛИТА =============
+    function togglePasswordVisibility(fieldId, iconId) {
         var $field = $('#' + fieldId);
         if ($field.length === 0) return;
         if ($field.attr('type') === 'password') {
             $field.attr('type', 'text');
+            if (iconId) $('#' + iconId).removeClass('bi-eye').addClass('bi-eye-slash');
         } else {
             $field.attr('type', 'password');
+            if (iconId) $('#' + iconId).removeClass('bi-eye-slash').addClass('bi-eye');
         }
     }
 
@@ -757,5 +723,5 @@
     window.selectAvatar = selectAvatar;
     window.previewAvatarFile = previewAvatarFile;
 
-    console.log('[users] Загружено');
+    console.log('[users] Загружено (без ID)');
 })();

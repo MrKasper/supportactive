@@ -1,9 +1,11 @@
 # tasks.py
 from flask import Blueprint, request, jsonify, session
 from database import Database
-from datetime import datetime
+from datetime import datetime, timedelta
 from utils import login_required, role_required
+from extensions import cache
 from logger import get_logger
+import sqlite3
 
 from notifications import (
     create_notification,
@@ -19,40 +21,69 @@ tasks_bp = Blueprint('tasks', __name__)
 db = Database()
 
 
+def _invalidate_task_caches():
+    """Сброс кешей, связанных с заявками."""
+    try:
+        cache.delete('filters_data')
+    except Exception:
+        pass
+
+
 # ============= СТАТИСТИКА =============
 
 @tasks_bp.route('/api/statistics')
 @login_required
 def get_statistics():
     try:
-        total_tasks = db.query('SELECT COUNT(*) as c FROM tasks', one=True)['c']
-        completed_tasks = db.query("SELECT COUNT(*) as c FROM tasks WHERE status = 'Выполнено'", one=True)['c']
-        new_tasks = db.query("SELECT COUNT(*) as c FROM tasks WHERE status = 'Новое'", one=True)['c']
-        in_progress_tasks = db.query("SELECT COUNT(*) as c FROM tasks WHERE status = 'В работе'", one=True)['c']
-        cancelled_tasks = db.query("SELECT COUNT(*) as c FROM tasks WHERE status = 'Отменено'", one=True)['c']
+        total_tasks = db.query(
+            'SELECT COUNT(*) as c FROM tasks WHERE deleted_at IS NULL', one=True
+        )['c']
+        completed_tasks = db.query(
+            "SELECT COUNT(*) as c FROM tasks WHERE status = 'Выполнено' AND deleted_at IS NULL",
+            one=True
+        )['c']
+        new_tasks = db.query(
+            "SELECT COUNT(*) as c FROM tasks WHERE status = 'Новое' AND deleted_at IS NULL",
+            one=True
+        )['c']
+        in_progress_tasks = db.query(
+            "SELECT COUNT(*) as c FROM tasks WHERE status = 'В работе' AND deleted_at IS NULL",
+            one=True
+        )['c']
+        cancelled_tasks = db.query(
+            "SELECT COUNT(*) as c FROM tasks WHERE status = 'Отменено' AND deleted_at IS NULL",
+            one=True
+        )['c']
 
         user_name = session.get('user_name')
-        user_total = db.query('SELECT COUNT(*) as c FROM tasks WHERE executor = ?', [user_name], one=True)['c']
+        user_total = db.query(
+            'SELECT COUNT(*) as c FROM tasks WHERE executor = ? AND deleted_at IS NULL',
+            [user_name], one=True
+        )['c']
         user_completed = db.query(
-            "SELECT COUNT(*) as c FROM tasks WHERE status = 'Выполнено' AND executor = ?",
+            "SELECT COUNT(*) as c FROM tasks WHERE status = 'Выполнено' AND executor = ? AND deleted_at IS NULL",
             [user_name], one=True
         )['c']
         user_in_progress = db.query(
-            "SELECT COUNT(*) as c FROM tasks WHERE status IN ('Новое','В работе') AND executor = ?",
+            "SELECT COUNT(*) as c FROM tasks WHERE status IN ('Новое','В работе') AND executor = ? AND deleted_at IS NULL",
             [user_name], one=True
         )['c']
 
         work_type_stats = db.query('''
             SELECT work_type, COUNT(*) as count FROM tasks
-            WHERE work_type != '' GROUP BY work_type ORDER BY count DESC
+            WHERE work_type != '' AND deleted_at IS NULL
+            GROUP BY work_type ORDER BY count DESC
         ''')
         cabinet_stats = db.query('''
             SELECT cabinet, COUNT(*) as count FROM tasks
-            WHERE cabinet != '' GROUP BY cabinet ORDER BY count DESC LIMIT 10
+            WHERE cabinet != '' AND deleted_at IS NULL
+            GROUP BY cabinet ORDER BY count DESC LIMIT 10
         ''')
         overdue_tasks = db.query('''
             SELECT COUNT(*) as c FROM tasks
-            WHERE status NOT IN ('Выполнено','Отменено') AND deadline < datetime('now')
+            WHERE status NOT IN ('Выполнено','Отменено')
+              AND deadline < datetime('now')
+              AND deleted_at IS NULL
         ''', one=True)['c']
 
         return jsonify({
@@ -97,7 +128,7 @@ def get_tasks():
         sort_by = request.args.get('sort_by', 'created_date')
         sort_order = request.args.get('sort_order', 'DESC')
 
-        where = 'WHERE 1=1'
+        where = 'WHERE deleted_at IS NULL'
         params = []
 
         if work_type:
@@ -167,13 +198,16 @@ def get_tasks():
         return jsonify({'error': f'Ошибка: {str(e)}'}), 500
 
 
-# ============= ДЕТАЛИ =============
+# ============= ДЕТАЛИ ЗАЯВКИ =============
 
 @tasks_bp.route('/api/task/<int:task_id>')
 @login_required
 def get_task(task_id):
     try:
-        task = db.query('SELECT * FROM tasks WHERE id = ?', [task_id], one=True)
+        task = db.query(
+            'SELECT * FROM tasks WHERE id = ? AND deleted_at IS NULL',
+            [task_id], one=True
+        )
         if not task:
             return jsonify({'error': 'Заявка не найдена'}), 404
 
@@ -190,7 +224,7 @@ def get_task(task_id):
             [task_id], one=True
         )['c']
         com_count = db.query(
-            'SELECT COUNT(*) as c FROM task_comments WHERE task_id = ?',
+            'SELECT COUNT(*) as c FROM task_comments WHERE task_id = ? AND deleted_at IS NULL',
             [task_id], one=True
         )['c']
 
@@ -220,6 +254,7 @@ def create_task():
 
         executor = (data.get('executor') or '').strip()
         deadline = (data.get('deadline') or '').strip()
+        duration_minutes = int(data.get('duration_minutes') or 60)
 
         if executor and deadline:
             try:
@@ -230,9 +265,14 @@ def create_task():
 
             if new_deadline:
                 existing = db.query('''
-                    SELECT id, deadline FROM tasks
-                    WHERE executor = ? AND status IN ('Новое','В работе')
+                    SELECT id, deadline, duration_minutes FROM tasks
+                    WHERE executor = ?
+                      AND status IN ('Новое','В работе')
+                      AND deleted_at IS NULL
                 ''', [executor])
+
+                new_start = new_deadline
+                new_end = new_deadline + timedelta(minutes=duration_minutes)
 
                 for t in existing:
                     if not t['deadline']:
@@ -245,12 +285,19 @@ def create_task():
                             break
                         except Exception:
                             continue
-                    if td and td.date() == new_deadline.date():
-                        if abs((new_deadline - td).total_seconds()) < 3600:
-                            return jsonify({
-                                'success': False,
-                                'error': f'Техник занят! Заявка №{t["id"]} на {t["deadline"]}'
-                            }), 400
+                    if not td:
+                        continue
+
+                    existing_duration = int(t['duration_minutes'] or 60)
+                    existing_start = td
+                    existing_end = td + timedelta(minutes=existing_duration)
+
+                    if new_start < existing_end and existing_start < new_end:
+                        return jsonify({
+                            'success': False,
+                            'error': f'Техник занят в это время! Заявка №{t["id"]} '
+                                     f'с {t["deadline"]} на {existing_duration} мин.'
+                        }), 400
 
         normalized_deadline = (
             deadline.replace('T', ' ') + ':00' if deadline
@@ -263,22 +310,31 @@ def create_task():
         else:
             assistant = (data.get('assistant') or '').strip()
 
-        task_id = db.execute('''
-            INSERT INTO tasks
-                (deadline, from_user, cabinet, description, work_type,
-                 priority, executor, assistant, status, created_by, created_date)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', [
-            normalized_deadline,
-            data.get('from_user', ''),
-            data.get('cabinet', ''),
-            data['description'],
-            data['work_type'],
-            data.get('priority', 'Средний'),
-            executor, assistant, 'Новое',
-            session['user_id'],
-            datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        ])
+        try:
+            with db.transaction(immediate=True) as tx:
+                task_id = tx.execute('''
+                    INSERT INTO tasks
+                        (deadline, from_user, cabinet, description, work_type,
+                         priority, executor, assistant, status, created_by,
+                         created_date, duration_minutes)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', [
+                    normalized_deadline,
+                    data.get('from_user', ''),
+                    data.get('cabinet', ''),
+                    data['description'],
+                    data['work_type'],
+                    data.get('priority', 'Средний'),
+                    executor, assistant, 'Новое',
+                    session['user_id'],
+                    datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                    duration_minutes
+                ])
+        except sqlite3.IntegrityError:
+            return jsonify({
+                'success': False,
+                'error': 'Техник в это время уже занят другой заявкой'
+            }), 400
 
         log.info(f'Создана заявка №{task_id}')
         log_action('create', 'task', task_id, {
@@ -293,6 +349,8 @@ def create_task():
             'executor': executor,
             'assistant': assistant
         })
+
+        _invalidate_task_caches()
 
         return jsonify({
             'success': True,
@@ -314,7 +372,8 @@ def update_task(task_id):
         if not data:
             return jsonify({'success': False, 'error': 'Нет данных'}), 400
 
-        old = db.query('SELECT * FROM tasks WHERE id = ?', [task_id], one=True)
+        old = db.query('SELECT * FROM tasks WHERE id = ? AND deleted_at IS NULL',
+                       [task_id], one=True)
         if not old:
             return jsonify({'success': False, 'error': 'Заявка не найдена'}), 404
 
@@ -326,23 +385,24 @@ def update_task(task_id):
         for field_name, old_val, new_val in changes:
             log_task_change(task_id, field_name, old_val, new_val)
 
-        db.execute('''
-            UPDATE tasks
-            SET deadline = ?, from_user = ?, cabinet = ?, description = ?,
-                status = ?, executor = ?, assistant = ?, work_type = ?, priority = ?
-            WHERE id = ?
-        ''', [
-            data.get('deadline', old['deadline']),
-            data.get('from_user', old['from_user']),
-            data.get('cabinet', old['cabinet']),
-            data.get('description', old['description']),
-            data.get('status', old['status']),
-            data.get('executor', old['executor']),
-            data.get('assistant', old['assistant']),
-            data.get('work_type', old['work_type']),
-            data.get('priority', old['priority']),
-            task_id
-        ])
+        with db.transaction(immediate=True) as tx:
+            tx.execute('''
+                UPDATE tasks
+                SET deadline = ?, from_user = ?, cabinet = ?, description = ?,
+                    status = ?, executor = ?, assistant = ?, work_type = ?, priority = ?
+                WHERE id = ?
+            ''', [
+                data.get('deadline', old['deadline']),
+                data.get('from_user', old['from_user']),
+                data.get('cabinet', old['cabinet']),
+                data.get('description', old['description']),
+                data.get('status', old['status']),
+                data.get('executor', old['executor']),
+                data.get('assistant', old['assistant']),
+                data.get('work_type', old['work_type']),
+                data.get('priority', old['priority']),
+                task_id
+            ])
 
         log_action('update', 'task', task_id, {'changes': len(changes)})
         return jsonify({'success': True, 'message': f'Заявка №{task_id} обновлена'})
@@ -360,17 +420,20 @@ def close_task(task_id):
         if session.get('user_role') not in ('Администратор', 'Техник'):
             return jsonify({'success': False, 'error': 'Недостаточно прав'}), 403
 
-        task = db.query('SELECT * FROM tasks WHERE id = ?', [task_id], one=True)
+        task = db.query('SELECT * FROM tasks WHERE id = ? AND deleted_at IS NULL',
+                        [task_id], one=True)
         if not task:
             return jsonify({'success': False, 'error': 'Заявка не найдена'}), 404
         if task['status'] == 'Выполнено':
             return jsonify({'success': False, 'error': 'Заявка уже закрыта'}), 400
 
         current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        db.execute(
-            'UPDATE tasks SET status = "Выполнено", completed_date = ? WHERE id = ?',
-            [current_time, task_id]
-        )
+
+        with db.transaction(immediate=True) as tx:
+            tx.execute(
+                'UPDATE tasks SET status = "Выполнено", completed_date = ? WHERE id = ?',
+                [current_time, task_id]
+            )
 
         log_task_change(task_id, 'Статус', task['status'], 'Выполнено')
         log_action('update', 'task', task_id, {'action': 'close'})
@@ -388,7 +451,7 @@ def close_task(task_id):
         return jsonify({'success': False, 'error': f'Ошибка: {str(e)}'}), 500
 
 
-# ============= ВЗЯТИЕ =============
+# ============= ВЗЯТИЕ В РАБОТУ =============
 
 @tasks_bp.route('/api/task/<int:task_id>/take', methods=['POST'])
 @login_required
@@ -397,7 +460,8 @@ def take_task(task_id):
         if session.get('user_role') not in ('Администратор', 'Техник'):
             return jsonify({'success': False, 'error': 'Недостаточно прав'}), 403
 
-        task = db.query('SELECT * FROM tasks WHERE id = ?', [task_id], one=True)
+        task = db.query('SELECT * FROM tasks WHERE id = ? AND deleted_at IS NULL',
+                        [task_id], one=True)
         if not task:
             return jsonify({'success': False, 'error': 'Заявка не найдена'}), 404
         if task['status'] != 'Новое':
@@ -411,10 +475,11 @@ def take_task(task_id):
                 'error': f'Заявка уже назначена на {task["executor"]}'
             }), 400
 
-        db.execute(
-            'UPDATE tasks SET status = "В работе", executor = ? WHERE id = ?',
-            [user_name, task_id]
-        )
+        with db.transaction(immediate=True) as tx:
+            tx.execute(
+                'UPDATE tasks SET status = "В работе", executor = ? WHERE id = ?',
+                [user_name, task_id]
+            )
 
         log_task_change(task_id, 'Статус', 'Новое', 'В работе')
         log_task_change(task_id, 'Исполнитель', task['executor'] or '', user_name)
@@ -440,7 +505,8 @@ def take_task(task_id):
 @role_required('Администратор')
 def delete_task(task_id):
     try:
-        task = db.query('SELECT * FROM tasks WHERE id = ?', [task_id], one=True)
+        task = db.query('SELECT * FROM tasks WHERE id = ? AND deleted_at IS NULL',
+                        [task_id], one=True)
         if not task:
             return jsonify({'success': False, 'error': 'Заявка не найдена'}), 404
 
@@ -448,9 +514,12 @@ def delete_task(task_id):
             'description': (task['description'] or '')[:100]
         })
 
-        db.execute('DELETE FROM notifications WHERE task_id = ?', [task_id])
-        db.execute('DELETE FROM task_history WHERE task_id = ?', [task_id])
-        db.execute('DELETE FROM tasks WHERE id = ?', [task_id])
+        with db.transaction(immediate=True) as tx:
+            tx.execute('DELETE FROM notifications WHERE task_id = ?', [task_id])
+            tx.execute('DELETE FROM task_history WHERE task_id = ?', [task_id])
+            tx.execute('DELETE FROM task_comments WHERE task_id = ?', [task_id])
+            tx.execute('DELETE FROM task_attachments WHERE task_id = ?', [task_id])
+            tx.execute('DELETE FROM tasks WHERE id = ?', [task_id])
 
         return jsonify({'success': True, 'message': f'Заявка №{task_id} удалена'})
     except Exception as e:
@@ -458,11 +527,13 @@ def delete_task(task_id):
         return jsonify({'success': False, 'error': f'Ошибка: {str(e)}'}), 500
 
 
-# ============= ФИЛЬТРЫ =============
+# ============= ФИЛЬТРЫ (кешируется) =============
 
 @tasks_bp.route('/api/filters')
 @login_required
+@cache.cached(timeout=120, key_prefix='filters_data')
 def get_filters():
+    """Данные для фильтров. Кешируется на 2 минуты."""
     try:
         work_types = [r['name'] for r in db.query(
             'SELECT name FROM problem_types WHERE is_active = 1 ORDER BY name'
@@ -473,7 +544,7 @@ def get_filters():
         statuses = ['Новое', 'В работе', 'Выполнено', 'Отменено']
         priorities = ['Высокий', 'Средний', 'Низкий']
         users = [r['full_name'] for r in db.query(
-            'SELECT full_name FROM users WHERE is_active = 1 ORDER BY full_name'
+            'SELECT full_name FROM users WHERE is_active = 1 AND deleted_at IS NULL ORDER BY full_name'
         )]
 
         return jsonify({

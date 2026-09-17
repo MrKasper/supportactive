@@ -1,5 +1,4 @@
 // static/js/licenses.js
-// Лицензии
 
 (function() {
     'use strict';
@@ -34,14 +33,12 @@
                 var stats = results[2];
 
                 if (licenses.error) {
-                    $contentBlock.html('<div class="alert alert-danger">' +
-                        utils.escapeHtml(licenses.error) + '</div>');
+                    $contentBlock.html('<div class="alert alert-danger">' + utils.escapeHtml(licenses.error) + '</div>');
                     return;
                 }
 
                 var html = '';
 
-                // KPI-карточки (как в картриджах)
                 if (!stats.error) {
                     html += '<div class="row mb-3 g-3">';
                     html += statCard('Всего лицензий', stats.total, 'primary', 'bi-key');
@@ -54,7 +51,6 @@
                     html += '</div>';
                 }
 
-                // Таблица
                 html += '<div class="card">';
                 html += '<div class="card-header bg-primary text-white">';
                 html += '<div class="d-flex justify-content-between align-items-center flex-wrap gap-2">';
@@ -67,7 +63,6 @@
                 html += '</div></div></div>';
                 html += '<div class="card-body">';
 
-                // Фильтр
                 html += '<div class="row mb-3"><div class="col-md-4">' +
                         '<label class="form-label">Фильтр по кабинету</label>' +
                         '<select class="form-select" id="licenseCabinetFilter" onchange="filterLicenses()">' +
@@ -83,7 +78,7 @@
 
                 html += '<div class="table-responsive">';
                 html += '<table class="table table-striped table-hover">';
-                html += '<thead><tr><th>ID</th><th>Кабинет</th><th>ПО</th><th>Тип</th>' +
+                html += '<thead><tr><th>Кабинет</th><th>ПО</th><th>Тип</th>' +
                         '<th>Примечание</th><th>Действия</th></tr></thead>';
                 html += '<tbody id="licensesTableBody">';
                 html += renderRows(licenses);
@@ -98,7 +93,6 @@
             });
     }
 
-    // ============= KPI КАРТОЧКА (стиль как в картриджах) =============
     function statCard(label, value, gradient, icon) {
         return '<div class="col-6 col-md-3">' +
             '<div class="cart-kpi bg-grad-' + gradient + '">' +
@@ -110,21 +104,18 @@
 
     function renderRows(licenses) {
         if (!licenses || licenses.length === 0) {
-            return '<tr><td colspan="6" class="text-center">Нет лицензий</td></tr>';
+            return '<tr><td colspan="5" class="text-center">Нет лицензий</td></tr>';
         }
         var html = '';
         licenses.forEach(function(lic) {
             html += '<tr>';
-            html += '<td>' + lic.id + '</td>';
             html += '<td>' + utils.escapeHtml(lic.cabinet || '-') + '</td>';
             html += '<td>' + utils.escapeHtml(lic.software_name || '-') + '</td>';
             html += '<td>' + utils.escapeHtml(lic.license_type || '-') + '</td>';
             html += '<td>' + utils.escapeHtml(lic.notes || '-') + '</td>';
             html += '<td><div class="btn-group btn-group-sm">';
-            html += '<button class="btn btn-outline-success" onclick="editLicense(' + lic.id + ')" title="Редактировать">' +
-                    '<i class="bi bi-pencil"></i></button>';
-            html += '<button class="btn btn-outline-danger" onclick="deleteLicense(' + lic.id + ')" title="Удалить">' +
-                    '<i class="bi bi-trash"></i></button>';
+            html += '<button class="btn btn-outline-success" onclick="editLicense(' + lic.id + ')" title="Редактировать"><i class="bi bi-pencil"></i></button>';
+            html += '<button class="btn btn-outline-danger" onclick="deleteLicense(' + lic.id + ')" title="Удалить"><i class="bi bi-trash"></i></button>';
             html += '</div></td></tr>';
         });
         return html;
@@ -143,7 +134,7 @@
             });
     }
 
-    // ============= ДОБАВЛЕНИЕ / РЕДАКТИРОВАНИЕ =============
+    // ============= ДОБАВЛЕНИЕ =============
     function showAddLicenseModal() {
         fetch('/api/cabinets')
             .then(function(r) { return r.json(); })
@@ -183,8 +174,7 @@
                 var cabinetOptions = '';
                 cabinets.forEach(function(cab) {
                     var selected = (cab.cabinet_number === data.cabinet) ? 'selected' : '';
-                    cabinetOptions += '<option value="' + utils.escapeHtml(cab.cabinet_number) + '" ' +
-                        selected + '>' +
+                    cabinetOptions += '<option value="' + utils.escapeHtml(cab.cabinet_number) + '" ' + selected + '>' +
                         utils.escapeHtml(cab.cabinet_number + (cab.description ? ' - ' + cab.description : '')) +
                         '</option>';
                 });
@@ -318,5 +308,5 @@
     window.deleteLicense = deleteLicense;
     window.filterLicenses = filterLicenses;
 
-    console.log('[licenses] Загружено');
+    console.log('[licenses] Загружено (без ID)');
 })();
