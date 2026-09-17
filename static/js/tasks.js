@@ -12,8 +12,6 @@
     var api = window.App.register('Tasks');
     var utils = window.App.utils;
     var state = window.App.state;
-
-    // Приватная переменная модуля
     var searchDebounceTimer = null;
 
     // ============= СТАТИСТИКА =============
@@ -27,7 +25,6 @@
             })
             .then(function(data) {
                 if (!data || data.error) return;
-
                 if (window.currentUserRole === 'Техник') {
                     utils.animateNumber('#statCompleted', data.user_completed || 0);
                     utils.animateNumber('#statNewProgress', data.user_in_progress || 0);
@@ -80,7 +77,6 @@
     function loadTasks(page) {
         page = page || 1;
         state.currentPage = page;
-
         showLoadingIndicator();
 
         var params = new URLSearchParams();
@@ -149,12 +145,8 @@
     }
 
     function showLoadingIndicator() {
-        var colSpan = (window.currentUserRole === 'Администратор') ? 11 : 10;
-        $('#tasksTableBody').html(
-            '<tr><td colspan="' + colSpan + '" class="text-center py-5">' +
-            '<div class="spinner-border text-primary"></div>' +
-            '<p class="mt-2 text-muted">Загрузка...</p></td></tr>'
-        );
+        var cols = (window.currentUserRole === 'Администратор') ? 11 : 10;
+        $('#tasksTableBody').html(utils.skeletonRows(8, cols));
     }
 
     function showErrorInTable(msg) {
@@ -223,8 +215,7 @@
 
         html += '<div class="text-center text-muted small mt-2">' +
                 'Показано ' + ((page - 1) * data.per_page + 1) + '–' +
-                Math.min(page * data.per_page, data.total) +
-                ' из ' + data.total + '</div>';
+                Math.min(page * data.per_page, data.total) + ' из ' + data.total + '</div>';
 
         $pag.html(html);
     }
@@ -287,10 +278,12 @@
             '<td>' + deadlineHtml + '</td>' +
             '<td>' + utils.escapeHtml(task.from_user || '-') + '</td>' +
             '<td>' + utils.escapeHtml(task.cabinet || '-') + '</td>' +
-            '<td title="' + utils.escapeHtml(task.description || '') + '">' + utils.escapeHtml(utils.truncateText(task.description, 40)) + '</td>' +
+            '<td title="' + utils.escapeHtml(task.description || '') + '">' +
+            utils.escapeHtml(utils.truncateText(task.description, 40)) + '</td>' +
             '<td><span class="badge bg-secondary">' + utils.escapeHtml(task.work_type || 'Не указан') + '</span></td>' +
             '<td><span class="status-badge ' + statusClass + '">' + utils.escapeHtml(task.status || 'Новое') + '</span></td>' +
-            '<td><span class="' + priorityClass + '"><i class="bi bi-flag-fill"></i> ' + utils.escapeHtml(task.priority || 'Средний') + '</span></td>' +
+            '<td><span class="' + priorityClass + '"><i class="bi bi-flag-fill"></i> ' +
+            utils.escapeHtml(task.priority || 'Средний') + '</span></td>' +
             '<td>' + (task.executor ? utils.escapeHtml(task.executor) : '<span class="text-muted">Не назначен</span>') + '</td>' +
             '<td>' + (task.assistant ? utils.escapeHtml(task.assistant) : '<span class="text-muted">Не назначен</span>') + '</td>';
 
@@ -322,7 +315,8 @@
             .then(function(result) {
                 if (result.success) {
                     $('#createTaskModal').modal('hide');
-                    Swal.fire({ icon: 'success', title: 'Заявка создана!', text: 'Номер: ' + result.task_id, timer: 2000, showConfirmButton: false });
+                    Swal.fire({ icon: 'success', title: 'Заявка создана!',
+                                text: 'Номер: ' + result.task_id, timer: 2000, showConfirmButton: false });
                     api.refreshData();
                 } else {
                     Swal.fire({ icon: 'error', title: 'Ошибка', text: result.error });
@@ -335,11 +329,8 @@
     function closeSelectedTasks() {
         if (state.selectedTasks.size === 0) { Swal.fire({ icon: 'info', title: 'Не выбраны заявки' }); return; }
         Swal.fire({
-            title: 'Закрыть заявки?',
-            text: 'Выбрано: ' + state.selectedTasks.size,
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonText: 'Да'
+            title: 'Закрыть заявки?', text: 'Выбрано: ' + state.selectedTasks.size,
+            icon: 'question', showCancelButton: true, confirmButtonText: 'Да'
         }).then(function(r) { if (r.isConfirmed) executeCloseMultipleTasks(); });
     }
 
@@ -444,7 +435,8 @@
                 $s.empty().append('<option value="">Выберите кабинет</option>');
                 (cabinets || []).forEach(function(c) {
                     var label = c.cabinet_number + (c.description ? ' - ' + c.description : '');
-                    $s.append('<option value="' + utils.escapeHtml(c.cabinet_number) + '">' + utils.escapeHtml(label) + '</option>');
+                    $s.append('<option value="' + utils.escapeHtml(c.cabinet_number) + '">' +
+                              utils.escapeHtml(label) + '</option>');
                 });
             });
     }
@@ -473,7 +465,10 @@
                 $s.empty().append('<option value="">Выберите тип работы</option>');
                 if (types && !types.error) {
                     types.forEach(function(t) {
-                        if (t.is_active) $s.append('<option value="' + utils.escapeHtml(t.name) + '">' + utils.escapeHtml(t.name) + '</option>');
+                        if (t.is_active) {
+                            $s.append('<option value="' + utils.escapeHtml(t.name) + '">' +
+                                      utils.escapeHtml(t.name) + '</option>');
+                        }
                     });
                 }
             });
@@ -531,20 +526,19 @@
                 $s.empty().append('<option value="">Выберите кабинет</option>');
                 (cabinets || []).forEach(function(c) {
                     var label = c.cabinet_number + (c.description ? ' - ' + c.description : '');
-                    $s.append('<option value="' + utils.escapeHtml(c.cabinet_number) + '">' + utils.escapeHtml(label) + '</option>');
+                    $s.append('<option value="' + utils.escapeHtml(c.cabinet_number) + '">' +
+                              utils.escapeHtml(label) + '</option>');
                 });
                 if (cur) $s.val(cur);
             });
     }
 
-    // ============= ОБНОВЛЕНИЕ ВСЕГО =============
+    // ============= ОБНОВЛЕНИЕ =============
     function refreshData() {
-        if (typeof loadUserInfo === 'function') loadUserInfo();
+        if (window.App.Auth) window.App.Auth.loadUserInfo();
         loadStatistics();
         loadTasks(state.currentPage || 1);
-        if (window.App.Notifications && window.App.Notifications.loadUnreadCount) {
-            window.App.Notifications.loadUnreadCount();
-        }
+        if (window.App.Notifications) window.App.Notifications.loadUnreadCount();
     }
 
     // ============= ЭКСПОРТ =============
@@ -562,7 +556,6 @@
     api.setupCabinetSearch = setupCabinetSearch;
     api.showCreateTaskModal = showCreateTaskModal;
 
-    // Совместимость со старым кодом (inline onclick из HTML)
     window.loadStatistics = loadStatistics;
     window.loadFilters = loadFilters;
     window.loadTasks = loadTasks;

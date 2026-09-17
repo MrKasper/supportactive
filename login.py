@@ -5,6 +5,7 @@ from datetime import datetime
 from utils import get_client_ip
 from extensions import limiter
 from logger import get_logger
+from passwords import verify_password, hash_password, save_plain
 
 log = get_logger(__name__)
 
@@ -12,9 +13,11 @@ auth_bp = Blueprint('auth', __name__)
 db = Database()
 
 # Ключ: login, Значение: {"count": int, "last_attempt": datetime}
+# ⚠️ В памяти процесса. Для multi-worker (Gunicorn) нужно хранить в Redis/БД.
 failed_attempts = {}
 
-MAX_ATTEMPTS = 3
+MAX_ATTEMPTS = 3               # для обычных пользователей и техников
+MAX_ATTEMPTS_ADMIN = 10        # для админов — мягче, но всё равно ограничено
 BLOCK_MINUTES = 15
 
 
@@ -25,6 +28,10 @@ def _reset_attempts_if_expired(login):
         if elapsed >= BLOCK_MINUTES * 60:
             del failed_attempts[login]
 
+
+# ============================================================
+# СТРАНИЦЫ
+# ============================================================
 
 @auth_bp.route('/login')
 def login():
@@ -41,9 +48,13 @@ def logout():
     return redirect(url_for('auth.login'))
 
 
+# ============================================================
+# API: ВХОД ПО ЛОГИНУ/ПАРОЛЮ
+# ============================================================
+
 @auth_bp.route('/api/auth/login', methods=['POST'])
-@limiter.limit('5 per minute')                 # глобальный лимит по IP
-@limiter.limit('10 per 5 minute')
+@limiter.limit('10 per minute')
+@limiter.limit('30 per 5 minute')
 def auth_login():
     """Авторизация по логину и паролю с защитой от перебора."""
     try:
@@ -75,56 +86,65 @@ def auth_login():
                 'error': 'Учетная запись заблокирована. Обратитесь к администратору.'
             }), 403
 
-        # Для не-администраторов — проверка таймера блокировки
-        if user['role'] != 'Администратор':
-            _reset_attempts_if_expired(login)
-            if login in failed_attempts and failed_attempts[login]["count"] >= MAX_ATTEMPTS:
-                elapsed = (datetime.now() - failed_attempts[login]["last_attempt"]).total_seconds()
-                remaining = int((BLOCK_MINUTES * 60 - elapsed) // 60) + 1
-                log.warning(f'Попытка входа в заблокированную (по попыткам) учётку: {login} | IP={ip}')
-                return jsonify({
-                    'success': False,
-                    'error': f'Учетная запись временно заблокирована. Повторите через {remaining} мин.'
-                }), 429
+        # Определяем лимит попыток в зависимости от роли
+        max_attempts = MAX_ATTEMPTS_ADMIN if user['role'] == 'Администратор' else MAX_ATTEMPTS
 
-        # Проверка пароля
-        if user['password'] != password:
-            if user['role'] == 'Администратор':
-                log.warning(f'Неверный пароль администратора: {login} | IP={ip}')
-                return jsonify({
-                    'success': False,
-                    'error': 'Неверный пароль. Попробуйте еще раз.'
-                }), 401
+        # Проверяем блокировку по счётчику попыток
+        _reset_attempts_if_expired(login)
+        if login in failed_attempts and failed_attempts[login]["count"] >= max_attempts:
+            elapsed = (datetime.now() - failed_attempts[login]["last_attempt"]).total_seconds()
+            remaining = int((BLOCK_MINUTES * 60 - elapsed) // 60) + 1
+            log.warning(f'Попытка входа в заблокированную (по попыткам) учётку: {login} | IP={ip}')
+            return jsonify({
+                'success': False,
+                'error': f'Слишком много попыток. Повторите через {remaining} мин.'
+            }), 429
 
+        # Проверка пароля (с авто-миграцией plaintext → hash)
+        ok, need_rehash = verify_password(user['password'], password)
+
+        if not ok:
+            # Счётчик неудачных попыток — для всех, включая админов
             if login not in failed_attempts:
                 failed_attempts[login] = {"count": 0, "last_attempt": datetime.now()}
             failed_attempts[login]["count"] += 1
             failed_attempts[login]["last_attempt"] = datetime.now()
 
-            remaining = MAX_ATTEMPTS - failed_attempts[login]["count"]
+            remaining = max_attempts - failed_attempts[login]["count"]
 
-            if failed_attempts[login]["count"] >= MAX_ATTEMPTS:
-                db.execute('UPDATE users SET is_active = 0 WHERE id = ?', [user['id']])
-                del failed_attempts[login]
+            if failed_attempts[login]["count"] >= max_attempts:
                 log.error(
-                    f'Учётная запись заблокирована после {MAX_ATTEMPTS} неверных попыток: '
+                    f'Учётка временно заблокирована после {max_attempts} неверных попыток: '
                     f'{login} | IP={ip}'
                 )
+                # ⚠️ НЕ отключаем is_active — только временная блокировка через счётчик
                 return jsonify({
                     'success': False,
-                    'error': 'Учетная запись заблокирована из-за 3 неверных попыток входа. Обратитесь к администратору.'
-                }), 403
+                    'error': f'Слишком много попыток входа. '
+                             f'Повторите через {BLOCK_MINUTES} мин.'
+                }), 429
 
-            log.warning(f'Неверный пароль: {login} (осталось попыток: {remaining}) | IP={ip}')
+            log.warning(f'Неверный пароль: {login} (осталось: {remaining}) | IP={ip}')
             return jsonify({
                 'success': False,
                 'error': f'Неверный пароль. Осталось попыток: {remaining}'
             }), 401
 
-        # Успешный вход — сбрасываем счётчик
+        # ---- Успешный вход ----
         failed_attempts.pop(login, None)
 
-        # Сохраняем в сессии
+        # Автомиграция plaintext → hash (если в БД был старый plain-пароль)
+        if need_rehash:
+            try:
+                new_hash = hash_password(password)
+                db.execute('UPDATE users SET password = ? WHERE id = ?',
+                           [new_hash, user['id']])
+                save_plain(db, user['id'], password)
+                log.info(f'Пароль пользователя {login} перехеширован (миграция)')
+            except Exception as e:
+                log.warning(f'Не удалось перехешировать пароль: {e}')
+
+        # Сохраняем данные пользователя в сессии
         session['user_id'] = user['id']
         session['user_name'] = user['full_name']
         session['user_role'] = user['role']
@@ -155,18 +175,22 @@ def auth_login():
         return jsonify({'success': False, 'error': f'Ошибка сервера: {str(e)}'}), 500
 
 
-# Старый API (совместимость) — оставлен, но требует авторизации
+# ============================================================
+# API: ВХОД ПО ID (legacy)
+# ============================================================
+
 @auth_bp.route('/api/login', methods=['POST'])
 @limiter.limit('10 per minute')
 def api_login():
-    """Вход по ID пользователя (legacy)."""
+    """Вход по ID пользователя (устаревший, оставлен для совместимости)."""
     try:
         data = request.get_json()
         if not data or 'user_id' not in data:
             return jsonify({'success': False, 'error': 'Не указан ID пользователя'}), 400
 
         user_id = data['user_id']
-        user = db.query('SELECT * FROM users WHERE id = ? AND is_active = 1', [user_id], one=True)
+        user = db.query('SELECT * FROM users WHERE id = ? AND is_active = 1',
+                        [user_id], one=True)
 
         if user:
             session['user_id'] = user['id']
@@ -190,7 +214,10 @@ def api_login():
                 }
             })
 
-        return jsonify({'success': False, 'error': 'Пользователь не найден или неактивен'}), 404
+        return jsonify({
+            'success': False,
+            'error': 'Пользователь не найден или неактивен'
+        }), 404
 
     except Exception as e:
         log.exception('Ошибка api_login')

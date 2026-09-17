@@ -1,5 +1,4 @@
 // static/js/users.js
-// Управление пользователями
 
 (function() {
     'use strict';
@@ -16,31 +15,18 @@
     // ============= СПИСОК =============
     function loadUsersPage() {
         var $contentBlock = $('#otherPagesBlock');
-
-        $contentBlock.html(
-            '<div class="text-center py-5">' +
-            '<div class="spinner-border text-primary"></div>' +
-            '<p class="mt-2">Загрузка пользователей...</p>' +
-            '</div>'
-        );
+        $contentBlock.html('<div class="text-center py-5"><div class="spinner-border text-primary"></div><p class="mt-2">Загрузка пользователей...</p></div>');
 
         fetch('/api/users')
             .then(function(response) {
-                if (response.status === 401) {
-                    window.location.href = '/login';
-                    return null;
-                }
+                if (response.status === 401) { window.location.href = '/login'; return null; }
                 return response.json();
             })
             .then(function(users) {
                 if (!users) return;
                 if (users.error) {
-                    $contentBlock.html(
-                        '<div class="alert alert-danger">' +
-                        '<i class="bi bi-exclamation-circle"></i> ' +
-                        utils.escapeHtml(users.error) +
-                        '</div>'
-                    );
+                    $contentBlock.html('<div class="alert alert-danger">' +
+                        '<i class="bi bi-exclamation-circle"></i> ' + utils.escapeHtml(users.error) + '</div>');
                     return;
                 }
 
@@ -50,12 +36,11 @@
                 html += '<h5 class="mb-0"><i class="bi bi-people"></i> Пользователи системы</h5>';
                 html += '<div class="d-flex align-items-center gap-2 flex-wrap">';
                 html += '<span class="badge bg-light text-dark fs-6">Всего: ' + users.length + '</span>';
-                html += '<button class="btn btn-sm btn-light" onclick="showImportUsersModal()">';
-                html += '<i class="bi bi-upload"></i> Импорт из БД</button>';
-                html += '<button class="btn btn-sm btn-light" onclick="showAddUserModal()">';
-                html += '<i class="bi bi-person-plus"></i> Добавить</button>';
+                html += '<button class="btn btn-sm btn-light" onclick="showImportUsersModal()">' +
+                        '<i class="bi bi-upload"></i> Импорт из БД</button>';
+                html += '<button class="btn btn-sm btn-light" onclick="showAddUserModal()">' +
+                        '<i class="bi bi-person-plus"></i> Добавить</button>';
                 html += '</div></div></div>';
-
                 html += '<div class="card-body"><div class="table-responsive">';
                 html += '<table class="table table-striped table-hover">';
                 html += '<thead><tr>';
@@ -86,12 +71,11 @@
                     html += '<td>' + utils.escapeHtml(user.phone || '-') + '</td>';
                     html += '<td>' + utils.escapeHtml(user.department || '-') + '</td>';
                     html += '<td>' + statusBadge + '</td>';
-                    html += '<td>';
-                    html += '<div class="btn-group btn-group-sm">';
+                    html += '<td><div class="btn-group btn-group-sm">';
                     html += '<button class="btn btn-outline-primary" onclick="showUserCardById(' + user.id + ')" title="Просмотр"><i class="bi bi-eye"></i></button>';
                     html += '<button class="btn btn-outline-success" onclick="editUserById(' + user.id + ')" title="Редактировать"><i class="bi bi-pencil"></i></button>';
                     html += '<button class="btn btn-outline-info" onclick="printUserCredentials(' + user.id + ')" title="Печать учётных данных"><i class="bi bi-printer"></i></button>';
-                    html += '<button class="btn btn-outline-warning" onclick="toggleUserStatus(' + user.id + ')" title="Блокировать/разблокировать"><i class="bi bi-' + (user.is_active ? 'lock' : 'unlock') + '"></i></button>';
+                    html += '<button class="btn btn-outline-warning" onclick="toggleUserStatus(' + user.id + ')" title="Блок/разблок"><i class="bi bi-' + (user.is_active ? 'lock' : 'unlock') + '"></i></button>';
                     html += '<button class="btn btn-outline-danger" onclick="deleteUser(' + user.id + ')" title="Удалить"><i class="bi bi-trash"></i></button>';
                     html += '</div></td></tr>';
                 });
@@ -101,12 +85,8 @@
             })
             .catch(function(error) {
                 console.error('[users] load error:', error);
-                $contentBlock.html(
-                    '<div class="alert alert-danger">' +
-                    '<i class="bi bi-exclamation-triangle"></i> Ошибка загрузки: ' +
-                    utils.escapeHtml(error.message) +
-                    '</div>'
-                );
+                $contentBlock.html('<div class="alert alert-danger">Ошибка загрузки: ' +
+                    utils.escapeHtml(error.message) + '</div>');
             });
     }
 
@@ -154,11 +134,17 @@
             });
     }
 
-    // ============= РЕДАКТИРОВАНИЕ =============
+    // ============= РЕДАКТИРОВАНИЕ (обновлено) =============
     function editUserById(userId) {
-        fetch('/api/users/' + userId)
-            .then(function(r) { return r.json(); })
-            .then(function(data) {
+        // Загружаем данные пользователя и его учётные данные параллельно
+        Promise.all([
+            fetch('/api/users/' + userId).then(function(r) { return r.json(); }),
+            fetch('/api/users/' + userId + '/credentials').then(function(r) { return r.json(); })
+        ])
+            .then(function(results) {
+                var data = results[0];
+                var cred = results[1];
+
                 if (data.error) { utils.showErrorMessage(data.error); return; }
 
                 $('#editFullName').val(data.full_name || '');
@@ -169,16 +155,63 @@
                 $('#editLogin').val(data.login || '');
                 $('#editIsActive').prop('checked', data.is_active);
 
-                fetch('/api/users/' + userId + '/credentials')
-                    .then(function(r) { return r.json(); })
-                    .then(function(credData) {
-                        if (credData.success && credData.credentials) {
-                            $('#editPassword').val(credData.credentials.password);
-                        } else {
-                            $('#editPassword').val('');
-                        }
-                    })
-                    .catch(function() { $('#editPassword').val(''); });
+                // 🔑 Подставляем пароль
+                var $pwdField = $('#editPassword');
+                var passwordHtml = '';
+
+                if (cred.success && cred.credentials) {
+                    if (cred.credentials.available && cred.credentials.password) {
+                        // Plain доступен — показываем его
+                        passwordHtml =
+                            '<div class="input-group">' +
+                            '<input type="text" class="form-control" name="password" id="editPassword" ' +
+                            'value="' + utils.escapeHtml(cred.credentials.password) + '" minlength="6">' +
+                            '<button class="btn btn-outline-secondary" type="button" ' +
+                            'onclick="togglePasswordVisibility(\'editPassword\')" title="Показать/скрыть">' +
+                            '<i class="bi bi-eye" id="editPasswordEye"></i></button>' +
+                            '<button class="btn btn-outline-warning" type="button" ' +
+                            'onclick="resetUserPassword(' + userId + ', this)" title="Сбросить пароль">' +
+                            '<i class="bi bi-arrow-clockwise"></i></button>' +
+                            '</div>' +
+                            '<small class="text-muted">Текущий пароль. Изменение сохранит новый.</small>';
+                    } else {
+                        // Plain недоступен (например, STORE_PLAIN_PASSWORDS=false)
+                        passwordHtml =
+                            '<div class="input-group">' +
+                            '<input type="text" class="form-control" name="password" id="editPassword" ' +
+                            'placeholder="•••••••• (не сохраняется в открытом виде)" minlength="6">' +
+                            '<button class="btn btn-outline-secondary" type="button" ' +
+                            'onclick="togglePasswordVisibility(\'editPassword\')" title="Показать/скрыть">' +
+                            '<i class="bi bi-eye" id="editPasswordEye"></i></button>' +
+                            '<button class="btn btn-outline-warning" type="button" ' +
+                            'onclick="resetUserPassword(' + userId + ', this)" title="Сбросить пароль">' +
+                            '<i class="bi bi-arrow-clockwise"></i></button>' +
+                            '</div>' +
+                            '<small class="text-muted">Пароль недоступен. Оставьте пустым, чтобы не менять. ' +
+                            'Нажмите 🔄 для сброса на новый.</small>';
+                    }
+                } else {
+                    passwordHtml =
+                        '<input type="text" class="form-control" name="password" id="editPassword" ' +
+                        'placeholder="Введите пароль" minlength="6">';
+                }
+
+                // Заменяем содержимое поля пароля
+                var $field = $('#editPassword');
+                if ($field.length === 0) {
+                    // Если поля нет (шаблон содержит только input) — вставляем
+                    $('#loginPasswordFields').find('.mb-3:has(#editPassword)').html(
+                        '<label class="form-label">Пароль *</label>' + passwordHtml
+                    );
+                } else {
+                    // Оборачиваем в группу
+                    var $parent = $field.parent();
+                    if (!$parent.hasClass('input-group')) {
+                        $parent.html(passwordHtml);
+                    } else {
+                        $parent.html(passwordHtml.replace(/^<div class="input-group">|<\/div><small[^>]*>.*?<\/small>$/g, ''));
+                    }
+                }
 
                 $('#editUserForm').data('user-id', userId);
                 $('#editUserForm').data('edit-mode', 'admin');
@@ -208,7 +241,168 @@
             });
     }
 
-    // ============= ДОБАВЛЕНИЕ =============
+    // ============= СБРОС ПАРОЛЯ =============
+    function resetUserPassword(userId, btn) {
+        Swal.fire({
+            title: 'Сбросить пароль?',
+            text: 'Будет сгенерирован новый пароль. Старый станет недоступен.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Да, сбросить',
+            cancelButtonText: 'Отмена',
+            confirmButtonColor: '#f6c23e'
+        }).then(function(result) {
+            if (!result.isConfirmed) return;
+
+            fetch('/api/users/' + userId + '/reset-password', { method: 'POST' })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        // Обновляем поле в открытой форме
+                        $('#editPassword').val(data.credentials.password);
+
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Пароль сброшен',
+                            html:
+                                '<div class="text-start">' +
+                                '<p><strong>Логин:</strong> ' + utils.escapeHtml(data.credentials.login) + '</p>' +
+                                '<p><strong>Новый пароль:</strong> <code>' +
+                                utils.escapeHtml(data.credentials.password) + '</code></p>' +
+                                '<p class="text-muted small">Сообщите пароль пользователю.</p>' +
+                                '</div>',
+                            confirmButtonText: 'Скопировать пароль'
+                        }).then(function(res) {
+                            if (res.isConfirmed) {
+                                navigator.clipboard.writeText(data.credentials.password);
+                                utils.showSuccessMessage('Пароль скопирован');
+                            }
+                        });
+                    } else {
+                        utils.showErrorMessage(data.error);
+                    }
+                });
+        });
+    }
+
+    // ============= ПЕЧАТЬ УЧЁТНЫХ ДАННЫХ (обновлено) =============
+    function printUserCredentials(userId) {
+        fetch('/api/users/' + userId + '/credentials')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (!data.success) { utils.showErrorMessage(data.error || 'Ошибка'); return; }
+                var creds = data.credentials;
+
+                // Если пароль недоступен — предложить сбросить
+                if (!creds.available || !creds.password) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Пароль недоступен',
+                        html:
+                            '<p>Пароль хранится в виде хеша и не может быть восстановлен.</p>' +
+                            '<p class="text-muted small">Чтобы распечатать учётные данные, ' +
+                            'нужно сбросить пароль на новый.</p>',
+                        showCancelButton: true,
+                        confirmButtonText: '<i class="bi bi-arrow-clockwise"></i> Сбросить и распечатать',
+                        cancelButtonText: 'Отмена',
+                        confirmButtonColor: '#f6c23e'
+                    }).then(function(result) {
+                        if (result.isConfirmed) {
+                            resetAndPrint(userId);
+                        }
+                    });
+                    return;
+                }
+
+                doPrintCredentials(creds);
+            });
+    }
+
+    function resetAndPrint(userId) {
+        fetch('/api/users/' + userId + '/reset-password', { method: 'POST' })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    doPrintCredentials(data.credentials);
+                } else {
+                    utils.showErrorMessage(data.error);
+                }
+            });
+    }
+
+    function doPrintCredentials(creds) {
+        var w = window.open('', '_blank', 'width=500,height=400');
+        w.document.write('<html><head><title>Учетные данные</title>');
+        w.document.write('<style>');
+        w.document.write('body{font-family:Arial,sans-serif;padding:24px;color:#222}');
+        w.document.write('h3{color:#333;border-bottom:2px solid #667eea;padding-bottom:10px;margin-top:0}');
+        w.document.write('.cred{margin:12px 0;font-size:15px}');
+        w.document.write('.cred strong{display:inline-block;width:100px;color:#666}');
+        w.document.write('.cred code{background:#f4f6fb;padding:3px 8px;border-radius:4px;font-family:monospace;font-size:14px}');
+        w.document.write('.meta{color:#999;font-size:12px;margin-top:20px;border-top:1px solid #eee;padding-top:10px}');
+        w.document.write('@media print{button{display:none}}');
+        w.document.write('</style></head><body>');
+        w.document.write('<h3>Support Active — учетные данные</h3>');
+        w.document.write('<p class="cred"><strong>ФИО:</strong> ' + utils.escapeHtml(creds.full_name) + '</p>');
+        w.document.write('<p class="cred"><strong>Логин:</strong> <code>' + utils.escapeHtml(creds.login) + '</code></p>');
+        w.document.write('<p class="cred"><strong>Пароль:</strong> <code>' + utils.escapeHtml(creds.password) + '</code></p>');
+        w.document.write('<div class="meta">Сформировано: ' + new Date().toLocaleString('ru-RU') + '</div>');
+        w.document.write('<br><br><button onclick="window.print()" style="padding:10px 20px;font-size:15px;cursor:pointer;background:#667eea;color:white;border:none;border-radius:6px;">Распечатать</button>');
+        w.document.write('</body></html>');
+        w.document.close();
+    }
+
+    // ============= ПРОЧИЕ ДЕЙСТВИЯ =============
+    function toggleUserStatus(userId) {
+        Swal.fire({
+            title: 'Изменить статус?',
+            text: 'Заблокировать/разблокировать пользователя?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Да',
+            cancelButtonText: 'Нет'
+        }).then(function(result) {
+            if (!result.isConfirmed) return;
+            fetch('/api/users/' + userId + '/toggle', { method: 'POST' })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        Swal.fire({ icon: 'success', title: data.message, timer: 2000, showConfirmButton: false });
+                        if (typeof loadFilters === 'function') loadFilters();
+                        loadUsersPage();
+                    } else {
+                        utils.showErrorMessage(data.error);
+                    }
+                });
+        });
+    }
+
+    function deleteUser(userId) {
+        Swal.fire({
+            title: 'Удалить пользователя?',
+            text: 'Это действие нельзя отменить!',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Да, удалить',
+            cancelButtonText: 'Отмена',
+            confirmButtonColor: '#dc3545'
+        }).then(function(result) {
+            if (!result.isConfirmed) return;
+            fetch('/api/users/' + userId, { method: 'DELETE' })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        Swal.fire({ icon: 'success', title: 'Пользователь удален!', timer: 2000, showConfirmButton: false });
+                        if (typeof loadFilters === 'function') loadFilters();
+                        loadUsersPage();
+                    } else {
+                        utils.showErrorMessage(data.error);
+                    }
+                });
+        });
+    }
+
+    // ============= ФОРМА СОЗДАНИЯ =============
     function showAddUserModal() {
         $('#editFullName').val('');
         $('#editRole').val('Пользователь');
@@ -240,11 +434,10 @@
         $('#editUserModal').modal('show');
     }
 
-    // ============= СЕЛЕКТОР АВАТАРОВ =============
+    // ============= АВАТАРЫ =============
     function generateAvatarSelectorForNewUser() {
         var $selector = $('#avatarSelector');
         $selector.empty();
-
         utils.avatarColors.forEach(function(color, index) {
             var avatarName = 'avatar_' + index + '.png';
             $selector.append(
@@ -262,44 +455,21 @@
         $('#avatarFileInput').val('');
         $('#editUserForm').data('avatar-file', null);
         $('#editUserForm').data('avatar-is-file', false);
-
         $('#avatarInput').val(avatarName);
         $('#editUserAvatar').css({
             'background-image': 'none',
             'background-color': color,
             'color': 'white'
         }).html('<i class="bi bi-person" style="font-size: 40px;"></i>');
-
         $('#avatarSelector .avatar-option').removeClass('border-primary').addClass('border-light');
-        if (el) {
-            el.classList.remove('border-light');
-            el.classList.add('border-primary');
-        }
-    }
-
-    function updateAvatarSelectorForName(fullName) {
-        var $selector = $('#avatarSelector');
-        var initials = fullName.charAt(0).toUpperCase();
-        var selectedAvatar = $('#avatarInput').val();
-
-        $selector.find('.avatar-option').each(function(index) {
-            $(this).text(initials);
-            var avatarName = 'avatar_' + index + '.png';
-            if (avatarName === selectedAvatar) {
-                $(this).addClass('border-primary').removeClass('border-light');
-            } else {
-                $(this).addClass('border-light').removeClass('border-primary');
-            }
-        });
+        if (el) { el.classList.remove('border-light'); el.classList.add('border-primary'); }
     }
 
     function generateAvatarSelector(selectedAvatar, fullName) {
         var $selector = $('#avatarSelector');
         $selector.empty();
-        var initials = '?';
-        if (fullName && fullName.trim().length > 0) {
-            initials = fullName.trim().charAt(0).toUpperCase();
-        }
+        var initials = (fullName && fullName.trim().length > 0)
+            ? fullName.trim().charAt(0).toUpperCase() : '?';
         utils.avatarColors.forEach(function(color, index) {
             var avatarName = 'avatar_' + index + '.png';
             var isSelected = selectedAvatar === avatarName;
@@ -319,19 +489,14 @@
         $('#avatarFileInput').val('');
         $('#editUserForm').data('avatar-file', null);
         $('#editUserForm').data('avatar-is-file', false);
-
         $('#avatarInput').val(avatarName);
         $('#editUserAvatar').css({
             'background-image': 'none',
             'background-color': color,
             'color': 'white'
         }).text(initials);
-
         $('#avatarSelector .avatar-option').removeClass('border-primary').addClass('border-light');
-        if (el) {
-            el.classList.remove('border-light');
-            el.classList.add('border-primary');
-        }
+        if (el) { el.classList.remove('border-light'); el.classList.add('border-primary'); }
     }
 
     function updateAvatarPreview(avatar, fullName) {
@@ -339,10 +504,8 @@
         if (fullName && fullName.trim().length > 0) {
             initials = fullName.trim().charAt(0).toUpperCase();
         }
-        var colorIndex = 0;
-        if (fullName && fullName.trim().length > 0) {
-            colorIndex = fullName.trim().length % utils.avatarColors.length;
-        }
+        var colorIndex = (fullName && fullName.trim().length > 0)
+            ? fullName.trim().length % utils.avatarColors.length : 0;
         $('#editUserAvatar').css({
             'background-image': 'none',
             'background-color': utils.avatarColors[colorIndex],
@@ -367,7 +530,7 @@
         }
     }
 
-    // ============= ПРОФИЛЬ САМОГО СЕБЯ =============
+    // ============= ПРОФИЛЬ СЕБЯ =============
     function editUserProfile() {
         fetch('/api/current_user').then(function(r) { return r.json(); }).then(function(data) {
             $('#editFullName').val(data.full_name || '');
@@ -400,7 +563,6 @@
             } else {
                 updateAvatarPreview(avatar, data.full_name);
             }
-
             generateAvatarSelector(avatar, data.full_name);
             $('#editUserModal').modal('show');
         });
@@ -481,82 +643,18 @@
             });
     }
 
-    // ============= ПРОЧИЕ ДЕЙСТВИЯ =============
-    function printUserCredentials(userId) {
-        fetch('/api/users/' + userId + '/credentials')
-            .then(function(r) { return r.json(); })
-            .then(function(data) {
-                if (data.error) { utils.showErrorMessage(data.error); return; }
-                var creds = data.credentials;
-                var w = window.open('', '_blank', 'width=400,height=300');
-                w.document.write('<html><head><title>Учетные данные</title><style>');
-                w.document.write('body{font-family:Arial,sans-serif;padding:20px}');
-                w.document.write('h3{color:#333;border-bottom:2px solid #667eea;padding-bottom:10px}');
-                w.document.write('.cred{margin:10px 0;font-size:16px}');
-                w.document.write('.cred strong{display:inline-block;width:80px}');
-                w.document.write('@media print{button{display:none}}');
-                w.document.write('</style></head><body>');
-                w.document.write('<h3>Учетные данные пользователя</h3>');
-                w.document.write('<p class="cred"><strong>ФИО:</strong> ' + utils.escapeHtml(creds.full_name) + '</p>');
-                w.document.write('<p class="cred"><strong>Логин:</strong> ' + utils.escapeHtml(creds.login) + '</p>');
-                w.document.write('<p class="cred"><strong>Пароль:</strong> ' + utils.escapeHtml(creds.password) + '</p>');
-                w.document.write('<br><button onclick="window.print()">Распечатать</button>');
-                w.document.write('</body></html>');
-                w.document.close();
-            });
+    // ============= УТИЛИТА: показать/скрыть пароль =============
+    function togglePasswordVisibility(fieldId) {
+        var $field = $('#' + fieldId);
+        if ($field.length === 0) return;
+        if ($field.attr('type') === 'password') {
+            $field.attr('type', 'text');
+        } else {
+            $field.attr('type', 'password');
+        }
     }
 
-    function toggleUserStatus(userId) {
-        Swal.fire({
-            title: 'Изменить статус?',
-            text: 'Заблокировать/разблокировать пользователя?',
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonText: 'Да',
-            cancelButtonText: 'Нет'
-        }).then(function(result) {
-            if (!result.isConfirmed) return;
-            fetch('/api/users/' + userId + '/toggle', { method: 'POST' })
-                .then(function(r) { return r.json(); })
-                .then(function(data) {
-                    if (data.success) {
-                        Swal.fire({ icon: 'success', title: data.message, timer: 2000, showConfirmButton: false });
-                        if (typeof loadFilters === 'function') loadFilters();
-                        loadUsersPage();
-                    } else {
-                        utils.showErrorMessage(data.error);
-                    }
-                });
-        });
-    }
-
-    function deleteUser(userId) {
-        Swal.fire({
-            title: 'Удалить пользователя?',
-            text: 'Это действие нельзя отменить!',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonText: 'Да, удалить',
-            cancelButtonText: 'Отмена',
-            confirmButtonColor: '#dc3545'
-        }).then(function(result) {
-            if (!result.isConfirmed) return;
-            fetch('/api/users/' + userId, { method: 'DELETE' })
-                .then(function(r) { return r.json(); })
-                .then(function(data) {
-                    if (data.success) {
-                        Swal.fire({ icon: 'success', title: 'Пользователь удален!', timer: 2000, showConfirmButton: false });
-                        if (typeof loadFilters === 'function') loadFilters();
-                        loadUsersPage();
-                    } else {
-                        utils.showErrorMessage(data.error);
-                    }
-                })
-                .catch(function() { utils.showErrorMessage('Ошибка удаления'); });
-        });
-    }
-
-    // ============= ИМПОРТ ИЗ БД =============
+    // ============= ИМПОРТ =============
     function showImportUsersModal() {
         Swal.fire({
             title: 'Импорт пользователей',
@@ -564,10 +662,7 @@
                 '<div class="text-start">' +
                 '<p>Выберите файл БД SQLite (<code>.db</code>, <code>.sqlite</code>) с таблицей <code>users</code>.</p>' +
                 '<div class="alert alert-info small mb-3">' +
-                '<i class="bi bi-info-circle"></i> Поддерживаются две схемы:<br>' +
-                '<b>1.</b> Support Active (<code>full_name</code>, <code>role</code>...).<br>' +
-                '<b>2.</b> Старая (<code>family</code>, <code>name</code>, <code>father</code>, ' +
-                '<code>depart</code>, <code>groupUser</code>, <code>pass</code>, <code>number</code>...).' +
+                '<i class="bi bi-info-circle"></i> Поддерживаются две схемы: <b>Support Active</b> и <b>legacy</b>.' +
                 '</div>' +
                 '<label class="form-label">Файл базы данных</label>' +
                 '<input type="file" id="importDbFile" class="form-control" accept=".db,.sqlite,.sqlite3">' +
@@ -611,17 +706,11 @@
                                 (data.errors.length > 10 ? '<br>...и ещё ' + (data.errors.length - 10) : '') +
                                 '</div>';
                         }
-                        var schemaLabel = '';
-                        if (data.schema === 'legacy') {
-                            schemaLabel = '<p class="small text-muted mb-2"><i class="bi bi-info-circle"></i> Определена <b>старая схема</b></p>';
-                        } else if (data.schema === 'support_active') {
-                            schemaLabel = '<p class="small text-muted mb-2"><i class="bi bi-info-circle"></i> Определена <b>новая схема</b></p>';
-                        }
 
                         Swal.fire({
                             icon: 'success',
                             title: 'Импорт завершён',
-                            html: '<div class="text-start">' + schemaLabel +
+                            html: '<div class="text-start">' +
                                 '<p><i class="bi bi-check-circle text-success"></i> <strong>Импортировано:</strong> ' + data.imported + '</p>' +
                                 '<p><i class="bi bi-slash-circle text-warning"></i> <strong>Пропущено:</strong> ' + data.skipped + '</p>' +
                                 '<p><i class="bi bi-file-earmark-text text-info"></i> <strong>Всего в файле:</strong> ' + data.total + '</p>' +
@@ -631,12 +720,8 @@
                         });
                         loadUsersPage();
                     } else {
-                        Swal.fire({ icon: 'error', title: 'Ошибка импорта', html: '<div class="text-start">' + utils.escapeHtml(data.error || 'Неизвестная ошибка') + '</div>' });
+                        Swal.fire({ icon: 'error', title: 'Ошибка импорта', text: data.error });
                     }
-                })
-                .catch(function(err) {
-                    console.error('[users] import error:', err);
-                    Swal.fire({ icon: 'error', title: 'Ошибка', text: 'Не удалось выполнить импорт' });
                 });
         });
     }
@@ -649,11 +734,12 @@
     api.editProfile = editUserProfile;
     api.save = saveUserProfile;
     api.printCredentials = printUserCredentials;
+    api.resetPassword = resetUserPassword;
     api.toggleStatus = toggleUserStatus;
     api.remove = deleteUser;
     api.showImport = showImportUsersModal;
+    api.togglePasswordVisibility = togglePasswordVisibility;
 
-    // Для inline onclick
     window.loadUsersPage = loadUsersPage;
     window.showUserCardById = showUserCardById;
     window.editUserById = editUserById;
@@ -661,14 +747,15 @@
     window.editUserProfile = editUserProfile;
     window.saveUserProfile = saveUserProfile;
     window.printUserCredentials = printUserCredentials;
+    window.resetUserPassword = resetUserPassword;
     window.toggleUserStatus = toggleUserStatus;
     window.deleteUser = deleteUser;
     window.showImportUsersModal = showImportUsersModal;
+    window.togglePasswordVisibility = togglePasswordVisibility;
 
     window.selectAvatarForNewUser = selectAvatarForNewUser;
     window.selectAvatar = selectAvatar;
     window.previewAvatarFile = previewAvatarFile;
-    window.updateAvatarSelectorForName = updateAvatarSelectorForName;
 
     console.log('[users] Загружено');
 })();

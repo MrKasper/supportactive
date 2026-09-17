@@ -17,7 +17,11 @@
     function viewTask(taskId) {
         state.currentTaskId = taskId;
         $('#taskNumber').text(taskId);
-        $('#taskDetails').html('<div class="text-center py-5"><div class="spinner-border text-primary"></div><p class="mt-2">Загрузка...</p></div>');
+        $('#taskDetails').html(
+            '<div class="text-center py-5">' +
+            '<div class="spinner-border text-primary"></div>' +
+            '<p class="mt-2">Загрузка...</p></div>'
+        );
         $('#viewTaskModal').modal('show');
 
         fetch('/api/task/' + taskId)
@@ -59,6 +63,7 @@
         var statusClass = utils.getStatusClass(task.status);
         var canClose = task.status !== 'Выполнено' && task.status !== 'Отменено';
         var canTake = false;
+        var canDelete = (window.currentUserRole === 'Администратор');
 
         if (task.status === 'Новое') {
             if (window.currentUserRole === 'Администратор') {
@@ -69,7 +74,9 @@
             }
         }
         if (window.currentUserRole === 'Пользователь') {
-            canClose = false; canTake = false;
+            canClose = false;
+            canTake = false;
+            canDelete = false;
         }
 
         var html = '';
@@ -99,9 +106,11 @@
             var dl = new Date(task.deadline.replace(' ', 'T'));
             var now = new Date();
             if (dl < now) {
-                html += '<p><strong>Срок:</strong> <span class="text-danger fw-bold">' + utils.formatDate(task.deadline) + ' (Просрочена)</span></p>';
+                html += '<p><strong>Срок:</strong> <span class="text-danger fw-bold">' +
+                        utils.formatDate(task.deadline) + ' (Просрочена)</span></p>';
             } else if ((dl - now) / 3600000 < 24) {
-                html += '<p><strong>Срок:</strong> <span class="text-warning fw-bold">' + utils.formatDate(task.deadline) + ' (Скоро истекает)</span></p>';
+                html += '<p><strong>Срок:</strong> <span class="text-warning fw-bold">' +
+                        utils.formatDate(task.deadline) + ' (Скоро истекает)</span></p>';
             } else {
                 html += '<p><strong>Срок:</strong> ' + utils.formatDate(task.deadline) + '</p>';
             }
@@ -112,14 +121,16 @@
                 '<p><strong>Кабинет:</strong> ' + utils.escapeHtml(task.cabinet || '-') + '</p></div>';
 
         html += '<div class="col-md-6">' +
-            '<p><strong>Статус:</strong> <span class="status-badge ' + statusClass + '">' + utils.escapeHtml(task.status) + '</span></p>' +
+            '<p><strong>Статус:</strong> <span class="status-badge ' + statusClass + '">' +
+            utils.escapeHtml(task.status) + '</span></p>' +
             '<p><strong>Тип работы:</strong> ' + utils.escapeHtml(task.work_type || '-') + '</p>' +
             '<p><strong>Приоритет:</strong> ' + utils.escapeHtml(task.priority || 'Средний') + '</p>' +
             '<p><strong>Исполнитель:</strong> ' + utils.escapeHtml(task.executor || '-') + '</p>' +
             '<p><strong>Помощник:</strong> ' + utils.escapeHtml(task.assistant || '-') + '</p></div>';
 
         html += '<div class="col-12"><hr><h6>Описание:</h6>' +
-                '<div class="p-3 bg-light rounded">' + utils.escapeHtml(task.description || '-') + '</div></div>';
+                '<div class="p-3 bg-light rounded">' +
+                utils.escapeHtml(task.description || '-') + '</div></div>';
 
         if (task.completed_date) {
             html += '<div class="col-12 mt-3"><p class="text-success"><strong>Выполнено:</strong> ' +
@@ -149,7 +160,6 @@
         html += '</div>';
 
         // ---- Вложения ----
-        // 🔧 input вынесен ИЗ dropZone, чтобы клик по зоне не зацикливался
         html += '<div class="task-tab-pane" data-tab-content="attachments">';
         html += '<div class="attachments-drop-zone" id="dropZone">' +
                 '<i class="bi bi-cloud-arrow-up"></i>' +
@@ -172,8 +182,10 @@
                     '<td><small>' + utils.formatDate(h.created_at) + '</small></td>' +
                     '<td><small>' + utils.escapeHtml(h.user_name || '-') + '</small></td>' +
                     '<td><strong>' + utils.escapeHtml(h.field_name || '') + '</strong></td>' +
-                    '<td><small class="text-muted">' + utils.escapeHtml(utils.truncateText(h.old_value || '-', 30)) + '</small></td>' +
-                    '<td><small class="text-success">' + utils.escapeHtml(utils.truncateText(h.new_value || '-', 30)) + '</small></td>' +
+                    '<td><small class="text-muted">' +
+                    utils.escapeHtml(utils.truncateText(h.old_value || '-', 30)) + '</small></td>' +
+                    '<td><small class="text-success">' +
+                    utils.escapeHtml(utils.truncateText(h.new_value || '-', 30)) + '</small></td>' +
                     '</tr>';
             });
             html += '</tbody></table></div>';
@@ -186,16 +198,15 @@
         $('#taskDetails').html(html);
         $('#btnCloseTask').toggle(canClose);
         $('#btnTakeTask').toggle(canTake);
+        $('#btnDeleteTask').toggle(canDelete);
 
         // Подгрузка вкладок
         if (tid) {
-            try {
-                if (window.App.Comments) window.App.Comments.load(tid);
-            } catch (e) { console.error('[task_details] loadComments:', e); }
+            try { if (window.App.Comments) window.App.Comments.load(tid); }
+            catch (e) { console.error('[task_details] loadComments:', e); }
 
-            try {
-                if (window.App.Attachments) window.App.Attachments.load(tid);
-            } catch (e) { console.error('[task_details] loadAttachments:', e); }
+            try { if (window.App.Attachments) window.App.Attachments.load(tid); }
+            catch (e) { console.error('[task_details] loadAttachments:', e); }
         } else {
             console.error('[task_details] Не удалось определить ID заявки');
         }
@@ -230,11 +241,69 @@
             .then(function(data) {
                 if (data.success) {
                     $('#viewTaskModal').modal('hide');
-                    Swal.fire({ icon: 'success', title: 'Заявка закрыта!', timer: 1500, showConfirmButton: false });
+                    Swal.fire({ icon: 'success', title: 'Заявка закрыта!',
+                                timer: 1500, showConfirmButton: false });
                     if (window.App.Tasks) window.App.Tasks.refreshData();
                 } else {
                     utils.showErrorMessage(data.error);
                 }
+            });
+    }
+
+    // ============= УДАЛЕНИЕ ЗАЯВКИ (только Администратор) =============
+    function deleteCurrentTask() {
+        if (!state.currentTaskId) return;
+
+        // Двойное подтверждение — критичное действие
+        Swal.fire({
+            icon: 'warning',
+            title: 'Удалить заявку?',
+            html:
+                '<p>Заявка <strong>№' + state.currentTaskId + '</strong> будет удалена безвозвратно.</p>' +
+                '<p class="text-danger small mb-0">' +
+                '<i class="bi bi-exclamation-triangle"></i> ' +
+                'Вместе с заявкой удалятся все её комментарии, вложения и история.' +
+                '</p>',
+            showCancelButton: true,
+            confirmButtonText: '<i class="bi bi-trash"></i> Да, удалить',
+            cancelButtonText: 'Отмена',
+            confirmButtonColor: '#dc3545',
+            focusCancel: true
+        }).then(function(result) {
+            if (!result.isConfirmed) return;
+            executeDeleteTask(state.currentTaskId);
+        });
+    }
+
+    function executeDeleteTask(taskId) {
+        Swal.fire({
+            title: 'Удаление...',
+            allowOutsideClick: false,
+            didOpen: function() { Swal.showLoading(); }
+        });
+
+        fetch('/api/delete_task/' + taskId, { method: 'DELETE' })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                Swal.close();
+                if (data.success) {
+                    $('#viewTaskModal').modal('hide');
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Заявка удалена',
+                        text: 'Заявка №' + taskId,
+                        timer: 1800,
+                        showConfirmButton: false
+                    });
+                    if (window.App.Tasks) window.App.Tasks.refreshData();
+                } else {
+                    utils.showErrorMessage(data.error || 'Не удалось удалить заявку');
+                }
+            })
+            .catch(function(err) {
+                Swal.close();
+                console.error('[task_details] delete error:', err);
+                utils.showErrorMessage('Не удалось удалить заявку');
             });
     }
 
@@ -258,13 +327,16 @@
                 .then(function(data) {
                     if (data.success) {
                         $('#viewTaskModal').modal('hide');
-                        Swal.fire({ icon: 'success', title: 'Заявка взята в работу!', timer: 1500, showConfirmButton: false });
+                        Swal.fire({ icon: 'success', title: 'Заявка взята в работу!',
+                                    timer: 1500, showConfirmButton: false });
                         if (window.App.Tasks) window.App.Tasks.refreshData();
                     } else {
                         utils.showErrorMessage(data.error);
                     }
                 })
-                .catch(function() { utils.showErrorMessage('Не удалось взять заявку в работу'); });
+                .catch(function() {
+                    utils.showErrorMessage('Не удалось взять заявку в работу');
+                });
         });
     }
 
@@ -272,12 +344,13 @@
     api.view = viewTask;
     api.switchTab = switchTaskTab;
     api.closeCurrent = closeCurrentTask;
+    api.deleteCurrent = deleteCurrentTask;
     api.take = takeTask;
 
-    // Совместимость
     window.viewTask = viewTask;
     window.switchTaskTab = switchTaskTab;
     window.closeCurrentTask = closeCurrentTask;
+    window.deleteCurrentTask = deleteCurrentTask;
     window.takeTask = takeTask;
 
     console.log('[task_details] Загружено');

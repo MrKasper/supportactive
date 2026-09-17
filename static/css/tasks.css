@@ -9,7 +9,6 @@
     margin-bottom: 20px;
     flex-wrap: wrap;
 }
-
 .task-tabs .nav-link {
     color: var(--text-color);
     border: none;
@@ -21,19 +20,16 @@
     font-size: 0.9rem;
     transition: all 0.2s;
 }
-
 .task-tabs .nav-link:hover {
     border-bottom-color: rgba(102, 126, 234, 0.4);
     color: var(--primary-color);
 }
-
 .task-tabs .nav-link.active {
     color: #667eea;
     border-bottom-color: #667eea;
     background: transparent;
     font-weight: 600;
 }
-
 .task-tabs .badge {
     font-size: 0.7em;
     margin-left: 6px;
@@ -42,7 +38,6 @@
     border-radius: 10px;
     padding: 3px 8px;
 }
-
 .task-tab-pane { display: none; }
 .task-tab-pane.active { display: block; }
 
@@ -68,17 +63,9 @@
     transition: background 0.2s;
     position: relative;
 }
-
-.comment-item:hover {
-    background: rgba(102, 126, 234, 0.08);
-}
-
-[data-theme="dark"] .comment-item {
-    background: rgba(255, 255, 255, 0.03);
-}
-[data-theme="dark"] .comment-item:hover {
-    background: rgba(255, 255, 255, 0.06);
-}
+.comment-item:hover { background: rgba(102, 126, 234, 0.08); }
+[data-theme="dark"] .comment-item { background: rgba(255, 255, 255, 0.03); }
+[data-theme="dark"] .comment-item:hover { background: rgba(255, 255, 255, 0.06); }
 
 .comment-item.comment-internal {
     border-left: 4px solid #f6c23e;
@@ -101,12 +88,7 @@
     font-size: 16px;
     flex-shrink: 0;
 }
-
-.comment-body {
-    flex: 1;
-    min-width: 0;
-}
-
+.comment-body { flex: 1; min-width: 0; }
 .comment-header {
     display: flex;
     justify-content: space-between;
@@ -115,18 +97,8 @@
     flex-wrap: wrap;
     gap: 8px;
 }
-
-.comment-author {
-    font-weight: 600;
-    font-size: 0.9rem;
-    color: var(--text-color);
-}
-
-.comment-time {
-    font-size: 0.75rem;
-    color: var(--text-muted);
-}
-
+.comment-author { font-weight: 600; font-size: 0.9rem; color: var(--text-color); }
+.comment-time { font-size: 0.75rem; color: var(--text-muted); }
 .comment-text {
     white-space: pre-wrap;
     word-break: break-word;
@@ -134,22 +106,14 @@
     line-height: 1.5;
     color: var(--text-color);
 }
-
 .comment-actions {
     opacity: 0;
     transition: opacity 0.2s;
     display: flex;
     gap: 4px;
 }
-
-.comment-item:hover .comment-actions {
-    opacity: 1;
-}
-
-.comment-actions .btn {
-    padding: 2px 6px;
-    font-size: 0.75rem;
-}
+.comment-item:hover .comment-actions { opacity: 1; }
+.comment-actions .btn { padding: 2px 6px; font-size: 0.75rem; }
 
 .comment-internal-badge {
     background: #f6c23e;
@@ -162,16 +126,11 @@
     vertical-align: middle;
 }
 
-.comment-form textarea {
-    resize: vertical;
-    min-height: 70px;
-}
+.comment-form textarea { resize: vertical; min-height: 70px; }
 
 /* ============================================================
    ВЛОЖЕНИЯ
    ============================================================ */
-
-/* --- Drop zone --- */
 .attachments-drop-zone {
     border: 2px dashed #667eea;
     border-radius: 10px;
@@ -183,41 +142,30 @@
     background: rgba(102, 126, 234, 0.02);
     user-select: none;
 }
-
 .attachments-drop-zone:hover,
 .attachments-drop-zone.drag-over {
     background: rgba(102, 126, 234, 0.1);
     border-color: #764ba2;
     transform: translateY(-1px);
 }
-
 .attachments-drop-zone i {
     font-size: 2.5rem;
     color: #667eea;
     display: block;
     margin-bottom: 8px;
 }
-
 .attachments-drop-zone p {
     margin: 0;
     color: var(--text-color);
     font-size: 0.9rem;
 }
-
-.attachments-drop-zone small {
-    color: var(--text-muted);
-    font-size: 0.78rem;
-}
-
-[data-theme="dark"] .attachments-drop-zone {
-    background: rgba(102, 126, 234, 0.05);
-}
+.attachments-drop-zone small { color: var(--text-muted); font-size: 0.78rem; }
+[data-theme="dark"] .attachments-drop-zone { background: rgba(102, 126, 234, 0.05); }
 [data-theme="dark"] .attachments-drop-zone:hover,
 [data-theme="dark"] .attachments-drop-zone.drag-over {
     background: rgba(102, 126, 234, 0.15);
 }
 
-/* --- Сетка карточек --- */
 .attachments-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -233,13 +181,11 @@
     transition: transform 0.2s, box-shadow 0.2s;
     position: relative;
 }
-
 .attachment-card:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
 }
 
-/* --- Превью --- */
 .attachment-preview {
     width: 100%;
     height: 110px;
@@ -251,29 +197,16 @@
     cursor: pointer;
     overflow: hidden;
 }
-
 .attachment-preview img {
     width: 100%;
     height: 100%;
     object-fit: cover;
     display: block;
 }
+.attachment-preview i { font-size: 2.8rem; color: #667eea; opacity: 0.7; }
+[data-theme="dark"] .attachment-preview { background: rgba(255, 255, 255, 0.03); }
 
-.attachment-preview i {
-    font-size: 2.8rem;
-    color: #667eea;
-    opacity: 0.7;
-}
-
-[data-theme="dark"] .attachment-preview {
-    background: rgba(255, 255, 255, 0.03);
-}
-
-/* --- Информация --- */
-.attachment-info {
-    padding: 8px 10px;
-}
-
+.attachment-info { padding: 8px 10px; }
 .attachment-name {
     font-weight: 600;
     font-size: 0.78rem;
@@ -283,15 +216,8 @@
     display: block;
     color: var(--text-color);
 }
+.attachment-meta { color: var(--text-muted); font-size: 0.7rem; display: block; margin-top: 2px; }
 
-.attachment-meta {
-    color: var(--text-muted);
-    font-size: 0.7rem;
-    display: block;
-    margin-top: 2px;
-}
-
-/* --- Кнопки действий на карточке --- */
 .attachment-actions {
     position: absolute;
     top: 6px;
@@ -302,11 +228,7 @@
     gap: 4px;
     z-index: 2;
 }
-
-.attachment-card:hover .attachment-actions {
-    opacity: 1;
-}
-
+.attachment-card:hover .attachment-actions { opacity: 1; }
 .attachment-actions .btn {
     padding: 2px 6px;
     font-size: 0.75rem;
@@ -319,23 +241,19 @@
     height: 28px;
 }
 
-/* --- Отсутствующий файл --- */
 .attachment-card.attachment-missing {
     border-color: #f6c23e;
     background: rgba(246, 194, 62, 0.05);
 }
-
 .attachment-card.attachment-missing .attachment-preview i {
     color: #f6c23e;
     opacity: 1;
 }
-
 [data-theme="dark"] .attachment-card.attachment-missing {
     background: rgba(246, 194, 62, 0.08);
     border-color: #8a6318;
 }
 
-/* --- Прогресс загрузки --- */
 .upload-progress {
     height: 6px;
     background: var(--border-color);
@@ -344,11 +262,7 @@
     margin-top: 10px;
     display: none;
 }
-
-.upload-progress.active {
-    display: block;
-}
-
+.upload-progress.active { display: block; }
 .upload-progress-bar {
     height: 100%;
     background: linear-gradient(90deg, #667eea, #764ba2);
@@ -356,77 +270,141 @@
     width: 0;
 }
 
-/* --- Пустое состояние --- */
 .empty-state {
     text-align: center;
     padding: 40px 20px;
     color: var(--text-muted);
 }
+.empty-state i { font-size: 3rem; display: block; margin-bottom: 10px; opacity: 0.4; }
+.empty-state p { margin: 0; font-size: 0.9rem; }
 
-.empty-state i {
-    font-size: 3rem;
-    display: block;
-    margin-bottom: 10px;
-    opacity: 0.4;
+/* ============================================================
+   ГРАФИК КАРТРИДЖЕЙ (вынесено из инлайн-стилей)
+   ============================================================ */
+.monthly-chart-wrap {
+    background: var(--card-bg);
+    border-radius: 14px;
+    padding: 24px;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+    margin-bottom: 20px;
+}
+.monthly-chart {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    height: 260px;
+    gap: 8px;
+    padding: 20px 0 0;
+    position: relative;
+}
+.monthly-chart::before {
+    content: "";
+    position: absolute;
+    left: 0; right: 0;
+    bottom: 40px;
+    border-top: 1px dashed rgba(150, 150, 150, 0.2);
+}
+.chart-column {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    height: 100%;
+    min-width: 30px;
+    position: relative;
+    cursor: pointer;
+    border-radius: 6px;
+    padding: 4px 0;
+    transition: background-color 0.15s;
+}
+.chart-column:hover { background-color: rgba(102, 126, 234, 0.08); }
+[data-theme="dark"] .chart-column:hover { background-color: rgba(139, 155, 255, 0.1); }
+
+.chart-value {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #667eea;
+    margin-bottom: 4px;
+    min-height: 16px;
+}
+.chart-bar {
+    width: 100%;
+    max-width: 42px;
+    border-radius: 6px 6px 0 0;
+    transition: all 0.6s cubic-bezier(.16, .8, .3, 1);
+    min-height: 4px;
+}
+.chart-bar.chart-bar-active {
+    background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.35);
+}
+.chart-bar.chart-bar-empty { background: rgba(150, 150, 150, 0.15); }
+.chart-column:hover .chart-bar.chart-bar-active {
+    filter: brightness(1.15);
+    transform: translateY(-2px);
+}
+.chart-label {
+    font-size: 0.7rem;
+    color: #888;
+    margin-top: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.chart-column.current .chart-label { color: #667eea; font-weight: 700; }
+.chart-column.current .chart-bar {
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.25), 0 4px 14px rgba(102, 126, 234, 0.5);
 }
 
-.empty-state p {
-    margin: 0;
-    font-size: 0.9rem;
+/* Таблица месяца */
+.cart-month-table { width: 100%; font-size: 0.85rem; border-collapse: collapse; }
+.cart-month-table th {
+    background: #f6f8ff;
+    color: #4a5478;
+    padding: 8px 10px;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 2px solid #dde3f7;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
+.cart-month-table td {
+    padding: 8px 10px;
+    border-bottom: 1px solid #eef1f7;
+    vertical-align: top;
+    color: #333;
+}
+.cart-month-table tr:hover td { background: #f8faff; }
+.cart-month-table .cart-date { font-weight: 600; color: #667eea; white-space: nowrap; font-size: 0.78rem; }
+.cart-month-table .cart-cabinet { font-weight: 600; }
+
+[data-theme="dark"] .cart-month-table th { background: #2a2a3a; color: #c0c0d0; border-color: #3a3a4a; }
+[data-theme="dark"] .cart-month-table td { border-color: #2a2a3a; color: #d0d0d8; }
+[data-theme="dark"] .cart-month-table tr:hover td { background: #2f2f3a; }
 
 /* ============================================================
    АДАПТИВ
    ============================================================ */
 @media (max-width: 768px) {
-    .task-tabs .nav-link {
-        padding: 8px 10px;
-        font-size: 0.8rem;
-    }
-    .task-tabs .nav-link i {
-        display: none;
-    }
+    .task-tabs .nav-link { padding: 8px 10px; font-size: 0.8rem; }
+    .task-tabs .nav-link i { display: none; }
 
-    .comment-avatar {
-        width: 32px;
-        height: 32px;
-        font-size: 14px;
-    }
+    .comment-avatar { width: 32px; height: 32px; font-size: 14px; }
 
     .attachments-grid {
         grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
         gap: 8px;
     }
-
-    .attachment-preview {
-        height: 90px;
-    }
-
-    .attachment-preview i {
-        font-size: 2rem;
-    }
-
-    .attachments-drop-zone {
-        padding: 20px 15px;
-    }
-
-    .attachments-drop-zone i {
-        font-size: 2rem;
-    }
+    .attachment-preview { height: 90px; }
+    .attachment-preview i { font-size: 2rem; }
+    .attachments-drop-zone { padding: 20px 15px; }
+    .attachments-drop-zone i { font-size: 2rem; }
 }
 
 @media (max-width: 576px) {
-    .task-tabs .nav-link {
-        padding: 6px 8px;
-        font-size: 0.75rem;
-    }
-
-    .comment-item {
-        padding: 8px;
-        gap: 8px;
-    }
-
-    .attachments-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
+    .task-tabs .nav-link { padding: 6px 8px; font-size: 0.75rem; }
+    .comment-item { padding: 8px; gap: 8px; }
+    .attachments-grid { grid-template-columns: repeat(2, 1fr); }
 }

@@ -26,7 +26,7 @@ def list_comments(task_id):
 
         rows = db.query('''
             SELECT * FROM task_comments
-            WHERE task_id = ?
+            WHERE task_id = ? AND deleted_at IS NULL
             ORDER BY created_at ASC, id ASC
         ''', [task_id])
 
@@ -79,6 +79,14 @@ def create_comment(task_id):
         except Exception:
             pass
 
+        # === Уведомления о новом комментарии ===
+        try:
+            from notifications import notify_new_comment
+            notify_new_comment(comment_id, task_id, dict(task),
+                               session.get('user_id'), text)
+        except Exception as notify_err:
+            log.warning(f'Ошибка отправки уведомлений о комментарии: {notify_err}')
+
         return jsonify({
             'success': True,
             'comment_id': comment_id,
@@ -126,15 +134,34 @@ def delete_comment(comment_id):
         if not (is_admin or is_author):
             return jsonify({'success': False, 'error': 'Недостаточно прав'}), 403
 
-        db.execute('DELETE FROM task_comments WHERE id = ?', [comment_id])
+        # Мягкое удаление — можно восстановить
+        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        db.execute('UPDATE task_comments SET deleted_at = ? WHERE id = ?', [now, comment_id])
 
         try:
             from audit import log_action
-            log_action('delete', 'comment', comment_id, {'task_id': c['task_id']})
+            log_action('delete', 'comment', comment_id, {'task_id': c['task_id'], 'soft': True})
         except Exception:
             pass
 
-        return jsonify({'success': True, 'message': 'Комментарий удалён'})
+        return jsonify({
+            'success': True,
+            'message': 'Комментарий удалён',
+            'restore_url': f'/api/comments/{comment_id}/restore'
+        })
     except Exception as e:
         log.exception('Ошибка удаления комментария')
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@comments_bp.route('/api/comments/<int:comment_id>/restore', methods=['POST'])
+@login_required
+def restore_comment(comment_id):
+    try:
+        if session.get('user_role') != 'Администратор':
+            return jsonify({'success': False, 'error': 'Недостаточно прав'}), 403
+        db.execute('UPDATE task_comments SET deleted_at = NULL WHERE id = ?', [comment_id])
+        return jsonify({'success': True, 'message': 'Комментарий восстановлен'})
+    except Exception as e:
+        log.exception('Ошибка восстановления комментария')
         return jsonify({'success': False, 'error': str(e)}), 500

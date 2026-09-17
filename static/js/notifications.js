@@ -1,5 +1,5 @@
 // static/js/notifications.js
-// Уведомления пользователя
+// Уведомления пользователя с группировкой по заявке
 
 (function() {
     'use strict';
@@ -28,11 +28,11 @@
                 else $badge.hide();
             })
             .catch(function(error) {
-                console.error('Error loading unread count:', error);
+                console.error('[notifications] unread error:', error);
             });
     }
 
-    // ---------- Полная загрузка (список) ----------
+    // ---------- Полная загрузка ----------
     function loadAll() {
         return fetch('/api/notifications')
             .then(function(response) {
@@ -50,12 +50,23 @@
                 return data;
             })
             .catch(function(error) {
-                console.error('Error loading notifications:', error);
+                console.error('[notifications] load error:', error);
                 return null;
             });
     }
 
-    // ---------- Показать модалку уведомлений ----------
+    // ---------- Иконка типа уведомления ----------
+    function getIcon(type) {
+        switch (type) {
+            case 'new_task':       return { cls: 'bi bi-plus-circle text-primary',  bg: '#e3f2fd' };
+            case 'task_taken':     return { cls: 'bi bi-play-circle text-warning',  bg: '#fff3e0' };
+            case 'task_completed': return { cls: 'bi bi-check-circle text-success', bg: '#e8f5e9' };
+            case 'new_comment':    return { cls: 'bi bi-chat-dots text-info',       bg: '#e0f7fa' };
+            default:               return { cls: 'bi bi-bell text-secondary',       bg: '#eeeeee' };
+        }
+    }
+
+    // ---------- Модалка ----------
     function show() {
         loadAll().then(function(data) {
             if (!data) return;
@@ -65,10 +76,11 @@
 
             var html = '';
 
+            // Верхняя панель
             if (notifications.length > 0) {
-                html += '<div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">';
-                html += '<div>';
-                html += '<span class="badge bg-secondary me-2">Всего: ' + notifications.length + '</span>';
+                html += '<div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom flex-wrap gap-2">';
+                html += '<div class="d-flex gap-2 flex-wrap">';
+                html += '<span class="badge bg-secondary">Всего: ' + notifications.length + '</span>';
                 if (unreadCount > 0) {
                     html += '<span class="badge bg-danger">Непрочитанных: ' + unreadCount + '</span>';
                 } else {
@@ -83,7 +95,7 @@
                 html += '</div>';
             }
 
-            html += '<div class="list-group" style="max-height: 55vh; overflow-y: auto;">';
+            html += '<div class="list-group" style="max-height: 60vh; overflow-y: auto;">';
 
             if (notifications.length === 0) {
                 html += '<div class="list-group-item text-center text-muted py-4">';
@@ -91,28 +103,57 @@
                 html += '<p class="mb-0 mt-2">Нет уведомлений</p>';
                 html += '</div>';
             } else {
-                notifications.forEach(function(notification) {
-                    var iconClass = '';
-                    var bgClass = notification.is_read ? '' : 'bg-light';
+                notifications.forEach(function(n) {
+                    var iconInfo = getIcon(n.notification_type);
+                    var isUnread = !n.is_read;
+                    var evtCount = n.count || 1;
+                    var hasMultiple = evtCount > 1;
 
-                    switch (notification.notification_type) {
-                        case 'new_task':       iconClass = 'bi bi-plus-circle text-primary'; break;
-                        case 'task_taken':     iconClass = 'bi bi-play-circle text-warning'; break;
-                        case 'task_completed': iconClass = 'bi bi-check-circle text-success'; break;
-                        default:               iconClass = 'bi bi-bell text-info';
+                    var classes = 'list-group-item d-flex align-items-start';
+                    if (isUnread) classes += ' bg-light';
+
+                    html += '<div class="' + classes + '" style="cursor: pointer;" ' +
+                            'onclick="markNotificationRead(' + n.id + ')">';
+
+                    // Иконка
+                    html += '<div style="flex-shrink: 0; margin-right: 12px;">';
+                    html += '<div style="width: 40px; height: 40px; border-radius: 50%; ' +
+                            'background: ' + iconInfo.bg + '; display: flex; align-items: center; ' +
+                            'justify-content: center;">';
+                    html += '<i class="' + iconInfo.cls + '" style="font-size: 1.2rem;"></i>';
+                    html += '</div></div>';
+
+                    // Основной контент
+                    html += '<div class="flex-grow-1" style="min-width: 0;">';
+                    html += '<div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">';
+                    html += '<div style="min-width: 0; flex: 1;">';
+                    html += '<strong>' + utils.escapeHtml(n.title || 'Уведомление');
+
+                    // 🔢 Счётчик событий
+                    if (hasMultiple) {
+                        html += ' <span class="badge bg-primary" ' +
+                                'style="font-size: 0.7em; vertical-align: middle;">' +
+                                '×' + evtCount + '</span>';
                     }
 
-                    html += '<div class="list-group-item ' + bgClass + '" style="cursor: pointer;" onclick="markNotificationRead(' + notification.id + ')">';
-                    html += '<div class="d-flex align-items-start">';
-                    html += '<i class="' + iconClass + '" style="font-size: 1.5rem; margin-right: 10px;"></i>';
-                    html += '<div class="flex-grow-1">';
-                    html += '<strong>' + utils.escapeHtml(notification.title) + '</strong>';
-                    html += '<p class="mb-0 small text-muted">' + utils.escapeHtml(notification.message) + '</p>';
-                    html += '<small class="text-muted">' + utils.formatDate(notification.created_date) + '</small>';
+                    html += '</strong>';
+
+                    // Номер заявки как ссылка
+                    if (n.task_id) {
+                        html += ' <span class="text-muted small">· заявка №' + n.task_id + '</span>';
+                    }
                     html += '</div>';
-                    if (!notification.is_read) {
-                        html += '<span class="badge bg-primary rounded-circle" style="width: 10px; height: 10px; display: inline-block;"></span>';
+
+                    // Точка непрочитанного
+                    if (isUnread) {
+                        html += '<span class="badge bg-primary rounded-circle" ' +
+                                'style="width: 10px; height: 10px; padding: 0;"></span>';
                     }
+                    html += '</div>';
+
+                    html += '<p class="mb-1 small" style="color: var(--text-color); ' +
+                            'word-break: break-word;">' + utils.escapeHtml(n.message || '') + '</p>';
+                    html += '<small class="text-muted">' + utils.formatDate(n.created_date) + '</small>';
                     html += '</div>';
                     html += '</div>';
                 });
@@ -130,19 +171,19 @@
         });
     }
 
-    // ---------- Отметить одно ----------
+    // ---------- Отметить одно прочитанным ----------
     function markRead(notificationId) {
         fetch('/api/notifications/' + notificationId + '/read', { method: 'POST' })
             .then(function(response) { return response.json(); })
             .then(function(data) {
                 if (data.success) {
                     loadUnreadCount();
-                    show();
+                    show();  // перерисовать
                 }
             });
     }
 
-    // ---------- Отметить все ----------
+    // ---------- Отметить все прочитанными ----------
     function markAllRead() {
         fetch('/api/notifications/read-all', { method: 'POST' })
             .then(function(response) { return response.json(); })
@@ -160,7 +201,7 @@
             });
     }
 
-    // ---------- Автополлинг (раз в 30 сек) ----------
+    // ---------- Автополлинг ----------
     function startPolling() {
         if (pollTimer) clearInterval(pollTimer);
         pollTimer = setInterval(loadUnreadCount, 30000);
@@ -182,12 +223,11 @@
     api.startPolling = startPolling;
     api.stopPolling = stopPolling;
 
-    // Для inline onclick
     window.loadNotifications = loadAll;
     window.loadUnreadCount = loadUnreadCount;
     window.showNotifications = show;
     window.markNotificationRead = markRead;
     window.markAllNotificationsRead = markAllRead;
 
-    console.log('[notifications] Загружено');
+    console.log('[notifications] Загружено (с группировкой)');
 })();

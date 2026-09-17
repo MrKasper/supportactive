@@ -1,10 +1,11 @@
 # attachments.py
 """
 Вложения к заявкам: загрузка, скачивание, удаление, предпросмотр.
+Файлы хранятся ВНЕ /static/ — доступ только через авторизованный API.
 """
 import os
 import uuid
-from flask import Blueprint, request, jsonify, session, send_file, abort
+from flask import Blueprint, request, jsonify, session, send_file
 from werkzeug.utils import secure_filename
 from database import Database
 from datetime import datetime
@@ -17,7 +18,8 @@ attachments_bp = Blueprint('attachments', __name__)
 db = Database()
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-ATTACHMENTS_FOLDER = os.path.join(BASE_DIR, 'static', 'uploads', 'attachments')
+# 🔒 Вне /static/ — прямой URL недоступен
+ATTACHMENTS_FOLDER = os.path.join(BASE_DIR, 'private_uploads', 'attachments')
 
 ALLOWED_EXT = {
     'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg',
@@ -25,7 +27,7 @@ ALLOWED_EXT = {
     'txt', 'csv', 'zip', 'rar', '7z', 'tar', 'gz',
     'log', 'json', 'xml', 'md'
 }
-MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 МБ
+MAX_FILE_SIZE = 10 * 1024 * 1024
 
 os.makedirs(ATTACHMENTS_FOLDER, exist_ok=True)
 
@@ -35,7 +37,6 @@ def _allowed_ext(filename):
 
 
 def _get_task_folder(task_id):
-    """Папка для вложений конкретной заявки."""
     folder = os.path.join(ATTACHMENTS_FOLDER, str(task_id))
     os.makedirs(folder, exist_ok=True)
     return folder
@@ -43,12 +44,7 @@ def _get_task_folder(task_id):
 
 def _resolve_filepath(record):
     """
-    Возвращает реальный путь к файлу с учётом возможных legacy-форматов.
-    Хранимые в БД пути:
-      • новый формат: '<task_id>/<uuid>.<ext>'
-      • старый формат (баг): 'task_<task_id>/<uuid>.<ext>'
-      • совсем старый: только имя файла
-    Пробуем все варианты.
+    Возвращает реальный путь к файлу с учётом legacy-форматов.
     """
     stored = (record['filename'] or '').strip()
     if not stored:
@@ -57,10 +53,14 @@ def _resolve_filepath(record):
     task_id = record['task_id']
 
     candidates = [
-        os.path.join(ATTACHMENTS_FOLDER, stored),                    # как есть
-        os.path.join(ATTACHMENTS_FOLDER, str(task_id), os.path.basename(stored)),   # <task_id>/<file>
-        os.path.join(ATTACHMENTS_FOLDER, f'task_{task_id}', os.path.basename(stored)),  # legacy
-        os.path.join(ATTACHMENTS_FOLDER, os.path.basename(stored)),  # в корне
+        os.path.join(ATTACHMENTS_FOLDER, stored),
+        os.path.join(ATTACHMENTS_FOLDER, str(task_id), os.path.basename(stored)),
+        os.path.join(ATTACHMENTS_FOLDER, f'task_{task_id}', os.path.basename(stored)),
+        os.path.join(ATTACHMENTS_FOLDER, os.path.basename(stored)),
+        # Legacy — старая папка static/uploads/attachments
+        os.path.join(BASE_DIR, 'static', 'uploads', 'attachments', stored),
+        os.path.join(BASE_DIR, 'static', 'uploads', 'attachments',
+                     str(task_id), os.path.basename(stored)),
     ]
 
     for c in candidates:
@@ -70,22 +70,15 @@ def _resolve_filepath(record):
 
 
 def _check_task_access(task_id):
-    """
-    Возвращает (task, error_response).
-    Проверяет существование заявки и права Пользователя.
-    """
     task = db.query('SELECT * FROM tasks WHERE id = ?', [task_id], one=True)
     if not task:
         return None, (jsonify({'error': 'Заявка не найдена'}), 404)
-
     if session.get('user_role') == 'Пользователь' and task['created_by'] != session.get('user_id'):
         return None, (jsonify({'error': 'Недостаточно прав'}), 403)
-
     return task, None
 
 
-# ============= СПИСОК ВЛОЖЕНИЙ =============
-
+# ============= СПИСОК =============
 @attachments_bp.route('/api/tasks/<int:task_id>/attachments', methods=['GET'])
 @login_required
 def list_attachments(task_id):
@@ -105,10 +98,8 @@ def list_attachments(task_id):
         result = []
         for r in rows:
             d = dict(r)
-            # Помечаем файлы, которых нет на диске
             d['file_exists'] = _resolve_filepath(d) is not None
             result.append(d)
-
         return jsonify(result)
     except Exception as e:
         log.exception('Ошибка списка вложений')
@@ -116,7 +107,6 @@ def list_attachments(task_id):
 
 
 # ============= ЗАГРУЗКА =============
-
 @attachments_bp.route('/api/tasks/<int:task_id>/attachments', methods=['POST'])
 @login_required
 def upload_attachment(task_id):
@@ -138,7 +128,6 @@ def upload_attachment(task_id):
                 'error': f'Недопустимый формат. Разрешены: {", ".join(sorted(ALLOWED_EXT))}'
             }), 400
 
-        # Размер
         file.seek(0, os.SEEK_END)
         size = file.tell()
         file.seek(0)
@@ -157,7 +146,6 @@ def upload_attachment(task_id):
         filepath = os.path.join(folder, safe_name)
         file.save(filepath)
 
-        # 🔧 Путь в БД — БЕЗ префикса task_, чтобы совпадал с реальной папкой
         rel_path = f'{task_id}/{safe_name}'
 
         attachment_id = db.execute('''
@@ -165,12 +153,8 @@ def upload_attachment(task_id):
                 (task_id, user_id, filename, original_name, file_size, mime_type, uploaded_at)
             VALUES (?, ?, ?, ?, ?, ?, ?)
         ''', [
-            task_id,
-            session.get('user_id'),
-            rel_path,
-            original_name,
-            size,
-            file.mimetype or 'application/octet-stream',
+            task_id, session.get('user_id'), rel_path, original_name,
+            size, file.mimetype or 'application/octet-stream',
             datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         ])
 
@@ -183,7 +167,7 @@ def upload_attachment(task_id):
             pass
 
         log.info(f'Загружено вложение #{attachment_id} к заявке #{task_id}: '
-                 f'{original_name} ({size} байт) → {rel_path}')
+                 f'{original_name} ({size} байт)')
 
         return jsonify({
             'success': True,
@@ -196,7 +180,6 @@ def upload_attachment(task_id):
 
 
 # ============= СКАЧИВАНИЕ =============
-
 @attachments_bp.route('/api/attachments/<int:attachment_id>/download', methods=['GET'])
 @login_required
 def download_attachment(attachment_id):
@@ -205,7 +188,6 @@ def download_attachment(attachment_id):
         if not a:
             return jsonify({'error': 'Вложение не найдено'}), 404
 
-        # Права на заявку
         task = db.query('SELECT * FROM tasks WHERE id = ?', [a['task_id']], one=True)
         if task and session.get('user_role') == 'Пользователь' and task['created_by'] != session.get('user_id'):
             return jsonify({'error': 'Недостаточно прав'}), 403
@@ -213,16 +195,12 @@ def download_attachment(attachment_id):
         filepath = _resolve_filepath(a)
         if not filepath:
             log.warning(f'Файл вложения #{attachment_id} не найден. Запись в БД: {a["filename"]}')
-            return jsonify({
-                'error': 'Файл не найден на диске. Возможно, он был удалён или путь повреждён.'
-            }), 404
-
-        download_name = a['original_name'] or os.path.basename(filepath)
+            return jsonify({'error': 'Файл не найден на диске'}), 404
 
         return send_file(
             filepath,
             as_attachment=True,
-            download_name=download_name
+            download_name=a['original_name'] or os.path.basename(filepath)
         )
     except Exception as e:
         log.exception('Ошибка скачивания вложения')
@@ -230,7 +208,6 @@ def download_attachment(attachment_id):
 
 
 # ============= ПРЕДПРОСМОТР =============
-
 @attachments_bp.route('/api/attachments/<int:attachment_id>/preview', methods=['GET'])
 @login_required
 def preview_attachment(attachment_id):
@@ -239,7 +216,6 @@ def preview_attachment(attachment_id):
         if not a:
             return jsonify({'error': 'Вложение не найдено'}), 404
 
-        # Права на заявку
         task = db.query('SELECT * FROM tasks WHERE id = ?', [a['task_id']], one=True)
         if task and session.get('user_role') == 'Пользователь' and task['created_by'] != session.get('user_id'):
             return jsonify({'error': 'Недостаточно прав'}), 403
@@ -249,7 +225,6 @@ def preview_attachment(attachment_id):
 
         filepath = _resolve_filepath(a)
         if not filepath:
-            log.warning(f'Файл вложения #{attachment_id} не найден. Запись в БД: {a["filename"]}')
             return jsonify({'error': 'Файл не найден на диске'}), 404
 
         return send_file(filepath, mimetype=a['mime_type'])
@@ -259,7 +234,6 @@ def preview_attachment(attachment_id):
 
 
 # ============= УДАЛЕНИЕ =============
-
 @attachments_bp.route('/api/attachments/<int:attachment_id>', methods=['DELETE'])
 @login_required
 def delete_attachment(attachment_id):
@@ -296,16 +270,10 @@ def delete_attachment(attachment_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-# ============= УТИЛИТА: ПОЧИНИТЬ ПУТИ В БД (для legacy-записей) =============
-
+# ============= ПОЧИНКА ПУТЕЙ =============
 @attachments_bp.route('/api/admin/attachments/fix-paths', methods=['POST'])
 @login_required
 def fix_attachment_paths():
-    """
-    Проходит по всем записям, находит реальные файлы на диске
-    и обновляет filename в БД на корректный путь.
-    Только для Администратора.
-    """
     if session.get('user_role') != 'Администратор':
         return jsonify({'error': 'Недостаточно прав'}), 403
 
@@ -315,30 +283,23 @@ def fix_attachment_paths():
     details = []
 
     for r in rows:
-        real = _resolve_filepath({
-            'task_id': r['task_id'],
-            'filename': r['filename']
-        })
+        real = _resolve_filepath({'task_id': r['task_id'], 'filename': r['filename']})
         if not real:
             missing += 1
             details.append(f'#{r["id"]}: файл не найден ({r["filename"]})')
             continue
 
-        # Канонический путь относительно ATTACHMENTS_FOLDER
-        rel = os.path.relpath(real, ATTACHMENTS_FOLDER).replace('\\', '/')
+        # Определяем канонический путь относительно актуальной папки
+        rel = None
+        if real.startswith(ATTACHMENTS_FOLDER):
+            rel = os.path.relpath(real, ATTACHMENTS_FOLDER).replace('\\', '/')
 
-        if rel != r['filename']:
-            db.execute(
-                'UPDATE task_attachments SET filename = ? WHERE id = ?',
-                [rel, r['id']]
-            )
+        if rel and rel != r['filename']:
+            db.execute('UPDATE task_attachments SET filename = ? WHERE id = ?', [rel, r['id']])
             fixed += 1
             details.append(f'#{r["id"]}: {r["filename"]} → {rel}')
 
     return jsonify({
-        'success': True,
-        'total': len(rows),
-        'fixed': fixed,
-        'missing': missing,
-        'details': details
+        'success': True, 'total': len(rows),
+        'fixed': fixed, 'missing': missing, 'details': details
     })

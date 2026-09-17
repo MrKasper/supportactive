@@ -34,47 +34,57 @@
                 var stats = results[2];
 
                 if (licenses.error) {
-                    $contentBlock.html('<div class="alert alert-danger">' + utils.escapeHtml(licenses.error) + '</div>');
+                    $contentBlock.html('<div class="alert alert-danger">' +
+                        utils.escapeHtml(licenses.error) + '</div>');
                     return;
                 }
 
                 var html = '';
 
+                // KPI-карточки (как в картриджах)
                 if (!stats.error) {
                     html += '<div class="row mb-3 g-3">';
-                    html += statCard('Всего лицензий', stats.total, 'bg-primary');
-                    html += statCard('Типов лицензий', (stats.type_stats ? stats.type_stats.length : 0), 'bg-success');
-                    html += statCard('Наименований ПО', (stats.software_stats ? stats.software_stats.length : 0), 'bg-info');
-                    html += statCard('Кабинетов с ПО', (stats.cabinet_stats ? stats.cabinet_stats.length : 0), 'bg-warning');
+                    html += statCard('Всего лицензий', stats.total, 'primary', 'bi-key');
+                    html += statCard('Типов лицензий',
+                        (stats.type_stats ? stats.type_stats.length : 0), 'success', 'bi-tags');
+                    html += statCard('Наименований ПО',
+                        (stats.software_stats ? stats.software_stats.length : 0), 'info', 'bi-app-indicator');
+                    html += statCard('Кабинетов с ПО',
+                        (stats.cabinet_stats ? stats.cabinet_stats.length : 0), 'warning', 'bi-door-open');
                     html += '</div>';
                 }
 
+                // Таблица
                 html += '<div class="card">';
                 html += '<div class="card-header bg-primary text-white">';
                 html += '<div class="d-flex justify-content-between align-items-center flex-wrap gap-2">';
                 html += '<h5 class="mb-0"><i class="bi bi-key"></i> Лицензии</h5>';
                 html += '<div class="d-flex gap-2">';
-                html += '<button class="btn btn-sm btn-light" onclick="loadLicensesPage()"><i class="bi bi-arrow-clockwise"></i> Обновить</button>';
-                html += '<button class="btn btn-sm btn-success" onclick="showAddLicenseModal()"><i class="bi bi-plus-circle"></i> Добавить</button>';
+                html += '<button class="btn btn-sm btn-light" onclick="loadLicensesPage()">' +
+                        '<i class="bi bi-arrow-clockwise"></i> Обновить</button>';
+                html += '<button class="btn btn-sm btn-success" onclick="showAddLicenseModal()">' +
+                        '<i class="bi bi-plus-circle"></i> Добавить</button>';
                 html += '</div></div></div>';
                 html += '<div class="card-body">';
 
+                // Фильтр
                 html += '<div class="row mb-3"><div class="col-md-4">' +
-                    '<label class="form-label">Фильтр по кабинету</label>' +
-                    '<select class="form-select" id="licenseCabinetFilter" onchange="filterLicenses()">' +
-                    '<option value="">Все кабинеты</option>';
+                        '<label class="form-label">Фильтр по кабинету</label>' +
+                        '<select class="form-select" id="licenseCabinetFilter" onchange="filterLicenses()">' +
+                        '<option value="">Все кабинеты</option>';
                 if (cabinets && !cabinets.error) {
                     cabinets.forEach(function(cab) {
                         html += '<option value="' + utils.escapeHtml(cab.cabinet_number) + '">' +
-                            utils.escapeHtml(cab.cabinet_number + (cab.description ? ' - ' + cab.description : '')) +
-                            '</option>';
+                                utils.escapeHtml(cab.cabinet_number + (cab.description ? ' - ' + cab.description : '')) +
+                                '</option>';
                     });
                 }
                 html += '</select></div></div>';
 
                 html += '<div class="table-responsive">';
                 html += '<table class="table table-striped table-hover">';
-                html += '<thead><tr><th>ID</th><th>Кабинет</th><th>ПО</th><th>Тип</th><th>Примечание</th><th>Действия</th></tr></thead>';
+                html += '<thead><tr><th>ID</th><th>Кабинет</th><th>ПО</th><th>Тип</th>' +
+                        '<th>Примечание</th><th>Действия</th></tr></thead>';
                 html += '<tbody id="licensesTableBody">';
                 html += renderRows(licenses);
                 html += '</tbody></table></div></div></div>';
@@ -83,14 +93,19 @@
             })
             .catch(function(error) {
                 console.error('[licenses] load error:', error);
-                $contentBlock.html('<div class="alert alert-danger">Ошибка загрузки: ' + utils.escapeHtml(error.message) + '</div>');
+                $contentBlock.html('<div class="alert alert-danger">Ошибка загрузки: ' +
+                    utils.escapeHtml(error.message) + '</div>');
             });
     }
 
-    function statCard(label, value, bgClass) {
-        return '<div class="col-6 col-md-3"><div class="card ' + bgClass + ' text-white">' +
-            '<div class="card-body text-center"><h3 class="mb-0">' + (value || 0) + '</h3>' +
-            '<small>' + label + '</small></div></div></div>';
+    // ============= KPI КАРТОЧКА (стиль как в картриджах) =============
+    function statCard(label, value, gradient, icon) {
+        return '<div class="col-6 col-md-3">' +
+            '<div class="cart-kpi bg-grad-' + gradient + '">' +
+            '<i class="bi ' + icon + ' kpi-icon"></i>' +
+            '<div class="kpi-value">' + (value || 0) + '</div>' +
+            '<div class="kpi-label">' + utils.escapeHtml(label) + '</div>' +
+            '</div></div>';
     }
 
     function renderRows(licenses) {
@@ -106,8 +121,10 @@
             html += '<td>' + utils.escapeHtml(lic.license_type || '-') + '</td>';
             html += '<td>' + utils.escapeHtml(lic.notes || '-') + '</td>';
             html += '<td><div class="btn-group btn-group-sm">';
-            html += '<button class="btn btn-outline-success" onclick="editLicense(' + lic.id + ')" title="Редактировать"><i class="bi bi-pencil"></i></button>';
-            html += '<button class="btn btn-outline-danger" onclick="deleteLicense(' + lic.id + ')" title="Удалить"><i class="bi bi-trash"></i></button>';
+            html += '<button class="btn btn-outline-success" onclick="editLicense(' + lic.id + ')" title="Редактировать">' +
+                    '<i class="bi bi-pencil"></i></button>';
+            html += '<button class="btn btn-outline-danger" onclick="deleteLicense(' + lic.id + ')" title="Удалить">' +
+                    '<i class="bi bi-trash"></i></button>';
             html += '</div></td></tr>';
         });
         return html;
@@ -166,7 +183,8 @@
                 var cabinetOptions = '';
                 cabinets.forEach(function(cab) {
                     var selected = (cab.cabinet_number === data.cabinet) ? 'selected' : '';
-                    cabinetOptions += '<option value="' + utils.escapeHtml(cab.cabinet_number) + '" ' + selected + '>' +
+                    cabinetOptions += '<option value="' + utils.escapeHtml(cab.cabinet_number) + '" ' +
+                        selected + '>' +
                         utils.escapeHtml(cab.cabinet_number + (cab.description ? ' - ' + cab.description : '')) +
                         '</option>';
                 });
@@ -188,7 +206,8 @@
 
     function buildLicenseForm(cabinetOptions, data) {
         data = data || {};
-        var typeOptions = ['Корпоративная', 'Персональная', 'OEM', 'Подписка', 'Бессрочная', 'Временная', 'Свободная', 'Пробная'];
+        var typeOptions = ['Корпоративная', 'Персональная', 'OEM', 'Подписка',
+                           'Бессрочная', 'Временная', 'Свободная', 'Пробная'];
         var typeSelect = '';
         typeOptions.forEach(function(t) {
             var selected = (t === data.license_type) ? 'selected' : '';
@@ -199,12 +218,14 @@
             '<select id="swal-cabinet" class="form-select">' +
             '<option value="">Выберите кабинет</option>' + cabinetOptions + '</select></div>' +
             '<div class="mb-3 text-start"><label class="form-label">Программное обеспечение *</label>' +
-            '<input id="swal-software" class="form-control" value="' + utils.escapeHtml(data.software_name || '') + '"></div>' +
+            '<input id="swal-software" class="form-control" value="' +
+            utils.escapeHtml(data.software_name || '') + '"></div>' +
             '<div class="mb-3 text-start"><label class="form-label">Тип лицензии *</label>' +
             '<select id="swal-type" class="form-select">' +
             '<option value="">Выберите тип</option>' + typeSelect + '</select></div>' +
             '<div class="mb-3 text-start"><label class="form-label">Примечание</label>' +
-            '<textarea id="swal-notes" class="form-control" rows="2">' + utils.escapeHtml(data.notes || '') + '</textarea></div>';
+            '<textarea id="swal-notes" class="form-control" rows="2">' +
+            utils.escapeHtml(data.notes || '') + '</textarea></div>';
     }
 
     function collectLicenseForm() {
@@ -233,7 +254,8 @@
             .then(function(r) { return r.json(); })
             .then(function(res) {
                 if (res.success) {
-                    Swal.fire({ icon: 'success', title: 'Лицензия добавлена!', timer: 1500, showConfirmButton: false });
+                    Swal.fire({ icon: 'success', title: 'Лицензия добавлена!',
+                                timer: 1500, showConfirmButton: false });
                     loadLicensesPage();
                 } else {
                     Swal.fire({ icon: 'error', title: 'Ошибка', text: res.error });
@@ -250,7 +272,8 @@
             .then(function(r) { return r.json(); })
             .then(function(res) {
                 if (res.success) {
-                    Swal.fire({ icon: 'success', title: 'Лицензия обновлена!', timer: 1500, showConfirmButton: false });
+                    Swal.fire({ icon: 'success', title: 'Лицензия обновлена!',
+                                timer: 1500, showConfirmButton: false });
                     loadLicensesPage();
                 } else {
                     Swal.fire({ icon: 'error', title: 'Ошибка', text: res.error });
@@ -272,7 +295,8 @@
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
                     if (data.success) {
-                        Swal.fire({ icon: 'success', title: 'Удалено!', timer: 1500, showConfirmButton: false });
+                        Swal.fire({ icon: 'success', title: 'Удалено!',
+                                    timer: 1500, showConfirmButton: false });
                         loadLicensesPage();
                     } else {
                         utils.showErrorMessage(data.error);

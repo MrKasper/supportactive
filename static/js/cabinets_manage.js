@@ -12,7 +12,6 @@
     var api = window.App.register('CabinetsManage');
     var utils = window.App.utils;
 
-    // Кеш кабинетов для фильтрации на клиенте
     var cabinetsCache = [];
 
     // ============= СТРАНИЦА =============
@@ -47,15 +46,13 @@
                 html += '</div></div></div>';
                 html += '<div class="card-body">';
 
-                // Поиск
                 html += '<div class="row mb-3"><div class="col-md-6 col-lg-4">' +
-                    '<div class="input-group">' +
-                    '<span class="input-group-text"><i class="bi bi-search"></i></span>' +
-                    '<input type="text" class="form-control" id="cabinetSearchInput" ' +
-                    'placeholder="Поиск по номеру, этажу, ответственному..." oninput="filterCabinetsTable()">' +
-                    '</div></div></div>';
+                        '<div class="input-group">' +
+                        '<span class="input-group-text"><i class="bi bi-search"></i></span>' +
+                        '<input type="text" class="form-control" id="cabinetSearchInput" ' +
+                        'placeholder="Поиск по номеру, этажу..." oninput="filterCabinetsTable()">' +
+                        '</div></div></div>';
 
-                // Таблица
                 html += '<div class="table-responsive">';
                 html += '<table class="table table-striped table-hover align-middle">';
                 html += '<thead><tr>';
@@ -75,7 +72,6 @@
             });
     }
 
-    // ============= СТРОКИ ТАБЛИЦЫ =============
     function renderRows(cabinets) {
         var $tbody = $('#cabinetsTableBody');
         $tbody.empty();
@@ -100,6 +96,9 @@
             row += '<td>' + utils.escapeHtml(cab.phone || '-') + '</td>';
             row += '<td>' + statusBadge + '</td>';
             row += '<td><div class="btn-group btn-group-sm">';
+            // 🆕 Главная кнопка — открыть карточку с оборудованием
+            row += '<button class="btn btn-primary" onclick="openCabinetDetails(' + cab.id + ')" title="Оборудование кабинета">' +
+                   '<i class="bi bi-cpu"></i> Открыть</button>';
             row += '<button class="btn btn-outline-success" onclick="editCabinet(' + cab.id + ')" title="Редактировать"><i class="bi bi-pencil"></i></button>';
             row += '<button class="btn btn-outline-danger" onclick="deleteCabinet(' + cab.id + ')" title="Удалить"><i class="bi bi-trash"></i></button>';
             row += '</div></td></tr>';
@@ -107,7 +106,6 @@
         });
     }
 
-    // ============= КЛИЕНТСКАЯ ФИЛЬТРАЦИЯ =============
     function filterCabinetsTable() {
         var q = ($('#cabinetSearchInput').val() || '').toLowerCase().trim();
         if (!q) { renderRows(cabinetsCache); return; }
@@ -123,7 +121,16 @@
         renderRows(filtered);
     }
 
-    // ============= МОДАЛКА =============
+    // ============= ОТКРЫТЬ ДЕТАЛЬНУЮ СТРАНИЦУ КАБИНЕТА =============
+    function openCabinetDetails(cabinetId) {
+        if (window.App.CabinetDetails && typeof window.App.CabinetDetails.open === 'function') {
+            window.App.CabinetDetails.open(cabinetId);
+        } else {
+            utils.showErrorMessage('Модуль оборудования не загружен');
+        }
+    }
+
+    // ============= МОДАЛКА РЕДАКТИРОВАНИЯ КАБИНЕТА =============
     function showAddCabinetModal() {
         $('#cabinetId').val('');
         $('#cabinetNumber').val('');
@@ -202,7 +209,7 @@
 
         Swal.fire({
             title: 'Удалить кабинет?',
-            html: 'Кабинет <strong>' + utils.escapeHtml(name) + '</strong> будет удалён. Это действие нельзя отменить.',
+            html: 'Кабинет <strong>' + utils.escapeHtml(name) + '</strong> и всё его оборудование будут удалены.',
             icon: 'warning',
             showCancelButton: true,
             confirmButtonText: 'Да, удалить',
@@ -231,6 +238,7 @@
     api.save = saveCabinet;
     api.remove = deleteCabinet;
     api.filter = filterCabinetsTable;
+    api.openDetails = openCabinetDetails;
 
     window.loadCabinetsManagePage = loadCabinetsManagePage;
     window.showAddCabinetModal = showAddCabinetModal;
@@ -238,6 +246,7 @@
     window.saveCabinet = saveCabinet;
     window.deleteCabinet = deleteCabinet;
     window.filterCabinetsTable = filterCabinetsTable;
+    window.openCabinetDetails = openCabinetDetails;
 
     console.log('[cabinets_manage] Загружено');
 })();

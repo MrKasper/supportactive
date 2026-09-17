@@ -2,12 +2,10 @@
 {% extends "base.html" %}
 
 {% block head_extra %}
-<!-- Стили заявок -->
 <link rel="stylesheet" href="{{ url_for('static', filename='css/tasks.css') }}">
-<!-- Горячие клавиши -->
 <link rel="stylesheet" href="{{ url_for('static', filename='css/hotkeys.css') }}">
-<!-- Мобильный UX -->
 <link rel="stylesheet" href="{{ url_for('static', filename='css/mobile-ux.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/equipment.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -21,7 +19,7 @@
             <i class="bi bi-headset" style="font-size: 2.5rem; color: #667eea; display: none;"></i>
         </div>
         <h4 class="mt-2">Support Active</h4>
-        <small class="text-white-50">v2.0</small>
+        <small class="text-white-50">v2.1</small>
     </div>
 
     <div class="sidebar-menu">
@@ -94,24 +92,29 @@
             </div>
             <div class="col-lg-3 col-md-4 col-12 mb-3 mb-md-0">
                 <div class="d-flex gap-2 flex-wrap justify-content-center justify-content-md-start">
-                    <button class="btn btn-outline-primary btn-sm" onclick="showUserCard()" title="Карточка пользователя (Ctrl+K)">
-                        <i class="bi bi-person-badge"></i> <span class="d-none d-md-inline">Карточка</span>
+                    <button class="btn btn-outline-primary btn-sm" onclick="showUserCard()" title="Карточка">
+                        <i class="bi bi-person-badge"></i>
+                        <span class="d-none d-md-inline">Карточка</span>
                     </button>
                     <button class="btn btn-outline-secondary btn-sm" onclick="changeUser()" title="Сменить пользователя (Ctrl+Q)">
-                        <i class="bi bi-arrow-repeat"></i> <span class="d-none d-md-inline">Сменить</span>
+                        <i class="bi bi-arrow-repeat"></i>
+                        <span class="d-none d-md-inline">Сменить</span>
                     </button>
                     <button class="btn btn-outline-info btn-sm position-relative" onclick="showNotifications()" title="Уведомления (B)">
                         <i class="bi bi-bell"></i>
-                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notificationBadge" style="display: none;">0</span>
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                              id="notificationBadge" style="display: none;">0</span>
                     </button>
                     <button class="btn btn-outline-info btn-sm" id="pushToggleBtn"
-                            onclick="togglePushNotifications()" title="Включить push-уведомления">
+                            onclick="togglePushNotifications()" title="Push-уведомления">
                         <i class="bi bi-bell-slash"></i>
                     </button>
-                    <button class="btn btn-outline-warning btn-sm" id="themeToggleBtn" onclick="toggleTheme()" title="Сменить тему (T)">
+                    <button class="btn btn-outline-warning btn-sm" id="themeToggleBtn"
+                            onclick="toggleTheme()" title="Сменить тему (T)">
                         <i class="bi bi-circle-half"></i>
                     </button>
-                    <button class="btn btn-outline-secondary btn-sm" onclick="openCommandPalette()" title="Командная палитра (Ctrl+K)">
+                    <button class="btn btn-outline-secondary btn-sm" onclick="openCommandPalette()"
+                            title="Командная палитра (Ctrl+K)">
                         <i class="bi bi-command"></i>
                     </button>
                 </div>
@@ -195,8 +198,10 @@
                         <button class="btn btn-primary btn-sm" onclick="refreshData()" title="Обновить (R)">
                             <i class="bi bi-arrow-clockwise"></i> Обновить
                         </button>
-                        <button class="btn btn-outline-secondary btn-sm ms-auto" onclick="showHotkeysHelp()" title="Горячие клавиши (?)">
-                            <i class="bi bi-question-circle"></i> <span class="d-none d-md-inline">Клавиши</span>
+                        <button class="btn btn-outline-secondary btn-sm ms-auto" onclick="showHotkeysHelp()"
+                                title="Горячие клавиши (?)">
+                            <i class="bi bi-question-circle"></i>
+                            <span class="d-none d-md-inline">Клавиши</span>
                         </button>
                     </div>
                 </div>
@@ -295,6 +300,17 @@
                             <input type="datetime-local" class="form-control" name="deadline" required>
                         </div>
                         <div class="col-md-6 mb-3">
+                            <label class="form-label">Длительность</label>
+                            <select class="form-select" name="duration_minutes">
+                                <option value="15">15 минут</option>
+                                <option value="30">30 минут</option>
+                                <option value="60" selected>1 час</option>
+                                <option value="120">2 часа</option>
+                                <option value="240">4 часа</option>
+                                <option value="480">Рабочий день (8ч)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
                             <label class="form-label">От кого (ФИО) *</label>
                             <input type="text" class="form-control" name="from_user"
                                    placeholder="Например: Иванов И.И." required>
@@ -348,16 +364,24 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="taskDetails">
-                <!-- Динамическое содержимое -->
+                <!-- Динамическое содержимое: вкладки Детали / Комментарии / Вложения / История -->
             </div>
             <div class="modal-footer">
+                <!-- 🗑️ Удаление заявки — только для Администратора -->
+                <button type="button" class="btn btn-outline-danger me-auto"
+                        id="btnDeleteTask" onclick="deleteCurrentTask()" style="display: none;">
+                    <i class="bi bi-trash"></i> Удалить заявку
+                </button>
+
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                     <i class="bi bi-x-circle"></i> Закрыть
                 </button>
-                <button type="button" class="btn btn-primary" id="btnTakeTask" onclick="takeTask()" style="display: none;">
+                <button type="button" class="btn btn-primary" id="btnTakeTask"
+                        onclick="takeTask()" style="display: none;">
                     <i class="bi bi-play-circle"></i> Взять в работу
                 </button>
-                <button type="button" class="btn btn-danger" id="btnCloseTask" onclick="closeCurrentTask()">
+                <button type="button" class="btn btn-danger" id="btnCloseTask"
+                        onclick="closeCurrentTask()">
                     <i class="bi bi-check-circle"></i> Закрыть заявку
                 </button>
             </div>
@@ -560,13 +584,14 @@
 <script src="{{ url_for('static', filename='js/contacts.js') }}"></script>
 <script src="{{ url_for('static', filename='js/directory.js') }}"></script>
 <script src="{{ url_for('static', filename='js/cabinets_manage.js') }}"></script>
+<script src="{{ url_for('static', filename='js/cabinet_details.js') }}"></script>
 <script src="{{ url_for('static', filename='js/excel.js') }}"></script>
 <script src="{{ url_for('static', filename='js/audit.js') }}"></script>
 <script src="{{ url_for('static', filename='js/webpush.js') }}"></script>
-<script src="{{ url_for('static', filename='js/mobile_ux.js') }}"></script>
 
-<!-- Горячие клавиши -->
+<!-- Горячие клавиши и мобильный UX -->
 <script src="{{ url_for('static', filename='js/hotkeys.js') }}"></script>
+<script src="{{ url_for('static', filename='js/mobile_ux.js') }}"></script>
 
 <!-- 🎯 Инициализатор — ВСЕГДА ПОСЛЕДНИЙ -->
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>

@@ -6,10 +6,6 @@ from datetime import datetime, timedelta
 
 class Database:
     def __init__(self, db_name=None):
-        """
-        Если db_name не задан — используем абсолютный путь рядом с файлом database.py.
-        Это устраняет баг: при запуске из другого CWD создавалась новая БД.
-        """
         if db_name is None:
             db_name = os.path.join(
                 os.path.dirname(os.path.abspath(__file__)),
@@ -18,149 +14,14 @@ class Database:
         self.db_name = db_name
 
     def init_db(self):
-        """Инициализация всех таблиц базы данных с миграцией"""
-        conn = sqlite3.connect(self.db_name)
-        cursor = conn.cursor()
-
-        # Таблица пользователей
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                full_name TEXT NOT NULL,
-                role TEXT NOT NULL,
-                avatar TEXT DEFAULT 'default.png',
-                email TEXT,
-                phone TEXT,
-                department TEXT,
-                login TEXT UNIQUE,
-                password TEXT,
-                is_active INTEGER DEFAULT 1
-            )
-        ''')
-
-        # Таблица кабинетов
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS cabinets (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                cabinet_number TEXT NOT NULL,
-                floor TEXT,
-                building TEXT,
-                description TEXT,
-                responsible_person TEXT,
-                phone TEXT,
-                is_active INTEGER DEFAULT 1
-            )
-        ''')
-
-        # Таблица заявок
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS tasks (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                created_date TEXT,
-                deadline TEXT,
-                from_user TEXT,
-                cabinet TEXT,
-                description TEXT,
-                status TEXT DEFAULT 'Новое',
-                executor TEXT,
-                assistant TEXT,
-                work_type TEXT,
-                priority TEXT DEFAULT 'Средний',
-                created_by INTEGER,
-                completed_date TEXT
-            )
-        ''')
-
-        # Таблица картриджей
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS cartridges (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                cabinet TEXT,
-                full_name TEXT,
-                printer TEXT,
-                cartridge TEXT,
-                replacement_dates TEXT,
-                notes TEXT
-            )
-        ''')
-
-        # Таблица лицензий
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS licenses (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                cabinet TEXT,
-                software_name TEXT,
-                license_type TEXT,
-                notes TEXT
-            )
-        ''')
-
-        # Таблица внешних контактов
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS external_contacts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                category TEXT,
-                company_name TEXT,
-                contact_person TEXT,
-                position TEXT,
-                phone TEXT,
-                email TEXT,
-                notes TEXT
-            )
-        ''')
-
-        # Таблица типов проблем
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS problem_types (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                description TEXT,
-                is_active INTEGER DEFAULT 1
-            )
-        ''')
-
-        # Таблица уведомлений
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS notifications (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER,
-                task_id INTEGER,
-                title TEXT,
-                message TEXT,
-                notification_type TEXT,
-                is_read INTEGER DEFAULT 0,
-                created_date TEXT
-            )
-        ''')
-
-        # 🆕 Таблица push-подписок (Web Push)
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS push_subscriptions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                endpoint TEXT NOT NULL UNIQUE,
-                p256dh TEXT NOT NULL,
-                auth TEXT NOT NULL,
-                user_agent TEXT,
-                created_at TEXT,
-                last_used_at TEXT,
-                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-            )
-        ''')
-
-        # Индексы для ускорения частых выборок
-        cursor.execute('CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status)')
-        cursor.execute('CREATE INDEX IF NOT EXISTS idx_tasks_executor ON tasks(executor)')
-        cursor.execute('CREATE INDEX IF NOT EXISTS idx_tasks_created_by ON tasks(created_by)')
-        cursor.execute('CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, is_read)')
-        cursor.execute('CREATE INDEX IF NOT EXISTS idx_push_user ON push_subscriptions(user_id)')
-
-        conn.commit()
-        conn.close()
-        print("База данных успешно инициализирована (новые таблицы добавлены при необходимости)")
+        """Устаревшая инициализация — теперь всё делают миграции."""
+        from migrations import run_migrations
+        run_migrations(self.db_name)
 
     def insert_test_data(self):
-        """Вставка тестовых данных (если БД пустая)"""
+        """Вставка тестовых данных (если БД пустая)."""
+        from passwords import hash_password
+
         conn = sqlite3.connect(self.db_name)
         cursor = conn.cursor()
 
@@ -170,19 +31,26 @@ class Database:
 
             users = [
                 ('Иванов Иван Иванович', 'Администратор', 'admin.png',
-                 'ivanov@company.ru', '+7-999-123-45-67', 'IT отдел', 'admin', 'admin123', 1),
+                 'ivanov@company.ru', '+7-999-123-45-67', 'IT отдел',
+                 'admin', hash_password('admin123'), 1),
                 ('Петров Петр Петрович', 'Техник', 'tech1.png',
-                 'petrov@company.ru', '+7-999-234-56-78', 'IT отдел', 'petrov', 'petrov123', 1),
+                 'petrov@company.ru', '+7-999-234-56-78', 'IT отдел',
+                 'petrov', hash_password('petrov123'), 1),
                 ('Сидоров Сидор Сидорович', 'Техник', 'tech2.png',
-                 'sidorov@company.ru', '+7-999-345-67-89', 'IT отдел', 'sidorov', 'sidorov123', 1),
+                 'sidorov@company.ru', '+7-999-345-67-89', 'IT отдел',
+                 'sidorov', hash_password('sidorov123'), 1),
                 ('Козлова Анна Сергеевна', 'Пользователь', 'manager1.png',
-                 'kozlova@company.ru', '+7-999-456-78-90', 'Отдел продаж', 'kozlova', 'kozlova123', 1),
+                 'kozlova@company.ru', '+7-999-456-78-90', 'Отдел продаж',
+                 'kozlova', hash_password('kozlova123'), 1),
                 ('Морозов Дмитрий Александрович', 'Техник', 'senior1.png',
-                 'morozov@company.ru', '+7-999-567-89-01', 'IT отдел', 'morozov', 'morozov123', 1),
+                 'morozov@company.ru', '+7-999-567-89-01', 'IT отдел',
+                 'morozov', hash_password('morozov123'), 1),
                 ('Соколова Мария Игоревна', 'Техник', 'tech3.png',
-                 'sokolova@company.ru', '+7-999-678-90-12', 'IT отдел', 'sokolova', 'sokolova123', 1),
+                 'sokolova@company.ru', '+7-999-678-90-12', 'IT отдел',
+                 'sokolova', hash_password('sokolova123'), 1),
                 ('Волков Андрей Николаевич', 'Администратор', 'admin2.png',
-                 'volkov@company.ru', '+7-999-789-01-23', 'IT отдел', 'volkov', 'volkov123', 1)
+                 'volkov@company.ru', '+7-999-789-01-23', 'IT отдел',
+                 'volkov', hash_password('volkov123'), 1)
             ]
             cursor.executemany('''INSERT INTO users 
                                 (full_name, role, avatar, email, phone, department, login, password, is_active) 
@@ -233,18 +101,18 @@ class Database:
                 ('Диагностика', 'Диагностика', 1),
                 ('Настройка оборудования', 'Настройка оборудования', 1)
             ]
-            cursor.executemany('''INSERT INTO problem_types (name, description, is_active) VALUES (?, ?, ?)''',
-                               problem_types)
+            cursor.executemany(
+                '''INSERT INTO problem_types (name, description, is_active) VALUES (?, ?, ?)''',
+                problem_types)
 
             print("Тестовые данные успешно добавлены")
         else:
-            print("База данных уже содержит данные, пропускаем добавление тестовых данных")
+            print("База данных уже содержит данные, пропускаем")
 
         conn.commit()
         conn.close()
 
     def query(self, query, args=(), one=False):
-        """Выполнение SELECT запроса"""
         conn = sqlite3.connect(self.db_name)
         conn.row_factory = sqlite3.Row
         cur = conn.cursor()
@@ -254,7 +122,6 @@ class Database:
         return (rv[0] if rv else None) if one else rv
 
     def execute(self, query, args=()):
-        """Выполнение INSERT/UPDATE/DELETE запроса"""
         conn = sqlite3.connect(self.db_name)
         cur = conn.cursor()
         cur.execute(query, args)
@@ -274,8 +141,4 @@ if __name__ == '__main__':
         print(f"  - {table['name']}")
 
     users_count = db.query('SELECT COUNT(*) as count FROM users', one=True)['count']
-    if users_count == 0:
-        print("\nБаза данных пуста. Хотите добавить тестовые данные?")
-        print("Запустите: python database.py --add-test-data")
-    else:
-        print(f"\nВ базе данных {users_count} пользователей.")
+    print(f"\nПользователей в базе: {users_count}")

@@ -93,6 +93,47 @@
 }
 
 /* ============================================================
+   KPI-КАРТОЧКИ (общий стиль как в картриджах)
+   ============================================================ */
+.cart-kpi {
+    border-radius: 14px;
+    padding: 18px;
+    color: #ffffff;
+    position: relative;
+    overflow: hidden;
+    height: 100%;
+    min-height: 90px;
+}
+.cart-kpi .kpi-icon {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 3.2rem;
+    opacity: 0.22;
+    color: #ffffff;
+    pointer-events: none;
+}
+.cart-kpi .kpi-value {
+    font-size: 2rem;
+    font-weight: 800;
+    line-height: 1;
+}
+.cart-kpi .kpi-label {
+    font-size: 0.82rem;
+    opacity: 0.92;
+    margin-top: 6px;
+}
+.cart-kpi.bg-grad-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+.cart-kpi.bg-grad-success { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); }
+.cart-kpi.bg-grad-info    { background: linear-gradient(135deg, #17a2b8 0%, #36b9cc 100%); }
+.cart-kpi.bg-grad-warning { background: linear-gradient(135deg, #f6c23e 0%, #fd7e14 100%); }
+.cart-kpi.bg-grad-warning,
+.cart-kpi.bg-grad-warning .kpi-value,
+.cart-kpi.bg-grad-warning .kpi-label { color: #2b2b2b; }
+.cart-kpi.bg-grad-warning .kpi-icon { color: #2b2b2b; opacity: 0.25; }
+
+/* ============================================================
    TABLES
    ============================================================ */
 .table {
@@ -136,7 +177,6 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-/* Статусы заявок */
 .status-badge {
     padding: 6px 12px;
     border-radius: 20px;
@@ -154,14 +194,35 @@
 .priority-medium { color: #f57c00; }
 .priority-low    { color: #388e3c; }
 
-/* Просроченные / скоро истекают */
 .table-danger  { background-color: var(--danger-bg) !important; }
 .table-warning { background-color: var(--warning-bg) !important; }
 .task-row.table-danger td  { background-color: var(--danger-bg) !important; color: var(--danger-color); }
 .task-row.table-warning td { background-color: var(--warning-bg) !important; color: var(--warning-color); }
 
 /* ============================================================
-   BUTTONS
+   SKELETON-ЭКРАНЫ
+   ============================================================ */
+.skeleton-bar {
+    height: 14px;
+    background: linear-gradient(90deg, #e8e8ee 25%, #f4f4f8 50%, #e8e8ee 75%);
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.4s infinite;
+    border-radius: 4px;
+}
+[data-theme="dark"] .skeleton-bar {
+    background: linear-gradient(90deg, #2a2a35 25%, #353542 50%, #2a2a35 75%);
+    background-size: 200% 100%;
+}
+@keyframes skeleton-shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+.skeleton-bar.w-40 { width: 40%; }
+.skeleton-bar.w-60 { width: 60%; }
+.skeleton-bar.w-80 { width: 80%; }
+
+/* ============================================================
+   BUTTONS — базовые (без контекста)
    ============================================================ */
 .btn {
     border-radius: 8px;
@@ -180,6 +241,7 @@
     border: none;
     color: white;
 }
+.btn-primary i { color: #fff; }
 .btn-primary:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
@@ -191,6 +253,7 @@
     border: none;
     color: white;
 }
+.btn-success i { color: #fff; }
 .btn-success:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
@@ -202,105 +265,55 @@
     border: none;
     color: white;
 }
+.btn-danger i { color: #fff; }
 .btn-danger:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 15px rgba(220, 53, 69, 0.4);
     color: white;
 }
 
-.btn-secondary {
-    background: #6c757d;
-    border-color: #6c757d;
-    color: white;
-}
-.btn-secondary:hover {
-    background: #5a6268;
-    border-color: #545b62;
-    color: white;
-}
+.btn-secondary { background: #6c757d; border-color: #6c757d; color: white; }
+.btn-secondary i { color: #fff; }
+.btn-secondary:hover { background: #5a6268; color: white; }
 
-.btn-light {
-    background: #f8f9fa;
-    border-color: #f8f9fa;
-    color: #333;
-}
-.btn-light:hover {
-    background: #e9ecef;
-    border-color: #e9ecef;
-    color: #333;
-}
+.btn-light { background: #f8f9fa; border-color: #f8f9fa; color: #333; }
+.btn-light i { color: #333; }
+.btn-light:hover { background: #e9ecef; color: #333; }
 
-.btn-outline-primary {
-    border: 2px solid #667eea;
-    color: #667eea;
-    background: transparent;
-}
-.btn-outline-primary:hover {
-    background: var(--primary-gradient);
-    color: white;
-    border-color: transparent;
-}
+.btn-outline-primary { border: 2px solid #667eea; color: #667eea; background: transparent; }
+.btn-outline-primary i { color: #667eea; }
+.btn-outline-primary:hover { background: var(--primary-gradient); color: white; border-color: transparent; }
+.btn-outline-primary:hover i { color: #fff; }
 
-.btn-outline-secondary {
-    border: 2px solid var(--text-muted);
-    color: var(--text-muted);
-    background: transparent;
-}
-.btn-outline-secondary:hover {
-    background: var(--text-muted);
-    color: white;
-}
+.btn-outline-secondary { border: 2px solid var(--text-muted); color: var(--text-muted); background: transparent; }
+.btn-outline-secondary i { color: var(--text-muted); }
+.btn-outline-secondary:hover { background: var(--text-muted); color: white; }
+.btn-outline-secondary:hover i { color: #fff; }
 
-.btn-outline-success {
-    border: 2px solid #28a745;
-    color: #28a745;
-    background: transparent;
-}
-.btn-outline-success:hover {
-    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-    color: white;
-    border-color: transparent;
-}
+.btn-outline-success { border: 2px solid #28a745; color: #28a745; background: transparent; }
+.btn-outline-success i { color: #28a745; }
+.btn-outline-success:hover { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; border-color: transparent; }
+.btn-outline-success:hover i { color: #fff; }
 
-.btn-outline-info {
-    border: 2px solid #36b9cc;
-    color: #36b9cc;
-    background: transparent;
-}
-.btn-outline-info:hover {
-    background: #36b9cc;
-    color: white;
-}
+.btn-outline-info { border: 2px solid #36b9cc; color: #36b9cc; background: transparent; }
+.btn-outline-info i { color: #36b9cc; }
+.btn-outline-info:hover { background: #36b9cc; color: white; }
+.btn-outline-info:hover i { color: #fff; }
 
-.btn-outline-danger {
-    border: 2px solid #dc3545;
-    color: #dc3545;
-    background: transparent;
-}
-.btn-outline-danger:hover {
-    background: #dc3545;
-    color: white;
-}
+.btn-outline-danger { border: 2px solid #dc3545; color: #dc3545; background: transparent; }
+.btn-outline-danger i { color: #dc3545; }
+.btn-outline-danger:hover { background: #dc3545; color: white; }
+.btn-outline-danger:hover i { color: #fff; }
 
-.btn-outline-warning {
-    border: 2px solid #f6c23e;
-    color: #f6c23e;
-    background: transparent;
-}
-.btn-outline-warning:hover {
-    background: #f6c23e;
-    color: #333;
-}
+.btn-outline-warning { border: 2px solid #f6c23e; color: #f6c23e; background: transparent; }
+.btn-outline-warning i { color: #f6c23e; }
+.btn-outline-warning:hover { background: #f6c23e; color: #333; }
+.btn-outline-warning:hover i { color: #333; }
 
-.btn-outline-light {
-    border: 2px solid #ffffff;
-    color: #ffffff;
-    background: transparent;
-}
-.btn-outline-light:hover {
-    background: #ffffff;
-    color: #333;
-}
+.btn-outline-light { border: 2px solid #ffffff; color: #ffffff; background: transparent; }
+.btn-outline-light i { color: #ffffff; }
+.btn-outline-light:hover { background: #ffffff; color: #333; }
+.btn-outline-light:hover i { color: #333; }
 
 /* ============================================================
    BADGES
@@ -326,8 +339,7 @@
     margin-bottom: 5px;
     font-size: 13px;
 }
-.form-select,
-.form-control {
+.form-select, .form-control {
     border-radius: 8px;
     border: 1px solid var(--border-color);
     padding: 8px 12px;
@@ -336,19 +348,14 @@
     color: var(--text-color);
     transition: border-color 0.3s, box-shadow 0.3s, background-color 0.3s;
 }
-.form-select:focus,
-.form-control:focus {
+.form-select:focus, .form-control:focus {
     border-color: #667eea;
     box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
     background-color: var(--card-bg);
     color: var(--text-color);
 }
-.form-control::placeholder {
-    color: var(--text-muted);
-    opacity: 0.7;
-}
-.form-control:disabled,
-.form-select:disabled {
+.form-control::placeholder { color: var(--text-muted); opacity: 0.7; }
+.form-control:disabled, .form-select:disabled {
     background-color: var(--hover-bg);
     color: var(--text-muted);
 }
@@ -357,20 +364,12 @@
     border-color: var(--border-color);
     color: var(--text-color);
 }
-.form-check-input {
-    background-color: var(--card-bg);
-    border-color: var(--border-color);
-}
-.form-check-input:checked {
-    background-color: var(--primary-color);
-    border-color: var(--primary-color);
-}
-.form-check-label {
-    color: var(--text-color);
-}
+.form-check-input { background-color: var(--card-bg); border-color: var(--border-color); }
+.form-check-input:checked { background-color: var(--primary-color); border-color: var(--primary-color); }
+.form-check-label { color: var(--text-color); }
 
 /* ============================================================
-   CARDS
+   CARDS — базовые
    ============================================================ */
 .card {
     background-color: var(--card-bg);
@@ -378,9 +377,7 @@
     color: var(--text-color);
     transition: background-color 0.3s, border-color 0.3s;
 }
-.card-body {
-    color: var(--text-color);
-}
+.card-body { color: var(--text-color); }
 .card-footer {
     border-top: 1px solid var(--border-color);
     background-color: transparent;
@@ -391,7 +388,6 @@
     color: inherit;
 }
 
-/* Заголовки карточек в тон темы */
 .card-header h1,
 .card-header h2,
 .card-header h3,
@@ -403,7 +399,6 @@
     margin-bottom: 0;
 }
 
-/* Заголовки в теле карточки */
 .card-body h1,
 .card-body h2,
 .card-body h3,
@@ -421,210 +416,318 @@
    🎨 БЕЛЫЙ ТЕКСТ НА ЦВЕТНЫХ ШАПКАХ
    ============================================================ */
 
-/* ---- Шапки карточек ---- */
-.card-header.bg-primary,
-.card-header.bg-primary h1,
-.card-header.bg-primary h2,
-.card-header.bg-primary h3,
-.card-header.bg-primary h4,
-.card-header.bg-primary h5,
-.card-header.bg-primary h6,
+/* ---- Шапки карточек: заголовки, span, обычные иконки ---- */
+.card-header.bg-primary h1, .card-header.bg-primary h2,
+.card-header.bg-primary h3, .card-header.bg-primary h4,
+.card-header.bg-primary h5, .card-header.bg-primary h6,
 .card-header.bg-primary .card-title,
-.card-header.bg-primary i,
-.card-header.bg-primary span:not(.badge):not(.btn),
+.card-header.bg-primary > span:not(.badge):not(.btn),
+.card-header.bg-primary > i,
 
-.card-header.bg-success,
-.card-header.bg-success h1,
-.card-header.bg-success h2,
-.card-header.bg-success h3,
-.card-header.bg-success h4,
-.card-header.bg-success h5,
-.card-header.bg-success h6,
+.card-header.bg-success h1, .card-header.bg-success h2,
+.card-header.bg-success h3, .card-header.bg-success h4,
+.card-header.bg-success h5, .card-header.bg-success h6,
 .card-header.bg-success .card-title,
-.card-header.bg-success i,
-.card-header.bg-success span:not(.badge):not(.btn),
+.card-header.bg-success > span:not(.badge):not(.btn),
+.card-header.bg-success > i,
 
-.card-header.bg-info,
-.card-header.bg-info h1,
-.card-header.bg-info h2,
-.card-header.bg-info h3,
-.card-header.bg-info h4,
-.card-header.bg-info h5,
-.card-header.bg-info h6,
+.card-header.bg-info h1, .card-header.bg-info h2,
+.card-header.bg-info h3, .card-header.bg-info h4,
+.card-header.bg-info h5, .card-header.bg-info h6,
 .card-header.bg-info .card-title,
-.card-header.bg-info i,
-.card-header.bg-info span:not(.badge):not(.btn),
+.card-header.bg-info > span:not(.badge):not(.btn),
+.card-header.bg-info > i,
 
-.card-header.bg-danger,
-.card-header.bg-danger h1,
-.card-header.bg-danger h2,
-.card-header.bg-danger h3,
-.card-header.bg-danger h4,
-.card-header.bg-danger h5,
-.card-header.bg-danger h6,
+.card-header.bg-danger h1, .card-header.bg-danger h2,
+.card-header.bg-danger h3, .card-header.bg-danger h4,
+.card-header.bg-danger h5, .card-header.bg-danger h6,
 .card-header.bg-danger .card-title,
-.card-header.bg-danger i,
-.card-header.bg-danger span:not(.badge):not(.btn),
+.card-header.bg-danger > span:not(.badge):not(.btn),
+.card-header.bg-danger > i,
 
-.card-header.bg-secondary,
-.card-header.bg-secondary h1,
-.card-header.bg-secondary h2,
-.card-header.bg-secondary h3,
-.card-header.bg-secondary h4,
-.card-header.bg-secondary h5,
-.card-header.bg-secondary h6,
+.card-header.bg-secondary h1, .card-header.bg-secondary h2,
+.card-header.bg-secondary h3, .card-header.bg-secondary h4,
+.card-header.bg-secondary h5, .card-header.bg-secondary h6,
 .card-header.bg-secondary .card-title,
-.card-header.bg-secondary i,
-.card-header.bg-secondary span:not(.badge):not(.btn),
+.card-header.bg-secondary > span:not(.badge):not(.btn),
+.card-header.bg-secondary > i,
 
-.card-header.bg-dark,
-.card-header.bg-dark h1,
-.card-header.bg-dark h2,
-.card-header.bg-dark h3,
-.card-header.bg-dark h4,
-.card-header.bg-dark h5,
-.card-header.bg-dark h6,
+.card-header.bg-dark h1, .card-header.bg-dark h2,
+.card-header.bg-dark h3, .card-header.bg-dark h4,
+.card-header.bg-dark h5, .card-header.bg-dark h6,
 .card-header.bg-dark .card-title,
-.card-header.bg-dark i,
-.card-header.bg-dark span:not(.badge):not(.btn) {
+.card-header.bg-dark > span:not(.badge):not(.btn),
+.card-header.bg-dark > i {
     color: #ffffff !important;
 }
 
-/* Жёлтая шапка — тёмный текст */
+/* Иконки внутри <h1>-<h6> цветных шапок */
+.card-header.bg-primary h1 i, .card-header.bg-primary h2 i,
+.card-header.bg-primary h3 i, .card-header.bg-primary h4 i,
+.card-header.bg-primary h5 i, .card-header.bg-primary h6 i,
+.card-header.bg-success h1 i, .card-header.bg-success h2 i,
+.card-header.bg-success h3 i, .card-header.bg-success h4 i,
+.card-header.bg-success h5 i, .card-header.bg-success h6 i,
+.card-header.bg-info h1 i, .card-header.bg-info h2 i,
+.card-header.bg-info h3 i, .card-header.bg-info h4 i,
+.card-header.bg-info h5 i, .card-header.bg-info h6 i,
+.card-header.bg-danger h1 i, .card-header.bg-danger h2 i,
+.card-header.bg-danger h3 i, .card-header.bg-danger h4 i,
+.card-header.bg-danger h5 i, .card-header.bg-danger h6 i,
+.card-header.bg-secondary h1 i, .card-header.bg-secondary h2 i,
+.card-header.bg-secondary h3 i, .card-header.bg-secondary h4 i,
+.card-header.bg-secondary h5 i, .card-header.bg-secondary h6 i,
+.card-header.bg-dark h1 i, .card-header.bg-dark h2 i,
+.card-header.bg-dark h3 i, .card-header.bg-dark h4 i,
+.card-header.bg-dark h5 i, .card-header.bg-dark h6 i {
+    color: #ffffff !important;
+}
+
+/* ---- Жёлтая шапка — тёмный текст ---- */
 .card-header.bg-warning,
-.card-header.bg-warning h1,
-.card-header.bg-warning h2,
-.card-header.bg-warning h3,
-.card-header.bg-warning h4,
-.card-header.bg-warning h5,
-.card-header.bg-warning h6,
+.card-header.bg-warning h1, .card-header.bg-warning h2,
+.card-header.bg-warning h3, .card-header.bg-warning h4,
+.card-header.bg-warning h5, .card-header.bg-warning h6,
 .card-header.bg-warning .card-title,
-.card-header.bg-warning i,
-.card-header.bg-warning span:not(.badge):not(.btn) {
+.card-header.bg-warning > span:not(.badge):not(.btn),
+.card-header.bg-warning > i {
     color: #333333 !important;
 }
+
+/* ============================================================
+   🔧 КНОПКИ ВНУТРИ ЦВЕТНЫХ ШАПОК
+   Специфичность выше, чем у .card-header.bg-primary i
+   ============================================================ */
+
+/* --- btn-light (белая кнопка на цветном фоне) — тёмный текст --- */
+.card-header.bg-primary .btn-light,
+.card-header.bg-primary .btn-light i,
+.card-header.bg-primary .btn-light span,
+.card-header.bg-success .btn-light,
+.card-header.bg-success .btn-light i,
+.card-header.bg-success .btn-light span,
+.card-header.bg-info .btn-light,
+.card-header.bg-info .btn-light i,
+.card-header.bg-info .btn-light span,
+.card-header.bg-danger .btn-light,
+.card-header.bg-danger .btn-light i,
+.card-header.bg-danger .btn-light span,
+.card-header.bg-secondary .btn-light,
+.card-header.bg-secondary .btn-light i,
+.card-header.bg-secondary .btn-light span,
+.card-header.bg-dark .btn-light,
+.card-header.bg-dark .btn-light i,
+.card-header.bg-dark .btn-light span,
+.card-header.bg-warning .btn-light,
+.card-header.bg-warning .btn-light i,
+.card-header.bg-warning .btn-light span {
+    color: #212529 !important;
+}
+.card-header .btn-light:hover,
+.card-header .btn-light:hover i,
+.card-header .btn-light:hover span {
+    color: #000000 !important;
+}
+
+/* --- btn-outline-light (прозрачная на цветном фоне) — белый текст --- */
+.card-header.bg-primary .btn-outline-light,
+.card-header.bg-primary .btn-outline-light i,
+.card-header.bg-primary .btn-outline-light span,
+.card-header.bg-success .btn-outline-light,
+.card-header.bg-success .btn-outline-light i,
+.card-header.bg-success .btn-outline-light span,
+.card-header.bg-info .btn-outline-light,
+.card-header.bg-info .btn-outline-light i,
+.card-header.bg-info .btn-outline-light span,
+.card-header.bg-danger .btn-outline-light,
+.card-header.bg-danger .btn-outline-light i,
+.card-header.bg-danger .btn-outline-light span,
+.card-header.bg-secondary .btn-outline-light,
+.card-header.bg-secondary .btn-outline-light i,
+.card-header.bg-secondary .btn-outline-light span,
+.card-header.bg-dark .btn-outline-light,
+.card-header.bg-dark .btn-outline-light i,
+.card-header.bg-dark .btn-outline-light span {
+    color: #ffffff !important;
+}
+.card-header .btn-outline-light:hover,
+.card-header .btn-outline-light:hover i,
+.card-header .btn-outline-light:hover span {
+    color: #333333 !important;
+}
+
+/* --- btn-primary (синяя) — белый текст --- */
+.card-header.bg-primary .btn-primary,
+.card-header.bg-primary .btn-primary i,
+.card-header.bg-primary .btn-primary span,
+.card-header.bg-success .btn-primary,
+.card-header.bg-success .btn-primary i,
+.card-header.bg-success .btn-primary span,
+.card-header.bg-info .btn-primary,
+.card-header.bg-info .btn-primary i,
+.card-header.bg-info .btn-primary span,
+.card-header.bg-danger .btn-primary,
+.card-header.bg-danger .btn-primary i,
+.card-header.bg-danger .btn-primary span,
+.card-header.bg-secondary .btn-primary,
+.card-header.bg-secondary .btn-primary i,
+.card-header.bg-secondary .btn-primary span,
+.card-header.bg-dark .btn-primary,
+.card-header.bg-dark .btn-primary i,
+.card-header.bg-dark .btn-primary span {
+    color: #ffffff !important;
+}
+
+/* --- btn-success (зелёная) — белый текст --- */
+.card-header.bg-primary .btn-success,
+.card-header.bg-primary .btn-success i,
+.card-header.bg-primary .btn-success span,
+.card-header.bg-success .btn-success,
+.card-header.bg-success .btn-success i,
+.card-header.bg-success .btn-success span,
+.card-header.bg-info .btn-success,
+.card-header.bg-info .btn-success i,
+.card-header.bg-info .btn-success span,
+.card-header.bg-danger .btn-success,
+.card-header.bg-danger .btn-success i,
+.card-header.bg-danger .btn-success span,
+.card-header.bg-secondary .btn-success,
+.card-header.bg-secondary .btn-success i,
+.card-header.bg-secondary .btn-success span,
+.card-header.bg-dark .btn-success,
+.card-header.bg-dark .btn-success i,
+.card-header.bg-dark .btn-success span {
+    color: #ffffff !important;
+}
+
+/* --- btn-danger (красная) — белый текст --- */
+.card-header.bg-primary .btn-danger,
+.card-header.bg-primary .btn-danger i,
+.card-header.bg-primary .btn-danger span,
+.card-header.bg-success .btn-danger,
+.card-header.bg-success .btn-danger i,
+.card-header.bg-success .btn-danger span,
+.card-header.bg-info .btn-danger,
+.card-header.bg-info .btn-danger i,
+.card-header.bg-info .btn-danger span,
+.card-header.bg-danger .btn-danger,
+.card-header.bg-danger .btn-danger i,
+.card-header.bg-danger .btn-danger span,
+.card-header.bg-secondary .btn-danger,
+.card-header.bg-secondary .btn-danger i,
+.card-header.bg-secondary .btn-danger span,
+.card-header.bg-dark .btn-danger,
+.card-header.bg-dark .btn-danger i,
+.card-header.bg-dark .btn-danger span {
+    color: #ffffff !important;
+}
+
+/* --- btn-secondary (серая) — белый текст --- */
+.card-header.bg-primary .btn-secondary,
+.card-header.bg-primary .btn-secondary i,
+.card-header.bg-primary .btn-secondary span,
+.card-header.bg-success .btn-secondary,
+.card-header.bg-success .btn-secondary i,
+.card-header.bg-success .btn-secondary span,
+.card-header.bg-info .btn-secondary,
+.card-header.bg-info .btn-secondary i,
+.card-header.bg-info .btn-secondary span,
+.card-header.bg-danger .btn-secondary,
+.card-header.bg-danger .btn-secondary i,
+.card-header.bg-danger .btn-secondary span,
+.card-header.bg-secondary .btn-secondary,
+.card-header.bg-secondary .btn-secondary i,
+.card-header.bg-secondary .btn-secondary span,
+.card-header.bg-dark .btn-secondary,
+.card-header.bg-dark .btn-secondary i,
+.card-header.bg-dark .btn-secondary span {
+    color: #ffffff !important;
+}
+
+/* --- btn-outline-* (цветные контурные) — сохраняют свой цвет --- */
+.card-header .btn-outline-primary,
+.card-header .btn-outline-primary i { color: #667eea !important; }
+
+.card-header .btn-outline-success,
+.card-header .btn-outline-success i { color: #28a745 !important; }
+
+.card-header .btn-outline-danger,
+.card-header .btn-outline-danger i { color: #dc3545 !important; }
+
+.card-header .btn-outline-info,
+.card-header .btn-outline-info i { color: #36b9cc !important; }
+
+.card-header .btn-outline-warning,
+.card-header .btn-outline-warning i { color: #f6c23e !important; }
+
+.card-header .btn-outline-secondary,
+.card-header .btn-outline-secondary i { color: #6c757d !important; }
 
 /* ---- KPI-карточки (card.bg-*) ---- */
 .card.bg-primary,
-.card.bg-primary h1,
-.card.bg-primary h2,
-.card.bg-primary h3,
-.card.bg-primary h4,
-.card.bg-primary h5,
-.card.bg-primary h6,
-.card.bg-primary .card-title,
-.card.bg-primary i,
-.card.bg-primary span:not(.badge):not(.btn),
-.card.bg-primary small,
-.card.bg-primary p,
+.card.bg-primary h1, .card.bg-primary h2, .card.bg-primary h3,
+.card.bg-primary h4, .card.bg-primary h5, .card.bg-primary h6,
+.card.bg-primary .card-title, .card.bg-primary > i,
+.card.bg-primary > span:not(.badge):not(.btn),
+.card.bg-primary small, .card.bg-primary p,
 
 .card.bg-success,
-.card.bg-success h1,
-.card.bg-success h2,
-.card.bg-success h3,
-.card.bg-success h4,
-.card.bg-success h5,
-.card.bg-success h6,
-.card.bg-success .card-title,
-.card.bg-success i,
-.card.bg-success span:not(.badge):not(.btn),
-.card.bg-success small,
-.card.bg-success p,
+.card.bg-success h1, .card.bg-success h2, .card.bg-success h3,
+.card.bg-success h4, .card.bg-success h5, .card.bg-success h6,
+.card.bg-success .card-title, .card.bg-success > i,
+.card.bg-success > span:not(.badge):not(.btn),
+.card.bg-success small, .card.bg-success p,
 
 .card.bg-info,
-.card.bg-info h1,
-.card.bg-info h2,
-.card.bg-info h3,
-.card.bg-info h4,
-.card.bg-info h5,
-.card.bg-info h6,
-.card.bg-info .card-title,
-.card.bg-info i,
-.card.bg-info span:not(.badge):not(.btn),
-.card.bg-info small,
-.card.bg-info p,
+.card.bg-info h1, .card.bg-info h2, .card.bg-info h3,
+.card.bg-info h4, .card.bg-info h5, .card.bg-info h6,
+.card.bg-info .card-title, .card.bg-info > i,
+.card.bg-info > span:not(.badge):not(.btn),
+.card.bg-info small, .card.bg-info p,
 
 .card.bg-danger,
-.card.bg-danger h1,
-.card.bg-danger h2,
-.card.bg-danger h3,
-.card.bg-danger h4,
-.card.bg-danger h5,
-.card.bg-danger h6,
-.card.bg-danger .card-title,
-.card.bg-danger i,
-.card.bg-danger span:not(.badge):not(.btn),
-.card.bg-danger small,
-.card.bg-danger p,
+.card.bg-danger h1, .card.bg-danger h2, .card.bg-danger h3,
+.card.bg-danger h4, .card.bg-danger h5, .card.bg-danger h6,
+.card.bg-danger .card-title, .card.bg-danger > i,
+.card.bg-danger > span:not(.badge):not(.btn),
+.card.bg-danger small, .card.bg-danger p,
 
 .card.bg-secondary,
-.card.bg-secondary h1,
-.card.bg-secondary h2,
-.card.bg-secondary h3,
-.card.bg-secondary h4,
-.card.bg-secondary h5,
-.card.bg-secondary h6,
-.card.bg-secondary .card-title,
-.card.bg-secondary i,
-.card.bg-secondary span:not(.badge):not(.btn),
-.card.bg-secondary small,
-.card.bg-secondary p,
+.card.bg-secondary h1, .card.bg-secondary h2, .card.bg-secondary h3,
+.card.bg-secondary h4, .card.bg-secondary h5, .card.bg-secondary h6,
+.card.bg-secondary .card-title, .card.bg-secondary > i,
+.card.bg-secondary > span:not(.badge):not(.btn),
+.card.bg-secondary small, .card.bg-secondary p,
 
 .card.bg-dark,
-.card.bg-dark h1,
-.card.bg-dark h2,
-.card.bg-dark h3,
-.card.bg-dark h4,
-.card.bg-dark h5,
-.card.bg-dark h6,
-.card.bg-dark .card-title,
-.card.bg-dark i,
-.card.bg-dark span:not(.badge):not(.btn),
-.card.bg-dark small,
-.card.bg-dark p {
+.card.bg-dark h1, .card.bg-dark h2, .card.bg-dark h3,
+.card.bg-dark h4, .card.bg-dark h5, .card.bg-dark h6,
+.card.bg-dark .card-title, .card.bg-dark > i,
+.card.bg-dark > span:not(.badge):not(.btn),
+.card.bg-dark small, .card.bg-dark p {
     color: #ffffff !important;
 }
 
-/* Жёлтая карточка — тёмный текст */
 .card.bg-warning,
-.card.bg-warning h1,
-.card.bg-warning h2,
-.card.bg-warning h3,
-.card.bg-warning h4,
-.card.bg-warning h5,
-.card.bg-warning h6,
-.card.bg-warning .card-title,
-.card.bg-warning i,
-.card.bg-warning span:not(.badge):not(.btn),
-.card.bg-warning small,
-.card.bg-warning p {
+.card.bg-warning h1, .card.bg-warning h2, .card.bg-warning h3,
+.card.bg-warning h4, .card.bg-warning h5, .card.bg-warning h6,
+.card.bg-warning .card-title, .card.bg-warning > i,
+.card.bg-warning > span:not(.badge):not(.btn),
+.card.bg-warning small, .card.bg-warning p {
     color: #333333 !important;
 }
 
-/* ---- Утилиты: .bg-* + .text-white ---- */
-.bg-primary.text-white,
-.bg-primary.text-white *:not(.badge):not(.btn),
-.bg-success.text-white,
-.bg-success.text-white *:not(.badge):not(.btn),
-.bg-info.text-white,
-.bg-info.text-white *:not(.badge):not(.btn),
-.bg-danger.text-white,
-.bg-danger.text-white *:not(.badge):not(.btn),
-.bg-secondary.text-white,
-.bg-secondary.text-white *:not(.badge):not(.btn),
-.bg-dark.text-white,
-.bg-dark.text-white *:not(.badge):not(.btn) {
+/* ---- Утилиты .bg-*.text-white ---- */
+.bg-primary.text-white, .bg-primary.text-white *:not(.badge):not(.btn):not(.btn *),
+.bg-success.text-white, .bg-success.text-white *:not(.badge):not(.btn):not(.btn *),
+.bg-info.text-white,    .bg-info.text-white *:not(.badge):not(.btn):not(.btn *),
+.bg-danger.text-white,  .bg-danger.text-white *:not(.badge):not(.btn):not(.btn *),
+.bg-secondary.text-white, .bg-secondary.text-white *:not(.badge):not(.btn):not(.btn *),
+.bg-dark.text-white,    .bg-dark.text-white *:not(.badge):not(.btn):not(.btn *) {
     color: #ffffff !important;
 }
-
-.bg-warning.text-white,
-.bg-warning.text-white *:not(.badge):not(.btn) {
+.bg-warning.text-white, .bg-warning.text-white *:not(.badge):not(.btn):not(.btn *) {
     color: #333333 !important;
-}
-
-/* Иконки в цветных шапках — через inherit */
-.card-header i {
-    color: inherit;
 }
 
 /* ============================================================
@@ -642,54 +745,24 @@
     border-bottom: none;
     padding: 20px;
 }
-.modal-body {
-    padding: 25px;
-    color: var(--text-color);
-}
-.modal-footer {
-    border-top: none;
-    padding: 20px;
-}
-.modal-title {
-    color: inherit;
-}
+.modal-body { padding: 25px; color: var(--text-color); }
+.modal-footer { border-top: none; padding: 20px; }
+.modal-title { color: inherit; }
 
-/* Модалки: цветные шапки */
-.modal-header.bg-primary,
-.modal-header.bg-primary .modal-title,
-.modal-header.bg-primary i,
-
-.modal-header.bg-success,
-.modal-header.bg-success .modal-title,
-.modal-header.bg-success i,
-
-.modal-header.bg-info,
-.modal-header.bg-info .modal-title,
-.modal-header.bg-info i,
-
-.modal-header.bg-danger,
-.modal-header.bg-danger .modal-title,
-.modal-header.bg-danger i,
-
-.modal-header.bg-secondary,
-.modal-header.bg-secondary .modal-title,
-.modal-header.bg-secondary i,
-
-.modal-header.bg-dark,
-.modal-header.bg-dark .modal-title,
-.modal-header.bg-dark i {
+.modal-header.bg-primary, .modal-header.bg-primary .modal-title, .modal-header.bg-primary > i,
+.modal-header.bg-success, .modal-header.bg-success .modal-title, .modal-header.bg-success > i,
+.modal-header.bg-info,    .modal-header.bg-info .modal-title,    .modal-header.bg-info > i,
+.modal-header.bg-danger,  .modal-header.bg-danger .modal-title,  .modal-header.bg-danger > i,
+.modal-header.bg-secondary, .modal-header.bg-secondary .modal-title, .modal-header.bg-secondary > i,
+.modal-header.bg-dark,    .modal-header.bg-dark .modal-title,    .modal-header.bg-dark > i {
     color: #ffffff !important;
 }
-
-.modal-header.bg-warning,
-.modal-header.bg-warning .modal-title {
+.modal-header.bg-warning, .modal-header.bg-warning .modal-title {
     color: #333333 !important;
 }
 
 .btn-close { filter: none; }
-[data-theme="dark"] .btn-close {
-    filter: invert(1) grayscale(100%) brightness(200%);
-}
+[data-theme="dark"] .btn-close { filter: invert(1) grayscale(100%) brightness(200%); }
 .modal-header.bg-primary .btn-close,
 .modal-header.bg-success .btn-close,
 .modal-header.bg-info .btn-close,
@@ -707,12 +780,8 @@
     border-color: var(--border-color);
     color: var(--text-color);
 }
-.list-group-item.bg-light {
-    background-color: var(--hover-bg) !important;
-}
-.list-group-item:hover {
-    background-color: var(--hover-bg);
-}
+.list-group-item.bg-light { background-color: var(--hover-bg) !important; }
+.list-group-item:hover { background-color: var(--hover-bg); }
 
 /* ============================================================
    CONTEXT MENU
@@ -736,21 +805,10 @@
     color: var(--text-color);
     transition: background-color 0.15s;
 }
-.context-menu-item:hover {
-    background-color: var(--hover-bg);
-}
-.context-menu-item i {
-    margin-right: 10px;
-    width: 20px;
-}
-.context-menu-item.text-danger {
-    color: #dc3545;
-}
-.context-menu-divider {
-    height: 1px;
-    background-color: var(--border-color);
-    margin: 8px 0;
-}
+.context-menu-item:hover { background-color: var(--hover-bg); }
+.context-menu-item i { margin-right: 10px; width: 20px; }
+.context-menu-item.text-danger { color: #dc3545; }
+.context-menu-divider { height: 1px; background-color: var(--border-color); margin: 8px 0; }
 
 /* ============================================================
    CHECKBOXES
@@ -765,10 +823,7 @@
 /* ============================================================
    ALERTS
    ============================================================ */
-.alert {
-    border-radius: 10px;
-    border: none;
-}
+.alert { border-radius: 10px; border: none; }
 .alert-info    { background-color: #d1ecf1; color: #0c5460; }
 .alert-success { background-color: #d4edda; color: #155724; }
 .alert-warning { background-color: #fff3cd; color: #856404; }
@@ -782,23 +837,11 @@
 /* ============================================================
    UTILITY COLORS
    ============================================================ */
-.bg-light {
-    background-color: var(--hover-bg) !important;
-    color: var(--text-color) !important;
-}
-.bg-white {
-    background-color: var(--card-bg) !important;
-    color: var(--text-color) !important;
-}
-.text-dark {
-    color: var(--text-color) !important;
-}
-.text-white {
-    color: #ffffff !important;
-}
-.text-muted {
-    color: var(--text-muted) !important;
-}
+.bg-light { background-color: var(--hover-bg) !important; color: var(--text-color) !important; }
+.bg-white { background-color: var(--card-bg) !important; color: var(--text-color) !important; }
+.text-dark  { color: var(--text-color) !important; }
+.text-white { color: #ffffff !important; }
+.text-muted { color: var(--text-muted) !important; }
 
 /* ============================================================
    PAGINATION
@@ -827,13 +870,8 @@
 /* ============================================================
    PROGRESS
    ============================================================ */
-.progress {
-    background-color: var(--hover-bg);
-    border-radius: 6px;
-}
-.progress-bar {
-    background-color: var(--primary-color);
-}
+.progress { background-color: var(--hover-bg); border-radius: 6px; }
+.progress-bar { background-color: var(--primary-color); }
 
 /* ============================================================
    DROPDOWN
@@ -843,55 +881,23 @@
     border-color: var(--border-color);
     color: var(--text-color);
 }
-.dropdown-item {
-    color: var(--text-color);
-}
-.dropdown-item:hover {
-    background-color: var(--hover-bg);
-    color: var(--text-color);
-}
-.dropdown-divider {
-    border-color: var(--border-color);
-}
+.dropdown-item { color: var(--text-color); }
+.dropdown-item:hover { background-color: var(--hover-bg); color: var(--text-color); }
+.dropdown-divider { border-color: var(--border-color); }
 
 /* ============================================================
-   HR
+   HR / SPINNER / NAV
    ============================================================ */
-hr {
-    border-color: var(--border-color);
-    opacity: 1;
-}
+hr { border-color: var(--border-color); opacity: 1; }
+.spinner-border.text-primary { color: #667eea !important; }
 
-/* ============================================================
-   SPINNER
-   ============================================================ */
-.spinner-border.text-primary {
-    color: #667eea !important;
-}
-
-/* ============================================================
-   НАВИГАЦИЯ ВНУТРИ СТРАНИЦ (nav-tabs, nav-pills)
-   ============================================================ */
-.nav-tabs {
-    border-bottom-color: var(--border-color);
-}
-.nav-tabs .nav-link {
-    color: var(--text-muted);
-    border-color: transparent;
-}
-.nav-tabs .nav-link:hover {
-    color: var(--text-color);
-    border-color: transparent;
-}
+.nav-tabs { border-bottom-color: var(--border-color); }
+.nav-tabs .nav-link { color: var(--text-muted); border-color: transparent; }
+.nav-tabs .nav-link:hover { color: var(--text-color); border-color: transparent; }
 .nav-tabs .nav-link.active {
     background-color: var(--card-bg);
     border-color: var(--border-color) var(--border-color) var(--card-bg);
     color: var(--primary-color);
 }
-.nav-pills .nav-link {
-    color: var(--text-muted);
-}
-.nav-pills .nav-link.active {
-    background: var(--primary-gradient);
-    color: white;
-}
+.nav-pills .nav-link { color: var(--text-muted); }
+.nav-pills .nav-link.active { background: var(--primary-gradient); color: white; }
