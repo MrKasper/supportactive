@@ -2,11 +2,17 @@
 """
 HTTP-слой для уведомлений + Server-Sent Events (SSE).
 Бизнес-логика — в services/notifications.py.
+
+SSE-поток принимает last_id из query-параметров, что позволяет
+избежать массового переотправления старых уведомлений при
+переподключении браузера.
 """
 import json
 import time
+
 from flask import (
-    Blueprint, jsonify, session, Response, stream_with_context,
+    Blueprint, jsonify, session, request,
+    Response, stream_with_context,
 )
 
 from database import Database
@@ -30,7 +36,7 @@ notifications_bp = Blueprint('notifications', __name__)
 
 
 # ============================================================
-# API: список уведомлений
+# СПИСОК УВЕДОМЛЕНИЙ
 # ============================================================
 
 @notifications_bp.route('/api/notifications')
@@ -110,14 +116,18 @@ def mark_all_notifications_read():
 
 
 # ============================================================
-# SSE: поток новых уведомлений
+# SSE: ПОТОК НОВЫХ УВЕДОМЛЕНИЙ
 # ============================================================
 
 @notifications_bp.route('/api/notifications/stream')
 @login_required
 def notifications_stream():
     """
-    Server-Sent Events: поток новых уведомлений для текущего пользователя.
+    Server-Sent Events: поток новых уведомлений.
+
+    Клиент может передать ?last_id=N — тогда сервер начнёт
+    отдавать уведомления, начиная с N+1. Это защищает от
+    массовой переотправки при переподключении.
 
     ⚠️ Требует gunicorn с gevent или gthread:
         gunicorn -k gevent --workers 2 ...
@@ -131,10 +141,17 @@ def notifications_stream():
     """
     user_id = session.get('user_id')
 
-    @stream_with_context
-    def event_stream():
+    # Принимаем last_id из query
+    try:
+        last_id = int(request.args.get('last_id', 0))
+    except (TypeError, ValueError):
         last_id = 0
 
+    @stream_with_context
+    def event_stream():
+        nonlocal last_id
+
+        # Начальные метаданные
         yield 'retry: 5000\n\n'
         yield ': connected\n\n'
 

@@ -1,14 +1,9 @@
 // static/js/notifications_sse.js
-// Real-time уведомления через Server-Sent Events.
-// Счётчик синхронизируется с сервером (не инкремент локально).
 
 (function() {
     'use strict';
 
-    if (!window.App) {
-        console.error('[notifications_sse] App не инициализирован');
-        return;
-    }
+    if (!window.App) return;
 
     var mod = window.App.register('NotificationsSSE');
     var utils = window.App.utils;
@@ -19,8 +14,20 @@
     var lastSyncAt = 0;
     var syncTimer = null;
 
-    // Throttle для синхронизации счётчика — не чаще 800 мс
-    var SYNC_THROTTLE_MS = 800;
+    // ⚠️ Храним последний ID уведомления в localStorage,
+    // чтобы при reconnect не пересылать старые
+    var LAST_ID_KEY = 'support_active_last_notif_id';
+
+    function getLastId() {
+        var v = localStorage.getItem(LAST_ID_KEY);
+        return v ? parseInt(v, 10) || 0 : 0;
+    }
+
+    function setLastId(id) {
+        if (id && id > getLastId()) {
+            localStorage.setItem(LAST_ID_KEY, String(id));
+        }
+    }
 
     // ============================================================
     // ПОДКЛЮЧЕНИЕ
@@ -31,20 +38,20 @@
             sse = null;
         }
 
-        if (!window.EventSource) {
-            console.warn('[SSE] EventSource не поддерживается браузером');
-            return;
-        }
+        if (!window.EventSource) return;
+
+        var lastId = getLastId();
+        var url = '/api/notifications/stream?last_id=' + lastId;
 
         try {
-            sse = new EventSource('/api/notifications/stream');
+            sse = new EventSource(url);
         } catch (e) {
-            console.warn('[SSE] Не удалось создать EventSource', e);
+            console.warn('[SSE] EventSource error', e);
             return;
         }
 
         sse.onopen = function() {
-            console.log('[SSE] Подключено');
+            console.log('[SSE] Подключено, last_id=' + lastId);
             connected = true;
             retryDelay = 1000;
         };
@@ -53,29 +60,21 @@
             if (!e.data) return;
             try {
                 var n = JSON.parse(e.data);
+                if (n.id) setLastId(n.id);
                 handleNewNotification(n);
             } catch (err) {
-                console.warn('[SSE] Parse error', err, e.data);
+                console.warn('[SSE] Parse error', err);
             }
         };
 
         sse.onerror = function() {
-            if (sse) {
-                try { sse.close(); } catch (e) {}
-                sse = null;
-            }
+            if (sse) { try { sse.close(); } catch (e) {} sse = null; }
             connected = false;
-            console.warn(
-                '[SSE] Переподключение через ' + retryDelay + 'ms'
-            );
             setTimeout(connect, retryDelay);
             retryDelay = Math.min(retryDelay * 2, 30000);
         };
     }
 
-    // ============================================================
-    // СИНХРОНИЗАЦИЯ СЧЁТЧИКА С СЕРВЕРОМ
-    // ============================================================
     function syncUnreadCount() {
         if (window.App.Notifications &&
             typeof window.App.Notifications.loadUnreadCount === 'function') {
@@ -85,34 +84,30 @@
 
     function scheduleSync() {
         var now = Date.now();
-        var elapsed = now - lastSyncAt;
-
-        // Уже запланировано — не дублируем
         if (syncTimer) return;
 
-        // Прошло достаточно времени — синхронизируем сразу
-        if (elapsed >= SYNC_THROTTLE_MS) {
+        if (now - lastSyncAt >= 800) {
             lastSyncAt = now;
             syncUnreadCount();
             return;
         }
-
-        // Иначе — откладываем на остаток времени
         syncTimer = setTimeout(function() {
             syncTimer = null;
             lastSyncAt = Date.now();
             syncUnreadCount();
-        }, SYNC_THROTTLE_MS - elapsed);
+        }, 800 - (now - lastSyncAt));
     }
 
-    // ============================================================
-    // ОБРАБОТКА НОВОГО УВЕДОМЛЕНИЯ
-    // ============================================================
     function handleNewNotification(n) {
-        // ⚠️ НЕ инкрементим бейдж локально — перезапрашиваем с сервера
         scheduleSync();
 
-        // Toast
+        // Проверка: не показывали ли мы это уведомление раньше
+        var shownKey = 'shown_notif_' + n.id;
+        if (sessionStorage.getItem(shownKey) === '1') {
+            return;  // уже показывали в этой сессии
+        }
+        sessionStorage.setItem(shownKey, '1');
+
         if (typeof Swal !== 'undefined') {
             Swal.fire({
                 toast: true,
@@ -126,7 +121,6 @@
             });
         }
 
-        // Browser Notification (если разрешено)
         if (typeof Notification !== 'undefined' &&
             Notification.permission === 'granted') {
             try {
@@ -135,41 +129,19 @@
                     icon: '/static/logo.png',
                     tag: 'task-' + (n.task_id || 'general'),
                 });
-            } catch (e) {
-                // Safari может ругаться — игнорируем
-            }
+            } catch (e) {}
         }
     }
 
-    // ============================================================
-    // ОТКЛЮЧЕНИЕ
-    // ============================================================
     function disconnect() {
-        if (sse) {
-            try { sse.close(); } catch (e) {}
-            sse = null;
-        }
-        if (syncTimer) {
-            clearTimeout(syncTimer);
-            syncTimer = null;
-        }
+        if (sse) { try { sse.close(); } catch (e) {} sse = null; }
+        if (syncTimer) { clearTimeout(syncTimer); syncTimer = null; }
         connected = false;
     }
 
-    function isConnected() {
-        return connected;
-    }
-
-    // ============================================================
-    // ЭКСПОРТ
-    // ============================================================
     mod.connect = connect;
     mod.disconnect = disconnect;
-    mod.isConnected = isConnected;
-
-    // Для ручного вызова из консоли
-    window.sseConnect = connect;
-    window.sseDisconnect = disconnect;
+    mod.isConnected = function() { return connected; };
 
     console.log('[notifications_sse] Загружено');
 })();

@@ -1,4 +1,13 @@
 # cartridges.py
+"""
+Картриджи: список, статистика, аналитика.
+
+Сортировка списка:
+  1. Сначала записи С датами — по latest_date DESC (свежие сверху)
+  2. Затем записи БЕЗ дат — по id DESC (созданные позже сверху)
+
+Дата замены — необязательное поле.
+"""
 from flask import Blueprint, request, jsonify, session
 from database import Database
 from datetime import datetime
@@ -36,8 +45,10 @@ def _invalidate_cartridges_cache():
 def get_cartridges():
     """
     Список всех записей о замене картриджей.
-    Сортировка: сначала с самой свежей заменой.
-    Записи без дат — сверху (новые первыми), чтобы не терялись.
+
+    Сортировка (Вариант A):
+      1. С датами — по latest_date DESC (свежие сверху)
+      2. Без дат   — по id DESC (новые сверху)
     """
     try:
         cartridges = db.query('''
@@ -50,6 +61,7 @@ def get_cartridges():
         for cart in cartridges:
             cart_dict = dict(cart)
 
+            # Разбор CSV-дат в список
             dates_list = []
             if cart_dict['replacement_dates']:
                 dates_list = [
@@ -58,6 +70,7 @@ def get_cartridges():
                 ]
             cart_dict['replacement_dates'] = dates_list
 
+            # Самая свежая дата
             if dates_list:
                 try:
                     cart_dict['latest_date'] = max(dates_list)
@@ -69,32 +82,16 @@ def get_cartridges():
             cart_dict['has_dates'] = bool(dates_list)
             result.append(cart_dict)
 
-        # Сортировка: сначала без дат (новые по id DESC),
-        # потом с датами (по latest_date DESC)
-        def sort_key(x):
-            if x['has_dates']:
-                # Группа 1, сортировка по дате DESC
-                return (1, x['latest_date'], x['id'])
-            else:
-                # Группа 0, сортировка по id DESC
-                return (0, '', -x['id'])
-
-        # Для хранения порядка с "новые сверху":
-        # для без-дат используем -id (последний созданный первым).
-        result.sort(
-            key=lambda x: (
-                0 if not x['has_dates'] else 1,
-                x['latest_date'] if x['has_dates'] else '',
-                -x['id'],
-            ),
-            reverse=False,
-        )
-        # Теперь: сначала без дат (id DESC), потом с датами (latest_date ASC).
-        # Но мы хотим даты DESC. Развернём группу с датами:
-        no_dates = [r for r in result if not r['has_dates']]
+        # ---------- СОРТИРОВКА (Вариант A) ----------
+        # Группа 1: с датами — по latest_date DESC (свежие сверху)
+        # Группа 2: без дат   — по id DESC (новые сверху)
         with_dates = [r for r in result if r['has_dates']]
+        no_dates = [r for r in result if not r['has_dates']]
+
         with_dates.sort(key=lambda x: x['latest_date'], reverse=True)
-        result = no_dates + with_dates
+        no_dates.sort(key=lambda x: x['id'], reverse=True)
+
+        result = with_dates + no_dates
 
         return jsonify(result)
     except Exception as e:
@@ -124,6 +121,7 @@ def get_cartridge(cartridge_id):
 
         return jsonify(cart_dict)
     except Exception as e:
+        log.exception('Ошибка получения картриджа')
         return jsonify({'error': f'Ошибка: {str(e)}'}), 500
 
 
@@ -162,10 +160,11 @@ def create_cartridge():
         if existing:
             return jsonify({
                 'success': False,
-                'error': 'Запись для этого кабинета с таким принтером и картриджем уже существует.',
+                'error': 'Запись для этого кабинета с таким принтером и '
+                         'картриджем уже существует.',
             }), 400
 
-        # Даты: сохраняем даже пустой список (это допустимо)
+        # Даты — опциональны
         if not isinstance(replacement_dates, list):
             replacement_dates = []
         dates_str = ','.join(
@@ -283,7 +282,8 @@ def delete_cartridge(cartridge_id):
         return jsonify({'success': False, 'error': f'Ошибка: {str(e)}'}), 500
 
 
-@cartridges_bp.route('/api/cartridges/<int:cartridge_id>/clear-dates', methods=['POST'])
+@cartridges_bp.route('/api/cartridges/<int:cartridge_id>/clear-dates',
+                    methods=['POST'])
 @login_required
 def clear_cartridge_dates(cartridge_id):
     try:
@@ -308,18 +308,24 @@ def clear_cartridge_dates(cartridge_id):
 
 
 # ============================================================
-# СТАТИСТИКА (без изменений)
+# СТАТИСТИКА
 # ============================================================
 
 @cartridges_bp.route('/api/cartridges/statistics')
 @login_required
 @cache.cached(timeout=120, key_prefix='cartridges_stats')
 def get_cartridge_statistics():
+    """
+    Общая статистика по заменам картриджей.
+    3 запроса: total, all_records, printer/cartridge stats.
+    """
     try:
+        # Запрос 1: общее количество записей
         total = db.query(
-            'SELECT COUNT(*) as count FROM cartridges', one=True
+            'SELECT COUNT(*) AS count FROM cartridges', one=True
         )['count']
 
+        # Запрос 2: все записи с датами
         all_records = db.query('''
             SELECT cabinet, printer, cartridge, replacement_dates
             FROM cartridges
@@ -334,11 +340,13 @@ def get_cartridge_statistics():
             raw = r['replacement_dates'] or ''
             if not raw:
                 continue
+
             dates = [d.strip() for d in raw.split(',') if d.strip()]
             if not dates:
                 continue
 
             all_dates.extend(dates)
+
             cab = (r['cabinet'] or '').strip()
             if cab:
                 by_cabinet[cab] += len(dates)
@@ -352,6 +360,7 @@ def get_cartridge_statistics():
                 })
 
         total_replacements = len(all_dates)
+
         now = datetime.now()
         current_month = now.strftime('%Y-%m')
         current_year = now.strftime('%Y')
@@ -364,7 +373,8 @@ def get_cartridge_statistics():
         )
 
         cabinet_stats = sorted(
-            [{'cabinet': c, 'replacements': n} for c, n in by_cabinet.items()],
+            [{'cabinet': c, 'replacements': n}
+             for c, n in by_cabinet.items()],
             key=lambda x: x['replacements'],
             reverse=True,
         )
@@ -374,16 +384,19 @@ def get_cartridge_statistics():
         )
         last_replacements = last_replacements[:10]
 
+        # Запрос 3: статистика по принтерам и картриджам
         printer_stats = db.query('''
-            SELECT printer, COUNT(*) as count FROM cartridges
+            SELECT printer, COUNT(*) AS count FROM cartridges
             WHERE printer != ''
-            GROUP BY printer ORDER BY count DESC
+            GROUP BY printer
+            ORDER BY count DESC
         ''')
 
         cartridge_stats = db.query('''
-            SELECT cartridge, COUNT(*) as count FROM cartridges
+            SELECT cartridge, COUNT(*) AS count FROM cartridges
             WHERE cartridge != ''
-            GROUP BY cartridge ORDER BY count DESC
+            GROUP BY cartridge
+            ORDER BY count DESC
         ''')
 
         return jsonify({
@@ -397,7 +410,7 @@ def get_cartridge_statistics():
             'last_replacements': last_replacements,
         })
     except Exception as e:
-        log.exception('Ошибка статистики картриджей')
+        log.exception('Ошибка получения статистики картриджей')
         return jsonify({'error': f'Ошибка: {str(e)}'}), 500
 
 
@@ -405,6 +418,7 @@ def get_cartridge_statistics():
 @login_required
 @cache.cached(timeout=120, key_prefix='cartridges_monthly_stats')
 def get_cartridge_monthly_stats():
+    """Помесячная статистика за последние 12 месяцев + по годам."""
     try:
         all_records = db.query('''
             SELECT replacement_dates FROM cartridges

@@ -4,8 +4,8 @@ Support Active System — точка создания Flask-приложения
 Фабричный паттерн: create_app(config).
 
 Graceful fallback:
-  • Если Redis указан в ENV, но недоступен — сессии автоматически
-    переключаются на filesystem, кеш и rate limit — на memory.
+  • Если Redis указан в ENV, но недоступен — сессии переключаются
+    на filesystem, кеш и rate limit — на memory.
   • Это защищает от падения на первом запросе при недоступном Redis.
 """
 from flask import (
@@ -14,7 +14,7 @@ from flask import (
 )
 from flask_session import Session
 from flask_wtf.csrf import CSRFError, generate_csrf
-from datetime import datetime
+from datetime import datetime, timedelta
 from werkzeug.utils import secure_filename
 import os
 import secrets
@@ -76,10 +76,7 @@ CSP_DIRECTIVES = [
 # ПРОВЕРКА REDIS
 # ============================================================
 def _redis_available(url, timeout=2):
-    """
-    Проверяет доступность Redis по URL.
-    Возвращает True/False, никогда не бросает исключение.
-    """
+    """Проверяет доступность Redis. Никогда не бросает исключение."""
     if not url:
         return False
 
@@ -145,7 +142,7 @@ def create_app(config_class=None):
     limiter.init_app(app)
     cache.init_app(app)
 
-    # ---------- Сессии: Redis или filesystem ----------
+    # ---------- Сессии ----------
     _init_sessions(app)
 
     # ---------- БД + миграции ----------
@@ -164,6 +161,16 @@ def create_app(config_class=None):
             db.insert_test_data()
     except Exception as e:
         log.warning(f'Не удалось проверить/добавить тестовые данные: {e}')
+
+    # ---------- Одноразовая чистка старых уведомлений ----------
+    try:
+        db.execute("""
+            DELETE FROM notifications
+            WHERE created_date < datetime('now', '-60 days')
+        """)
+        log.info('Очистка старых уведомлений (>60 дней) выполнена')
+    except Exception as e:
+        log.warning(f'Не удалось очистить уведомления: {e}')
 
     # ---------- Планировщик пинга ----------
     _start_ping_scheduler_if_needed()
@@ -190,6 +197,17 @@ def create_app(config_class=None):
     )
     log.info(f'Режим: {"DEBUG" if app.config.get("DEBUG") else "PRODUCTION"}')
 
+    # DEBUG: список QR-роутов
+    qr_routes = [
+        rule for rule in app.url_map.iter_rules()
+        if '/qr/' in rule.rule
+    ]
+    if qr_routes:
+        for rule in sorted(qr_routes, key=lambda r: r.rule):
+            log.info(f'QR-роут: {rule.rule} → {rule.endpoint}')
+    else:
+        log.warning('⚠️ QR-роуты не зарегистрированы!')
+
     return app
 
 
@@ -197,10 +215,7 @@ def create_app(config_class=None):
 # ИНИЦИАЛИЗАЦИЯ СЕССИЙ
 # ============================================================
 def _init_sessions(app):
-    """
-    Инициализирует Flask-Session с Redis (если доступен)
-    или с файлами (fallback).
-    """
+    """Инициализирует Flask-Session с Redis или fallback на filesystem."""
     session_type = app.config.get('SESSION_TYPE', 'filesystem')
     session_redis = app.config.get('SESSION_REDIS', '')
 
@@ -218,15 +233,12 @@ def _init_sessions(app):
         else:
             log.warning(
                 f'Redis недоступен по адресу {session_redis} — '
-                f'откат на файловые сессии. '
-                f'Запустите Redis или установите SESSION_TYPE=filesystem.'
+                f'откат на файловые сессии.'
             )
 
-        # Fallback
         app.config['SESSION_TYPE'] = 'filesystem'
         app.config['SESSION_REDIS'] = ''
 
-    # Файловые сессии
     Session(app)
     log.info(f'Сессии: {app.config["SESSION_TYPE"]}')
 
@@ -237,8 +249,8 @@ def _init_sessions(app):
 def _start_ping_scheduler_if_needed():
     """
     Запускает встроенный планировщик пинга, если он не отключён.
-    В продакшене с несколькими воркерами используйте отдельный
-    ping_worker.py и установите DISABLE_PING_SCHEDULER=true.
+    В продакшене используйте отдельный ping_worker.py
+    и DISABLE_PING_SCHEDULER=true.
     """
     if os.environ.get('DISABLE_PING_SCHEDULER', 'false').lower() == 'true':
         log.info('Планировщик пинга отключён (DISABLE_PING_SCHEDULER=true)')
@@ -273,7 +285,7 @@ def _register_blueprints(app):
     from comments import comments_bp
     from dashboard import dashboard_bp
 
-    # ⚠️ Публичные страницы для QR
+    # Публичные страницы для QR
     from public_qr import public_qr_bp
 
     # Оборудование кабинета
@@ -298,6 +310,7 @@ def _register_blueprints(app):
         attachments_bp,
         comments_bp,
         dashboard_bp,
+        public_qr_bp,
         equipment_core_bp,
         equipment_network_bp,
         equipment_computers_bp,
@@ -328,7 +341,6 @@ def _register_context_processors(app):
 
     @app.context_processor
     def inject_app_config():
-        """Флаги для шаблонов."""
         return dict(
             ENABLE_SSE=app.config.get('ENABLE_SSE', True),
             APP_VERSION='2.7',
@@ -414,7 +426,7 @@ def _register_request_hooks(app):
         if request.path.startswith('/static/'):
             return response
         if request.path == '/api/notifications/stream':
-            return response  # не логируем бесконечный SSE-поток
+            return response  # не логируем SSE-поток
 
         try:
             duration = (
@@ -450,10 +462,9 @@ def _register_base_routes(app):
             return redirect(url_for('auth.login'))
         return render_template('index.html')
 
-    # ---------- Health-check ----------
+    # ---------- Health ----------
     @app.route('/health')
     def health():
-        """Endpoint для мониторинга (Nginx, k8s, UptimeRobot)."""
         return jsonify({
             'status': 'ok',
             'version': '2.7',
@@ -612,16 +623,21 @@ def _register_base_routes(app):
 if __name__ == '__main__':
     app = create_app()
     debug_mode = app.config.get('DEBUG', False)
+    host = os.environ.get('HOST', '0.0.0.0')
+    port = int(os.environ.get('PORT', 5000))
 
     log.info('=' * 60)
     log.info('Support Active System v2.7')
     log.info(f'Режим: {"DEBUG" if debug_mode else "PRODUCTION"}')
-    log.info('Сервер: http://localhost:5000')
+    log.info(f'Сервер: http://{host}:{port}')
+    log.info(f'Сессии: {app.config.get("SESSION_TYPE", "filesystem")}')
+    log.info(f'Кеш: {app.config.get("CACHE_TYPE", "SimpleCache")}')
     log.info('=' * 60)
 
     app.run(
         debug=debug_mode,
-        host='0.0.0.0',
-        port=5000,
+        host=host,
+        port=port,
         use_reloader=debug_mode,
+        threaded=True,
     )
