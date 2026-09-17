@@ -1,8 +1,8 @@
 # excel.py
 """
-Отчёты и экспорт в настоящий XLSX (через openpyxl).
+Отчёты и экспорт: XLSX (openpyxl) и PDF (weasyprint).
 """
-from flask import Blueprint, request, jsonify, session, send_file
+from flask import Blueprint, request, jsonify, session, send_file, Response, render_template
 from database import Database
 from datetime import datetime
 from utils import login_required, role_required
@@ -18,7 +18,9 @@ excel_bp = Blueprint('excel', __name__)
 db = Database()
 
 
-# ---------- Стили ----------
+# ============================================================
+# СТИЛИ XLSX
+# ============================================================
 HEADER_FILL = PatternFill('solid', fgColor='4E73DF')
 HEADER_FONT = Font(bold=True, color='FFFFFF', size=12)
 HEADER_ALIGN = Alignment(horizontal='center', vertical='center', wrap_text=True)
@@ -27,25 +29,26 @@ CELL_ALIGN_LEFT = Alignment(horizontal='left', vertical='center', wrap_text=True
 CELL_ALIGN_CENTER = Alignment(horizontal='center', vertical='center')
 
 BORDER_THIN = Side(border_style='thin', color='D0D0D0')
-BORDER = Border(left=BORDER_THIN, right=BORDER_THIN, top=BORDER_THIN, bottom=BORDER_THIN)
+BORDER = Border(
+    left=BORDER_THIN, right=BORDER_THIN,
+    top=BORDER_THIN, bottom=BORDER_THIN,
+)
 
 STATUS_FILLS = {
-    'Новое':      PatternFill('solid', fgColor='D6EAF8'),
-    'В работе':   PatternFill('solid', fgColor='FDEBD0'),
-    'Выполнено':  PatternFill('solid', fgColor='D5F5E3'),
-    'Отменено':   PatternFill('solid', fgColor='FADBD8'),
+    'Новое': PatternFill('solid', fgColor='D6EAF8'),
+    'В работе': PatternFill('solid', fgColor='FDEBD0'),
+    'Выполнено': PatternFill('solid', fgColor='D5F5E3'),
+    'Отменено': PatternFill('solid', fgColor='FADBD8'),
 }
 PRIORITY_FILLS = {
     'Высокий': PatternFill('solid', fgColor='F5B7B1'),
     'Средний': PatternFill('solid', fgColor='F9E79F'),
-    'Низкий':  PatternFill('solid', fgColor='ABEBC6'),
+    'Низкий': PatternFill('solid', fgColor='ABEBC6'),
 }
-
 ZEBRA_FILL = PatternFill('solid', fgColor='F8F9FC')
 
 
 def _apply_header(ws, headers):
-    """Проставляет шапку и стиль."""
     for col, title in enumerate(headers, start=1):
         cell = ws.cell(row=1, column=col, value=title)
         cell.fill = HEADER_FILL
@@ -59,7 +62,6 @@ def _apply_header(ws, headers):
 
 
 def _autosize_columns(ws, max_width=60):
-    """Автоширина столбцов по содержимому."""
     for col_cells in ws.columns:
         letter = get_column_letter(col_cells[0].column)
         max_len = 0
@@ -73,7 +75,6 @@ def _autosize_columns(ws, max_width=60):
 
 
 def _style_data_row(ws, row_num, col_count, zebra=False):
-    """Границы, выравнивание и зебра."""
     for col in range(1, col_count + 1):
         c = ws.cell(row=row_num, column=col)
         c.border = BORDER
@@ -82,39 +83,9 @@ def _style_data_row(ws, row_num, col_count, zebra=False):
             c.fill = ZEBRA_FILL
 
 
-# ============= СВОДНЫЙ ОТЧЁТ =============
-
-@excel_bp.route('/api/report/tasks')
-@login_required
-def get_task_report():
-    """Сводная статистика по задачам."""
-    try:
-        status_stats = db.query('''
-            SELECT status, COUNT(*) as count FROM tasks GROUP BY status
-        ''')
-        executor_stats = db.query('''
-            SELECT executor,
-                   COUNT(*) as total,
-                   SUM(CASE WHEN status = 'Выполнено' THEN 1 ELSE 0 END) as completed,
-                   SUM(CASE WHEN status IN ('Новое', 'В работе') THEN 1 ELSE 0 END) as active
-            FROM tasks WHERE executor != ''
-            GROUP BY executor ORDER BY total DESC
-        ''')
-        monthly_stats = db.query('''
-            SELECT strftime('%Y-%m', created_date) as month,
-                   COUNT(*) as total,
-                   SUM(CASE WHEN status = 'Выполнено' THEN 1 ELSE 0 END) as completed
-            FROM tasks GROUP BY month ORDER BY month DESC LIMIT 12
-        ''')
-        return jsonify({
-            'status_stats': [dict(s) for s in status_stats],
-            'executor_stats': [dict(s) for s in executor_stats],
-            'monthly_stats': [dict(s) for s in monthly_stats]
-        })
-    except Exception as e:
-        log.exception('Ошибка получения отчёта')
-        return jsonify({'error': f'Ошибка: {str(e)}'}), 500
-
+# ============================================================
+# ФИЛЬТРЫ
+# ============================================================
 
 def _build_tasks_query(args):
     """Фильтры для экспорта и печати."""
@@ -125,32 +96,76 @@ def _build_tasks_query(args):
     date_from = args.get('date_from', '')
     date_to = args.get('date_to', '')
 
-    query = 'SELECT * FROM tasks WHERE 1=1'
+    query = 'SELECT * FROM tasks WHERE deleted_at IS NULL'
     params = []
     if work_type:
-        query += ' AND work_type = ?'; params.append(work_type)
+        query += ' AND work_type = ?'
+        params.append(work_type)
     if cabinet:
-        query += ' AND cabinet LIKE ?'; params.append(f'%{cabinet}%')
+        query += ' AND cabinet LIKE ?'
+        params.append(f'%{cabinet}%')
     if status:
-        query += ' AND status = ?'; params.append(status)
+        query += ' AND status = ?'
+        params.append(status)
     if user:
         query += ' AND (from_user LIKE ? OR executor LIKE ? OR assistant LIKE ?)'
         s = f'%{user}%'
         params.extend([s, s, s])
     if date_from:
-        query += ' AND deadline >= ?'; params.append(date_from)
+        query += ' AND deadline >= ?'
+        params.append(date_from)
     if date_to:
-        query += ' AND deadline <= ?'; params.append(date_to)
+        query += ' AND deadline <= ?'
+        params.append(date_to)
     query += ' ORDER BY created_date DESC'
     return query, params
 
 
-# ============= ЭКСПОРТ ЗАЯВОК =============
+# ============================================================
+# СВОДНЫЙ ОТЧЁТ
+# ============================================================
+
+@excel_bp.route('/api/report/tasks')
+@login_required
+def get_task_report():
+    try:
+        status_stats = db.query('''
+            SELECT status, COUNT(*) AS count FROM tasks
+            WHERE deleted_at IS NULL
+            GROUP BY status
+        ''')
+        executor_stats = db.query('''
+            SELECT executor,
+                   COUNT(*) AS total,
+                   SUM(CASE WHEN status = 'Выполнено' THEN 1 ELSE 0 END) AS completed,
+                   SUM(CASE WHEN status IN ('Новое', 'В работе') THEN 1 ELSE 0 END) AS active
+            FROM tasks WHERE executor != '' AND deleted_at IS NULL
+            GROUP BY executor ORDER BY total DESC
+        ''')
+        monthly_stats = db.query('''
+            SELECT strftime('%Y-%m', created_date) AS month,
+                   COUNT(*) AS total,
+                   SUM(CASE WHEN status = 'Выполнено' THEN 1 ELSE 0 END) AS completed
+            FROM tasks WHERE deleted_at IS NULL
+            GROUP BY month ORDER BY month DESC LIMIT 12
+        ''')
+        return jsonify({
+            'status_stats': [dict(s) for s in status_stats],
+            'executor_stats': [dict(s) for s in executor_stats],
+            'monthly_stats': [dict(s) for s in monthly_stats],
+        })
+    except Exception as e:
+        log.exception('Ошибка получения отчёта')
+        return jsonify({'error': f'Ошибка: {str(e)}'}), 500
+
+
+# ============================================================
+# ЭКСПОРТ ЗАЯВОК В XLSX
+# ============================================================
 
 @excel_bp.route('/api/report/tasks/excel')
 @login_required
 def export_tasks_excel():
-    """Экспорт заявок в настоящий XLSX с форматированием."""
     try:
         query, params = _build_tasks_query(request.args)
         tasks = db.query(query, params)
@@ -162,7 +177,7 @@ def export_tasks_excel():
         headers = [
             '№', 'Дата создания', 'Срок выполнения', 'От кого', 'Кабинет',
             'Описание работы', 'Тип работы', 'Статус', 'Приоритет',
-            'Исполнитель', 'Помощник', 'Дата выполнения'
+            'Исполнитель', 'Помощник', 'Дата выполнения',
         ]
         _apply_header(ws, headers)
 
@@ -183,27 +198,27 @@ def export_tasks_excel():
 
             _style_data_row(ws, row_num, len(headers), zebra=(i % 2 == 0))
 
-            # Цветные статусы
             status_cell = ws.cell(row=row_num, column=8)
             if task['status'] in STATUS_FILLS:
                 status_cell.fill = STATUS_FILLS[task['status']]
                 status_cell.alignment = CELL_ALIGN_CENTER
                 status_cell.font = Font(bold=True)
 
-            # Цветные приоритеты
             priority_cell = ws.cell(row=row_num, column=9)
             if task['priority'] in PRIORITY_FILLS:
                 priority_cell.fill = PRIORITY_FILLS[task['priority']]
                 priority_cell.alignment = CELL_ALIGN_CENTER
 
-            # Номер — по центру
             ws.cell(row=row_num, column=1).alignment = CELL_ALIGN_CENTER
 
         _autosize_columns(ws)
 
-        # ---- Лист «Статистика» ----
+        # Лист статистики
         ws2 = wb.create_sheet('Статистика')
-        stats = db.query('SELECT status, COUNT(*) as count FROM tasks GROUP BY status')
+        stats = db.query('''
+            SELECT status, COUNT(*) AS count FROM tasks
+            WHERE deleted_at IS NULL GROUP BY status
+        ''')
         ws2.cell(row=1, column=1, value='Статус').font = Font(bold=True, size=12)
         ws2.cell(row=1, column=2, value='Количество').font = Font(bold=True, size=12)
         for i, s in enumerate(stats, start=2):
@@ -221,25 +236,79 @@ def export_tasks_excel():
 
         return send_file(
             output,
-            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            mimetype=(
+                'application/vnd.openxmlformats-officedocument'
+                '.spreadsheetml.sheet'
+            ),
             as_attachment=True,
-            download_name=f'tasks_{timestamp}.xlsx'
+            download_name=f'tasks_{timestamp}.xlsx',
         )
     except Exception as e:
         log.exception('Ошибка XLSX-экспорта')
         return jsonify({'error': f'Ошибка экспорта: {str(e)}'}), 500
 
 
-# ============= ЭКСПОРТ ПОЛЬЗОВАТЕЛЕЙ =============
+# ============================================================
+# ЭКСПОРТ ЗАЯВОК В PDF
+# ============================================================
+
+@excel_bp.route('/api/report/tasks/pdf')
+@login_required
+def export_tasks_pdf():
+    """Экспорт заявок в PDF (A4, альбомная ориентация)."""
+    try:
+        try:
+            from weasyprint import HTML
+        except ImportError:
+            return jsonify({
+                'error': 'weasyprint не установлен. '
+                         'pip install weasyprint',
+            }), 500
+
+        query, params = _build_tasks_query(request.args)
+        tasks = db.query(query, params)
+
+        html = render_template(
+            'tasks_pdf.html',
+            tasks=tasks,
+            generated=datetime.now().strftime('%d.%m.%Y %H:%M'),
+            total=len(tasks),
+        )
+
+        pdf_bytes = HTML(
+            string=html,
+            base_url=request.url_root,
+        ).write_pdf()
+
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f'tasks_{timestamp}.pdf'
+
+        log.info(f'PDF-экспорт заявок: {len(tasks)} записей')
+
+        return Response(
+            pdf_bytes,
+            mimetype='application/pdf',
+            headers={
+                'Content-Disposition': f'attachment; filename="{filename}"',
+            },
+        )
+    except Exception as e:
+        log.exception('Ошибка PDF-экспорта')
+        return jsonify({'error': f'Ошибка: {str(e)}'}), 500
+
+
+# ============================================================
+# ЭКСПОРТ ПОЛЬЗОВАТЕЛЕЙ
+# ============================================================
 
 @excel_bp.route('/api/report/users/excel')
 @role_required('Администратор')
 def export_users_excel():
-    """Экспорт пользователей в XLSX."""
     try:
         users = db.query('''
             SELECT id, full_name, login, role, email, phone, department, is_active
-            FROM users ORDER BY full_name
+            FROM users WHERE deleted_at IS NULL
+            ORDER BY full_name
         ''')
 
         wb = Workbook()
@@ -270,28 +339,32 @@ def export_users_excel():
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         return send_file(
             output,
-            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            mimetype=(
+                'application/vnd.openxmlformats-officedocument'
+                '.spreadsheetml.sheet'
+            ),
             as_attachment=True,
-            download_name=f'users_{timestamp}.xlsx'
+            download_name=f'users_{timestamp}.xlsx',
         )
     except Exception as e:
         log.exception('Ошибка XLSX-экспорта пользователей')
         return jsonify({'error': f'Ошибка: {str(e)}'}), 500
 
 
-# ============= ДАННЫЕ ДЛЯ ПЕЧАТИ =============
+# ============================================================
+# ДАННЫЕ ДЛЯ ПЕЧАТИ (HTML)
+# ============================================================
 
 @excel_bp.route('/api/report/tasks/print')
 @login_required
 def get_tasks_for_print():
-    """Данные для печати."""
     try:
         query, params = _build_tasks_query(request.args)
         tasks = db.query(query, params)
         return jsonify({
             'tasks': [dict(t) for t in tasks],
             'total': len(tasks),
-            'export_date': datetime.now().strftime('%d.%m.%Y %H:%M')
+            'export_date': datetime.now().strftime('%d.%m.%Y %H:%M'),
         })
     except Exception as e:
         log.exception('Ошибка данных для печати')

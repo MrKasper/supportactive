@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Отчёт по заявкам</title>
+    <style>
+        @page {
+            size: A4 landscape;
+            margin: 15mm 10mm;
+            @bottom-center {
+                content: "Стр. " counter(page) " из " counter(pages);
+                font-size: 8pt;
+                color: #666;
+            }
+        }
+        body {
+            font-family: 'DejaVu Sans', Arial, sans-serif;
+            font-size: 8pt;
+            color: #222;
+            margin: 0;
+        }
+        h1 {
+            font-size: 14pt;
+            text-align: center;
+            margin: 0 0 4mm 0;
+            color: #333;
+        }
+        .meta {
+            text-align: center;
+            font-size: 9pt;
+            color: #666;
+            margin-bottom: 5mm;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 7.5pt;
+        }
+        th {
+            background: #4e73df;
+            color: white;
+            padding: 4px 5px;
+            text-align: left;
+            font-weight: bold;
+            border: 1px solid #2c4ea0;
+        }
+        td {
+            padding: 3px 5px;
+            border: 1px solid #ccc;
+            vertical-align: top;
+        }
+        tr:nth-child(even) td {
+            background: #f5f7fb;
+        }
+        .status {
+            font-weight: bold;
+            padding: 1px 5px;
+            border-radius: 8px;
+            display: inline-block;
+            font-size: 7pt;
+        }
+        .status-new { background: #e3f2fd; color: #1565c0; }
+        .status-progress { background: #fff3e0; color: #e65100; }
+        .status-completed { background: #e8f5e9; color: #2e7d32; }
+        .status-cancelled { background: #ffebee; color: #c62828; }
+        .footer {
+            margin-top: 5mm;
+            font-size: 7pt;
+            color: #888;
+            text-align: center;
+            border-top: 1px dashed #ccc;
+            padding-top: 3mm;
+        }
+        .text-danger { color: #c62828; }
+        .text-muted { color: #888; }
+    </style>
+</head>
+<body>
+    <h1>Отчёт по заявкам</h1>
+    <div class="meta">
+        Сформировано: {{ generated }} · Всего заявок: <strong>{{ total }}</strong>
+    </div>
+
+    {% if tasks %}
+    <table>
+        <thead>
+            <tr>
+                <th style="width:4%">№</th>
+                <th style="width:9%">Дата</th>
+                <th style="width:9%">Срок</th>
+                <th style="width:11%">От кого</th>
+                <th style="width:8%">Кабинет</th>
+                <th style="width:20%">Описание</th>
+                <th style="width:9%">Тип</th>
+                <th style="width:7%">Статус</th>
+                <th style="width:6%">Приор.</th>
+                <th style="width:10%">Исполнитель</th>
+                <th style="width:7%">Помощник</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for t in tasks %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ t.created_date or '—' }}</td>
+                <td>
+                    {% if t.status not in ('Выполнено', 'Отменено') and t.deadline %}
+                        {{ t.deadline }}
+                    {% else %}
+                        {{ t.deadline or '—' }}
+                    {% endif %}
+                </td>
+                <td>{{ t.from_user or '—' }}</td>
+                <td>{{ t.cabinet or '—' }}</td>
+                <td>{{ (t.description or '')[:200] }}{% if t.description and t.description|length > 200 %}…{% endif %}</td>
+                <td>{{ t.work_type or '—' }}</td>
+                <td>
+                    {% set s = t.status %}
+                    {% if s == 'Новое' %}<span class="status status-new">{{ s }}</span>
+                    {% elif s == 'В работе' %}<span class="status status-progress">{{ s }}</span>
+                    {% elif s == 'Выполнено' %}<span class="status status-completed">{{ s }}</span>
+                    {% elif s == 'Отменено' %}<span class="status status-cancelled">{{ s }}</span>
+                    {% else %}{{ s }}{% endif %}
+                </td>
+                <td>{{ t.priority or '—' }}</td>
+                <td>{{ t.executor or '—' }}</td>
+                <td>{{ t.assistant or '—' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="text-align:center; color:#888; margin-top:20mm;">Нет заявок</p>
+    {% endif %}
+
+    <div class="footer">
+        Support Active — Система управления заявками
+    </div>
+</body>
+</html>

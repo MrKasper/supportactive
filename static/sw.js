@@ -1,8 +1,8 @@
 // static/sw.js — Service Worker для Support Active PWA
-const CACHE_NAME = 'support-active-v2';
+const CACHE_NAME = 'support-active-v4';
 const STATIC_ASSETS = [
     '/static/logo.png',
-    '/static/logo.ico'
+    '/static/logo.ico',
 ];
 
 // ============= INSTALL =============
@@ -31,33 +31,50 @@ self.addEventListener('fetch', (event) => {
     const { request } = event;
     const url = new URL(request.url);
 
+    // Только GET
     if (request.method !== 'GET') return;
 
-    if (url.pathname.startsWith('/api/') ||
+    // API, авторизация, навигация — не перехватываем
+    if (
+        url.pathname.startsWith('/api/') ||
         url.pathname.startsWith('/login') ||
         url.pathname.startsWith('/logout') ||
-        request.mode === 'navigate') {
+        request.mode === 'navigate'
+    ) {
         return;
     }
 
-    if (url.pathname.startsWith('/static/')) {
-        event.respondWith(
-            caches.match(request).then((cached) => {
-                if (cached) return cached;
-                return fetch(request).then((response) => {
+    // Только /static/
+    if (!url.pathname.startsWith('/static/')) return;
+
+    event.respondWith(
+        caches.match(request).then((cached) => {
+            if (cached) return cached;
+
+            return fetch(request)
+                .then((response) => {
+                    // Кэшируем только успешные same-origin GET-ответы
                     if (response.status === 200 && response.type === 'basic') {
                         const clone = response.clone();
-                        caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+                        caches.open(CACHE_NAME)
+                            .then((cache) => cache.put(request, clone))
+                            .catch(() => {});
                     }
                     return response;
-                }).catch(() => cached);
-            })
-        );
-    }
+                })
+                .catch(() => {
+                    // ИСПРАВЛЕНО: не возвращаем null — отдаём 504
+                    if (cached) return cached;
+                    return new Response('', {
+                        status: 504,
+                        statusText: 'Offline',
+                    });
+                });
+        })
+    );
 });
 
 // ============= PUSH =============
-// Приходит push-сообщение от сервера — показываем уведомление
 self.addEventListener('push', function(event) {
     console.log('[SW] Push received');
 
@@ -65,7 +82,7 @@ self.addEventListener('push', function(event) {
         title: 'Support Active',
         body: 'Новое уведомление',
         url: '/',
-        tag: 'support-active'
+        tag: 'support-active',
     };
 
     if (event.data) {
@@ -86,8 +103,8 @@ self.addEventListener('push', function(event) {
         data: { url: data.url || '/' },
         actions: [
             { action: 'open', title: 'Открыть' },
-            { action: 'close', title: 'Закрыть' }
-        ]
+            { action: 'close', title: 'Закрыть' },
+        ],
     };
 
     event.waitUntil(
@@ -96,7 +113,6 @@ self.addEventListener('push', function(event) {
 });
 
 // ============= NOTIFICATION CLICK =============
-// Клик по уведомлению — открываем нужную страницу
 self.addEventListener('notificationclick', function(event) {
     console.log('[SW] Notification click:', event.action);
     event.notification.close();
@@ -108,14 +124,12 @@ self.addEventListener('notificationclick', function(event) {
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true })
             .then(function(windowClients) {
-                // Если вкладка уже открыта — фокусируем её
                 for (const client of windowClients) {
                     if (client.url.includes(self.location.origin) && 'focus' in client) {
                         client.navigate(urlToOpen);
                         return client.focus();
                     }
                 }
-                // Иначе открываем новую
                 if (clients.openWindow) {
                     return clients.openWindow(urlToOpen);
                 }

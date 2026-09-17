@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tasks.css') }}">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="sidebar">
+    <div class="sidebar-header">
+        <div class="logo-wrapper-sidebar">
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo"
+                 style="max-width:70px" onerror="this.style.display='none'">
+        </div>
+        <h4 class="mt-2">Support Active</h4>
+        <small class="text-white-50">Дашборд</small>
+    </div>
+    <div class="sidebar-menu">
+        <nav class="nav flex-column">
+            <a class="nav-link" href="/"><i class="bi bi-arrow-left"></i>
+                <span>К заявкам</span></a>
+            <a class="nav-link active" href="/dashboard">
+                <i class="bi bi-graph-up"></i><span>Дашборд</span></a>
+        </nav>
+    </div>
+</div>
+
+<div class="main-content">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <h3 class="mb-0"><i class="bi bi-graph-up"></i> Дашборд руководителя</h3>
+        <button class="btn btn-outline-primary btn-sm" onclick="Dashboard.reload()">
+            <i class="bi bi-arrow-clockwise"></i> Обновить
+        </button>
+    </div>
+
+    <!-- KPI -->
+    <div class="row g-3 mb-4" id="dash-kpi">
+        <div class="col-12 text-center py-5">
+            <div class="spinner-border text-primary"></div>
+        </div>
+    </div>
+
+    <!-- Графики -->
+    <div class="row g-3 mb-4">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h6 class="mb-0"><i class="bi bi-bar-chart-line"></i> Динамика по месяцам</h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="chartMonthly" height="90"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h6 class="mb-0"><i class="bi bi-pie-chart"></i> Статусы</h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="chartStatuses" height="220"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h6 class="mb-0"><i class="bi bi-people"></i> Топ исполнителей</h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped mb-0">
+                            <thead><tr>
+                                <th>Исполнитель</th>
+                                <th class="text-center">Всего</th>
+                                <th class="text-center">Выполнено</th>
+                                <th class="text-center">В работе</th>
+                                <th class="text-center">Ср. часы</th>
+                            </tr></thead>
+                            <tbody id="dash-executors">
+                                <tr><td colspan="5" class="text-center text-muted py-3">
+                                    <div class="spinner-border spinner-border-sm"></div></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3">
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <h6 class="mb-0"><i class="bi bi-door-open"></i> Топ кабинетов</h6>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-sm mb-0">
+                        <tbody id="dash-cabinets">
+                            <tr><td class="text-center text-muted py-3">
+                                <div class="spinner-border spinner-border-sm"></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3">
+            <div class="card">
+                <div class="card-header bg-secondary text-white">
+                    <h6 class="mb-0"><i class="bi bi-tags"></i> Топ типов работ</h6>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-sm mb-0">
+                        <tbody id="dash-work-types">
+                            <tr><td class="text-center text-muted py-3">
+                                <div class="spinner-border spinner-border-sm"></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

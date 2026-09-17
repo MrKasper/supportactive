@@ -540,6 +540,43 @@ def migrate_18_license_documents(conn):
     conn.commit()
 
 
+def migrate_19_printer_connection_type(conn):
+    """
+    v19: тип подключения принтера.
+      • 'network' — сетевой (по IP)
+      • 'usb'     — локальный (подключён к ПК)
+    Старые записи считаются сетевыми.
+    """
+    if not _column_exists(conn, 'cabinet_printers', 'connection_type'):
+        try:
+            conn.execute(
+                "ALTER TABLE cabinet_printers "
+                "ADD COLUMN connection_type TEXT DEFAULT 'network'"
+            )
+            log.info('  → Добавлена колонка cabinet_printers.connection_type')
+        except sqlite3.OperationalError as e:
+            log.warning(f'  → Не удалось добавить connection_type: {e}')
+    conn.commit()
+
+
+def migrate_20_sort_order(conn):
+    """
+    v20: ручной порядок отображения оборудования в кабинете.
+    sort_order = 0 означает «по умолчанию», инициализируем значением id,
+    чтобы сохранить текущий порядок.
+    """
+    tables = ['cabinet_computers', 'cabinet_network_devices', 'cabinet_printers']
+    for t in tables:
+        if not _column_exists(conn, t, 'sort_order'):
+            try:
+                conn.execute(f'ALTER TABLE {t} ADD COLUMN sort_order INTEGER DEFAULT 0')
+                conn.execute(f'UPDATE {t} SET sort_order = id WHERE sort_order = 0')
+                log.info(f'  → Добавлена колонка {t}.sort_order')
+            except sqlite3.OperationalError as e:
+                log.warning(f'  → Не удалось добавить {t}.sort_order: {e}')
+    conn.commit()
+
+
 # ============================================================
 # РЕЕСТР МИГРАЦИЙ
 # ============================================================
@@ -562,6 +599,8 @@ MIGRATIONS = [
     (16, migrate_16_computer_extras),
     (17, migrate_17_ping_stats),
     (18, migrate_18_license_documents),
+    (19, migrate_19_printer_connection_type),
+    (20, migrate_20_sort_order),
 ]
 
 

@@ -19,7 +19,7 @@
             <i class="bi bi-headset" style="font-size: 2.5rem; color: #667eea; display: none;"></i>
         </div>
         <h4 class="mt-2">Support Active</h4>
-        <small class="text-white-50">v2.2</small>
+        <small class="text-white-50">v{{ APP_VERSION }}</small>
     </div>
 
     <div class="sidebar-menu">
@@ -57,6 +57,11 @@
             <a class="nav-link" href="#" data-page="cabinets-manage" onclick="loadPage('cabinets-manage'); return false;">
                 <i class="bi bi-door-closed"></i>
                 <span>Управление кабинетами</span>
+            </a>
+
+            <a class="nav-link" href="/dashboard" data-page="dashboard">
+                <i class="bi bi-graph-up"></i>
+                <span>Дашборд</span>
             </a>
 
             <a class="nav-link" href="#" data-page="report" onclick="loadPage('report'); return false;">
@@ -189,9 +194,23 @@
                 </div>
                 <div class="col-12">
                     <div class="d-flex gap-2 flex-wrap mt-2">
-                        <button class="btn btn-danger btn-sm" onclick="closeSelectedTasks()">
-                            <i class="bi bi-x-circle"></i> Закрыть
-                        </button>
+                        <div class="btn-group btn-group-sm">
+                            <button type="button" class="btn btn-outline-primary dropdown-toggle"
+                                    data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-check2-square"></i> Массовые действия
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="#" onclick="bulkClose(); return false;">
+                                    <i class="bi bi-x-circle"></i> Закрыть выбранные</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="bulkAssign(); return false;">
+                                    <i class="bi bi-person-check"></i> Назначить исполнителя</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="bulkPriority(); return false;">
+                                    <i class="bi bi-flag"></i> Изменить приоритет</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-danger" href="#" onclick="bulkDelete(); return false;">
+                                    <i class="bi bi-trash"></i> Удалить (только админ)</a></li>
+                            </ul>
+                        </div>
                         <button class="btn btn-success btn-sm" onclick="showCreateTaskModal()" title="Создать заявку (N)">
                             <i class="bi bi-plus-circle"></i> Создать
                         </button>
@@ -364,15 +383,13 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="taskDetails">
-                <!-- Динамическое содержимое: вкладки Детали / Комментарии / Вложения / История -->
+                <!-- Динамическое содержимое -->
             </div>
             <div class="modal-footer">
-                <!-- 🗑️ Удаление заявки — только для Администратора -->
                 <button type="button" class="btn btn-outline-danger me-auto"
                         id="btnDeleteTask" onclick="deleteCurrentTask()" style="display: none;">
                     <i class="bi bi-trash"></i> Удалить заявку
                 </button>
-
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                     <i class="bi bi-x-circle"></i> Закрыть
                 </button>
@@ -570,9 +587,11 @@
 <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
 <script src="{{ url_for('static', filename='js/login.js') }}"></script>
 <script src="{{ url_for('static', filename='js/notifications.js') }}"></script>
+<script src="{{ url_for('static', filename='js/notifications_sse.js') }}"></script>
 
 <!-- Заявки -->
 <script src="{{ url_for('static', filename='js/tasks.js') }}"></script>
+<script src="{{ url_for('static', filename='js/tasks_bulk.js') }}"></script>
 <script src="{{ url_for('static', filename='js/task_details.js') }}"></script>
 <script src="{{ url_for('static', filename='js/task_comments.js') }}"></script>
 <script src="{{ url_for('static', filename='js/task_attachments.js') }}"></script>
@@ -584,10 +603,14 @@
 <script src="{{ url_for('static', filename='js/contacts.js') }}"></script>
 <script src="{{ url_for('static', filename='js/directory.js') }}"></script>
 <script src="{{ url_for('static', filename='js/cabinets_manage.js') }}"></script>
-<script src="{{ url_for('static', filename='js/cabinet_details.js') }}"></script>
 <script src="{{ url_for('static', filename='js/excel.js') }}"></script>
 <script src="{{ url_for('static', filename='js/audit.js') }}"></script>
 <script src="{{ url_for('static', filename='js/webpush.js') }}"></script>
+
+<!-- Оборудование кабинета -->
+<script src="{{ url_for('static', filename='js/cabinet_core.js') }}"></script>
+<script src="{{ url_for('static', filename='js/cabinet_devices.js') }}"></script>
+<script src="{{ url_for('static', filename='js/cabinet_documents.js') }}"></script>
 
 <!-- Горячие клавиши и мобильный UX -->
 <script src="{{ url_for('static', filename='js/hotkeys.js') }}"></script>

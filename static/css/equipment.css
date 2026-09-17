@@ -1,6 +1,10 @@
 /* static/css/equipment.css */
-/* Стили детальной страницы кабинета */
+/* Стили детальной страницы кабинета: сеть, ПК, принтеры, документы,
+   drag-n-drop, бейджи подключения, модалка ПК, счётчики пингов. */
 
+/* ============================================================
+   ШАПКА КАБИНЕТА
+   ============================================================ */
 .eq-header {
     background: linear-gradient(135deg, #4e73df 0%, #224abe 100%);
     color: white;
@@ -19,18 +23,21 @@
     color: #fff;
 }
 .eq-header .eq-back-btn {
-    background: rgba(255,255,255,0.15);
-    border: 1px solid rgba(255,255,255,0.3);
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.3);
     color: white;
     border-radius: 8px;
     padding: 6px 14px;
     transition: all 0.2s;
 }
 .eq-header .eq-back-btn:hover {
-    background: rgba(255,255,255,0.25);
+    background: rgba(255, 255, 255, 0.25);
     color: white;
 }
 
+/* ============================================================
+   ИНФО-БЛОК
+   ============================================================ */
 .eq-cabinet-info {
     background: var(--card-bg);
     border-radius: 12px;
@@ -53,7 +60,9 @@
     color: var(--text-color);
 }
 
-/* Сетка оборудования */
+/* ============================================================
+   СЕТКА ОБОРУДОВАНИЯ
+   ============================================================ */
 .eq-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
@@ -74,6 +83,8 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
 }
 .eq-section-title {
     font-weight: 700;
@@ -91,7 +102,9 @@
     padding: 16px 18px;
 }
 
-/* Карточка устройства */
+/* ============================================================
+   КАРТОЧКА УСТРОЙСТВА
+   ============================================================ */
 .eq-device {
     background: var(--bg-color);
     border: 1px solid var(--border-color);
@@ -99,13 +112,14 @@
     padding: 12px 14px;
     margin-bottom: 12px;
     transition: all 0.2s;
+    position: relative;
 }
 .eq-device:last-child {
     margin-bottom: 0;
 }
 .eq-device:hover {
     border-color: #667eea;
-    box-shadow: 0 2px 8px rgba(102,126,234,0.1);
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
 }
 .eq-device-title {
     display: flex;
@@ -121,6 +135,7 @@
     display: flex;
     align-items: center;
     gap: 6px;
+    word-break: break-word;
 }
 .eq-device-name.clickable {
     cursor: pointer;
@@ -129,15 +144,18 @@
 .eq-device-name.clickable:hover {
     text-decoration: underline;
 }
+
 .eq-inv {
     font-family: 'SF Mono', Consolas, monospace;
-    background: rgba(102,126,234,0.12);
+    background: rgba(102, 126, 234, 0.12);
     color: #667eea;
     padding: 2px 8px;
     border-radius: 10px;
     font-size: 0.72rem;
     font-weight: 600;
+    white-space: nowrap;
 }
+
 .eq-ip {
     font-family: 'SF Mono', Consolas, monospace;
     color: #28a745;
@@ -148,12 +166,14 @@
     transition: background 0.15s;
 }
 .eq-ip:hover {
-    background: rgba(40,167,69,0.1);
+    background: rgba(40, 167, 69, 0.1);
 }
 .eq-ip.empty {
     color: var(--text-muted);
     font-style: italic;
+    cursor: pointer;
 }
+
 .eq-meta {
     font-size: 0.78rem;
     color: var(--text-muted);
@@ -161,10 +181,13 @@
     display: flex;
     align-items: center;
     gap: 4px;
+    flex-wrap: wrap;
 }
 .eq-meta i {
     opacity: 0.7;
+    flex-shrink: 0;
 }
+
 .eq-actions {
     display: flex;
     gap: 4px;
@@ -176,7 +199,9 @@
     border-radius: 6px;
 }
 
-/* Статус ПК */
+/* ============================================================
+   СТАТУС ПК (online / offline)
+   ============================================================ */
 .eq-status {
     display: inline-flex;
     align-items: center;
@@ -185,14 +210,29 @@
     border-radius: 20px;
     font-size: 0.72rem;
     font-weight: 600;
+    white-space: nowrap;
 }
-.eq-status.online { background: #dcfce7; color: #166534; }
-.eq-status.offline { background: #fee2e2; color: #991b1b; }
+.eq-status.online {
+    background: #dcfce7;
+    color: #166534;
+}
+.eq-status.offline {
+    background: #fee2e2;
+    color: #991b1b;
+}
 
-[data-theme="dark"] .eq-status.online { background: #1e4a2e; color: #7fd39a; }
-[data-theme="dark"] .eq-status.offline { background: #4a1e28; color: #e88a98; }
+[data-theme="dark"] .eq-status.online {
+    background: #1e4a2e;
+    color: #7fd39a;
+}
+[data-theme="dark"] .eq-status.offline {
+    background: #4a1e28;
+    color: #e88a98;
+}
 
-/* RAM / storage чипы */
+/* ============================================================
+   ЧИПЫ RAM / STORAGE
+   ============================================================ */
 .eq-chips {
     display: flex;
     flex-wrap: wrap;
@@ -200,15 +240,22 @@
     margin-top: 4px;
 }
 .eq-chip {
-    background: rgba(102,126,234,0.1);
+    background: rgba(102, 126, 234, 0.1);
     color: #667eea;
     border-radius: 8px;
     padding: 1px 8px;
     font-size: 0.7rem;
     font-weight: 500;
+    white-space: nowrap;
+}
+[data-theme="dark"] .eq-chip {
+    background: rgba(139, 155, 255, 0.12);
+    color: #8b9bff;
 }
 
-/* Пустое состояние */
+/* ============================================================
+   ПУСТОЕ СОСТОЯНИЕ
+   ============================================================ */
 .eq-empty {
     text-align: center;
     padding: 24px 12px;
@@ -222,7 +269,9 @@
     margin-bottom: 6px;
 }
 
-/* Принтер — select привязки */
+/* ============================================================
+   ПРИНТЕР — селект привязки к ПК
+   ============================================================ */
 .eq-connect-select {
     width: 100%;
     padding: 4px 8px;
@@ -231,174 +280,80 @@
     background: var(--card-bg);
     color: var(--text-color);
     font-size: 0.78rem;
-    margin-top: 6px;
+    margin-top: 4px;
 }
 
-/* Таблица RAM / storage в модалке */
-.eq-ram-row,
-.eq-storage-row {
-    display: flex;
-    gap: 6px;
-    margin-bottom: 6px;
-    align-items: center;
-}
-.eq-ram-row input,
-.eq-storage-row input,
-.eq-ram-row select,
-.eq-storage-row select {
-    flex: 1;
-}
-
-@media (max-width: 768px) {
-    .eq-grid { grid-template-columns: 1fr; }
-    .eq-header { padding: 14px 16px; }
-    .eq-header h4 { font-size: 1.05rem; }
-    .eq-cabinet-info { padding: 12px 14px; gap: 10px; }
-}
 /* ============================================================
-   Дополнения: строки ввода с единицей измерения, выбор ПО
+   БЕЙДЖ ТИПА ПОДКЛЮЧЕНИЯ ПРИНТЕРА
    ============================================================ */
-
-/* Строка RAM: [размер] GB [тип] [x] */
-.eq-ram-row {
-    display: flex;
-    gap: 6px;
-    margin-bottom: 6px;
+.eq-conn-badge {
+    display: inline-flex;
     align-items: center;
-}
-.eq-ram-row .eq-ram-size {
-    flex: 1;
-    max-width: 80px;
-}
-.eq-ram-row .eq-ram-type {
-    flex: 1;
-}
-.eq-unit-label {
-    background: var(--hover-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    padding: 4px 8px;
-    font-size: 0.75rem;
-    color: var(--text-muted);
+    gap: 4px;
+    font-size: 0.7rem;
     font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-left: 6px;
+    vertical-align: middle;
     white-space: nowrap;
 }
-
-/* Строка Storage: [объём] [GB/TB] [тип] [x] */
-.eq-storage-row {
-    display: flex;
-    gap: 6px;
-    margin-bottom: 6px;
-    align-items: center;
+.eq-conn-network {
+    background: rgba(23, 162, 184, 0.15);
+    color: #0c7489;
 }
-.eq-storage-row .eq-storage-cap {
-    flex: 1;
-    max-width: 80px;
-}
-.eq-storage-row .eq-storage-type {
-    flex: 1;
+.eq-conn-usb {
+    background: rgba(108, 117, 125, 0.15);
+    color: #495057;
 }
 
-/* Пункт выбора ПО */
-.eq-software-option {
-    transition: background 0.15s;
+[data-theme="dark"] .eq-conn-network {
+    background: rgba(23, 162, 184, 0.2);
+    color: #63d4e8;
 }
-.eq-software-option:hover {
-    background: var(--hover-bg);
-}
-.eq-software-item {
-    padding: 4px 8px;
-    border-radius: 6px;
-    margin-bottom: 4px;
-    background: var(--hover-bg);
-    font-size: 0.82rem;
+[data-theme="dark"] .eq-conn-usb {
+    background: rgba(180, 180, 200, 0.12);
+    color: #c0c0d0;
 }
 
-/* Тёмная тема */
-[data-theme="dark"] .eq-software-item {
-    background: rgba(255,255,255,0.05);
-}
-[data-theme="dark"] .eq-unit-label {
-    background: rgba(255,255,255,0.05);
-}
 /* ============================================================
-   Форма ПК: строки RAM/storage, чекбоксы ПО
+   DRAG-N-DROP
    ============================================================ */
-
-.eq-ram-row,
-.eq-storage-row {
-    display: flex;
-    gap: 6px;
-    margin-bottom: 6px;
-    align-items: center;
-}
-
-.eq-ram-row .eq-ram-size,
-.eq-storage-row .eq-storage-cap {
-    flex: 1;
-    max-width: 90px;
-}
-
-.eq-ram-row .eq-ram-type,
-.eq-storage-row .eq-storage-type {
-    flex: 1;
-}
-
-.eq-unit-label {
-    background: var(--hover-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    padding: 4px 8px;
-    font-size: 0.75rem;
+.eq-drag-handle {
+    cursor: grab;
     color: var(--text-muted);
-    font-weight: 600;
-    white-space: nowrap;
-}
-
-/* Элемент выбранного ПО */
-.eq-software-item {
-    padding: 4px 8px;
-    border-radius: 6px;
-    margin-bottom: 4px;
-    background: var(--card-bg);
-    font-size: 0.82rem;
-    border: 1px solid var(--border-color);
-}
-
-/* Чекбокс доступного ПО */
-.eq-software-check {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 5px 8px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 0.85rem;
-    margin-bottom: 2px;
-    transition: background 0.15s;
-}
-.eq-software-check:hover {
-    background: var(--hover-bg);
-}
-.eq-software-check input[type="checkbox"] {
-    width: 16px;
-    height: 16px;
-    accent-color: #667eea;
+    margin-right: 6px;
+    font-size: 1rem;
+    opacity: 0.5;
+    transition: opacity 0.15s, color 0.15s;
+    user-select: none;
+    -webkit-user-select: none;
     flex-shrink: 0;
 }
-.eq-software-check span {
-    flex: 1;
+.eq-drag-handle:hover {
+    opacity: 1;
+    color: #667eea;
+}
+.eq-drag-handle:active {
+    cursor: grabbing;
 }
 
-/* Тёмная тема */
-[data-theme="dark"] .eq-software-item {
-    background: rgba(255,255,255,0.04);
+.eq-device-ghost {
+    opacity: 0.4;
+    background: rgba(102, 126, 234, 0.08) !important;
+    border-style: dashed !important;
 }
-[data-theme="dark"] .eq-unit-label {
-    background: rgba(255,255,255,0.05);
+.eq-device-dragging {
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.25) !important;
+    transform: rotate(1deg);
+    opacity: 0.95;
 }
+[data-theme="dark"] .eq-device-ghost {
+    background: rgba(139, 155, 255, 0.1) !important;
+}
+
 /* ============================================================
-   Счётчик пингов
+   СЧЁТЧИК ПИНГОВ
    ============================================================ */
 .eq-ping-stats {
     display: inline-flex;
@@ -408,7 +363,7 @@
     margin-top: 6px;
     padding: 4px 10px;
     border-radius: 8px;
-    background: rgba(102,126,234,0.06);
+    background: rgba(102, 126, 234, 0.06);
     font-size: 0.78rem;
     color: var(--text-color);
 }
@@ -428,36 +383,36 @@
     opacity: 0.7;
     line-height: 1;
 }
-
 [data-theme="dark"] .eq-ping-stats {
-    background: rgba(139,155,255,0.08);
+    background: rgba(139, 155, 255, 0.08);
 }
 
-/* Индикатор последней автопроверки */
 #eq-last-ping-hint {
     font-size: 0.75rem;
     padding: 6px 12px;
-    background: rgba(102,126,234,0.06);
+    background: rgba(102, 126, 234, 0.06);
     border-radius: 8px;
     display: inline-block;
 }
 [data-theme="dark"] #eq-last-ping-hint {
-    background: rgba(139,155,255,0.08);
+    background: rgba(139, 155, 255, 0.08);
 }
-/* ============================================================
-   Документы ПО
-   ============================================================ */
 
+/* ============================================================
+   ДОКУМЕНТЫ ПО
+   ============================================================ */
 .eq-doc-group {
     margin-bottom: 12px;
 }
-
+.eq-doc-group:last-child {
+    margin-bottom: 0;
+}
 .eq-doc-group-title {
     font-weight: 600;
     font-size: 0.85rem;
     color: var(--text-color);
     padding: 6px 8px;
-    background: rgba(102,126,234,0.06);
+    background: rgba(102, 126, 234, 0.06);
     border-radius: 6px;
     margin-bottom: 6px;
     display: flex;
@@ -480,11 +435,11 @@
     transition: all 0.15s;
 }
 .eq-doc-item:hover {
-    background: rgba(102,126,234,0.06);
+    background: rgba(102, 126, 234, 0.06);
     border-color: #667eea;
 }
 .eq-doc-item.eq-doc-missing {
-    background: rgba(246,194,62,0.08);
+    background: rgba(246, 194, 62, 0.08);
     border-color: #f6c23e;
 }
 
@@ -533,11 +488,197 @@
 }
 
 [data-theme="dark"] .eq-doc-item {
-    background: rgba(255,255,255,0.03);
+    background: rgba(255, 255, 255, 0.03);
 }
 [data-theme="dark"] .eq-doc-item:hover {
-    background: rgba(139,155,255,0.08);
+    background: rgba(139, 155, 255, 0.08);
 }
 [data-theme="dark"] .eq-doc-group-title {
-    background: rgba(139,155,255,0.08);
+    background: rgba(139, 155, 255, 0.08);
+}
+
+/* ============================================================
+   МОДАЛКА ПК — секции и контейнеры
+   ============================================================ */
+.eq-pc-form {
+    width: 100%;
+}
+
+.eq-form-block {
+    display: block;
+    width: 100%;
+}
+
+.eq-list-container {
+    display: block;
+    width: 100%;
+}
+
+.eq-selected-box {
+    display: block;
+    width: 100%;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 8px;
+    max-height: 120px;
+    overflow-y: auto;
+    background: var(--hover-bg);
+}
+[data-theme="dark"] .eq-selected-box {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.eq-available-box {
+    display: block;
+    width: 100%;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 8px;
+    max-height: 180px;
+    overflow-y: auto;
+}
+
+/* ============================================================
+   СТРОКИ RAM / STORAGE — компактно, с переносом
+   ============================================================ */
+.eq-ram-row,
+.eq-storage-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    margin-bottom: 6px;
+}
+
+.eq-ram-row .eq-ram-size,
+.eq-storage-row .eq-storage-cap {
+    flex: 0 0 90px;
+    max-width: 90px;
+}
+
+.eq-ram-row .eq-ram-type,
+.eq-storage-row .eq-storage-type {
+    flex: 1 1 100px;
+    min-width: 100px;
+}
+
+.eq-storage-row .eq-storage-unit {
+    flex: 0 0 80px;
+    max-width: 80px;
+}
+
+.eq-ram-row .eq-unit-label {
+    flex: 0 0 auto;
+}
+
+.eq-ram-row .btn,
+.eq-storage-row .btn {
+    flex: 0 0 auto;
+}
+
+.eq-unit-label {
+    background: var(--hover-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* ============================================================
+   ЭЛЕМЕНТЫ ВЫБРАННОГО / ДОСТУПНОГО ПО
+   ============================================================ */
+.eq-software-item {
+    padding: 4px 8px;
+    border-radius: 6px;
+    margin-bottom: 4px;
+    background: var(--card-bg);
+    font-size: 0.82rem;
+    border: 1px solid var(--border-color);
+}
+
+.eq-software-check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    margin-bottom: 2px;
+    transition: background 0.15s;
+}
+.eq-software-check:hover {
+    background: var(--hover-bg);
+}
+.eq-software-check input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: #667eea;
+    flex-shrink: 0;
+    cursor: pointer;
+}
+.eq-software-check span {
+    flex: 1;
+    word-break: break-word;
+}
+
+[data-theme="dark"] .eq-software-item {
+    background: rgba(255, 255, 255, 0.04);
+}
+[data-theme="dark"] .eq-unit-label {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+/* ============================================================
+   АДАПТИВ
+   ============================================================ */
+@media (max-width: 768px) {
+    .eq-grid {
+        grid-template-columns: 1fr;
+    }
+    .eq-header {
+        padding: 14px 16px;
+    }
+    .eq-header h4 {
+        font-size: 1.05rem;
+    }
+    .eq-cabinet-info {
+        padding: 12px 14px;
+        gap: 10px;
+    }
+    .eq-section-header {
+        padding: 10px 14px;
+    }
+    .eq-section-body {
+        padding: 12px 14px;
+    }
+    .eq-device {
+        padding: 10px 12px;
+    }
+}
+
+@media (max-width: 576px) {
+    /* На узких экранах строки RAM/дисков — вертикально */
+    .eq-ram-row .eq-ram-size,
+    .eq-storage-row .eq-storage-cap,
+    .eq-ram-row .eq-ram-type,
+    .eq-storage-row .eq-storage-type,
+    .eq-storage-row .eq-storage-unit {
+        flex: 1 1 100%;
+        max-width: none;
+    }
+    .eq-ram-row .eq-unit-label {
+        flex: 0 0 auto;
+    }
+    .eq-device-name {
+        font-size: 0.9rem;
+    }
+    .eq-actions .btn {
+        padding: 4px 8px;
+        font-size: 0.75rem;
+    }
 }

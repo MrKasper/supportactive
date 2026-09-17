@@ -1,4 +1,5 @@
 // static/js/task_comments.js
+// Комментарии + @mentions (автокомплит и подсветка)
 
 (function() {
     'use strict';
@@ -12,7 +13,26 @@
     var utils = window.App.utils;
     var state = window.App.state;
 
-    // ============= ЗАГРУЗКА =============
+    // ============================================================
+    // АВТОКОМПЛИТ @ (состояние)
+    // ============================================================
+    var mentionBox = null;
+    var mentionStart = -1;
+    var mentionTimer = null;
+
+    // ============================================================
+    // ПОДСВЕТКА УПОМИНАНИЙ
+    // ============================================================
+    var MENTION_HL_RE = /@([^\s@,;:!?()\[\]{}<>]{2,40}(?:\s+[^\s@,;:!?()\[\]{}<>]{2,40}){0,2})/g;
+
+    function highlightMentions(escapedText) {
+        if (!escapedText) return '';
+        return escapedText.replace(MENTION_HL_RE, '<span class="mention">@$1</span>');
+    }
+
+    // ============================================================
+    // ЗАГРУЗКА
+    // ============================================================
     function load(taskId) {
         if (!taskId || taskId === 'undefined' || taskId === 0) {
             $('#commentsList').html('<div class="alert alert-warning">Не удалось определить ID заявки</div>');
@@ -41,7 +61,9 @@
             });
     }
 
-    // ============= ОТРИСОВКА =============
+    // ============================================================
+    // ОТРИСОВКА
+    // ============================================================
     function render(list, taskId) {
         var $c = $('#commentsList');
         $c.empty();
@@ -62,6 +84,9 @@
             var canDelete = isAdmin || c.user_name === currentUser;
             var canEdit = c.user_name === currentUser;
             var classes = 'comment-item' + (c.is_internal ? ' comment-internal' : '');
+
+            var safeText = utils.escapeHtml(c.text);
+            var textHtml = highlightMentions(safeText);
 
             var html = '<div class="' + classes + '" data-comment-id="' + c.id + '">';
             html += '<div class="comment-avatar">' + utils.escapeHtml(initials) + '</div>';
@@ -92,13 +117,15 @@
             }
             html += '</div>';
             html += '</div>';
-            html += '<div class="comment-text">' + utils.escapeHtml(c.text) + '</div>';
+            html += '<div class="comment-text">' + textHtml + '</div>';
             html += '</div></div>';
             $c.append(html);
         });
     }
 
-    // ============= ОТПРАВКА =============
+    // ============================================================
+    // ОТПРАВКА
+    // ============================================================
     function submit(btn) {
         var text = $('#newCommentText').val().trim();
         if (!text) {
@@ -125,6 +152,7 @@
                 if (data.success) {
                     $('#newCommentText').val('');
                     $('#commentInternal').prop('checked', false);
+                    hideMentionBox();
                     load(state.currentTaskId);
                 } else {
                     utils.showErrorMessage(data.error);
@@ -136,7 +164,9 @@
             });
     }
 
-    // ============= УДАЛЕНИЕ =============
+    // ============================================================
+    // УДАЛЕНИЕ / РЕДАКТИРОВАНИЕ
+    // ============================================================
     function remove(commentId, taskId) {
         Swal.fire({
             title: 'Удалить комментарий?',
@@ -156,7 +186,6 @@
         });
     }
 
-    // ============= РЕДАКТИРОВАНИЕ =============
     function edit(commentId, taskId) {
         var $item = $('.comment-item[data-comment-id="' + commentId + '"]');
         var $text = $item.find('.comment-text');
@@ -192,7 +221,9 @@
             });
     }
 
-    // ============= БЕЙДЖ =============
+    // ============================================================
+    // БЕЙДЖ
+    // ============================================================
     function updateBadge(list) {
         var cnt = Array.isArray(list) ? list.length : 0;
         var $badge = $('#commentsBadge');
@@ -201,15 +232,180 @@
         else $badge.hide();
     }
 
-    // ============= ЭКСПОРТ =============
+    // ============================================================
+    // @MENTIONS — АВТОКОМПЛИТ
+    // ============================================================
+    function initMentionAutocomplete() {
+        // Делегируем — textarea может появляться/исчезать
+        $(document)
+            .off('input.mentions', '#newCommentText')
+            .on('input.mentions', '#newCommentText', onCommentInput);
+
+        $(document)
+            .off('keydown.mentions', '#newCommentText')
+            .on('keydown.mentions', '#newCommentText', onCommentKeydown);
+
+        // Клик вне блока — закрыть
+        $(document)
+            .off('click.mentions')
+            .on('click.mentions', function(e) {
+                if (!$(e.target).closest('.mention-box').length
+                    && !$(e.target).is('#newCommentText')) {
+                    hideMentionBox();
+                }
+            });
+    }
+
+    function onCommentInput() {
+        var el = this;
+        var val = el.value;
+        var pos = el.selectionStart;
+
+        // Ищем @ до курсора
+        var before = val.slice(0, pos);
+        var at = before.lastIndexOf('@');
+
+        if (at === -1) { hideMentionBox(); return; }
+        // @ должен быть в начале или после пробела / переноса / скобки
+        if (at > 0) {
+            var prev = before[at - 1];
+            if (!/[\s(\[{]/.test(prev)) { hideMentionBox(); return; }
+        }
+
+        var query = before.slice(at + 1);
+        // Пробел после 3+ слов уже не считаем запросом
+        if (query.length < 2 || query.length > 60) { hideMentionBox(); return; }
+        // Если есть знак препинания — прерываем
+        if (/[,;:!?()\[\]{}<>]/.test(query)) { hideMentionBox(); return; }
+
+        mentionStart = at;
+
+        clearTimeout(mentionTimer);
+        mentionTimer = setTimeout(function() {
+            fetchUsersForMention(query, at);
+        }, 180);
+    }
+
+    function onCommentKeydown(e) {
+        if (!mentionBox) return;
+
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            hideMentionBox();
+            return;
+        }
+
+        var $items = mentionBox.find('.mention-item');
+        var $active = $items.filter('.mention-item-active');
+        var idx = $items.index($active);
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            idx = (idx + 1) % $items.length;
+            $items.removeClass('mention-item-active');
+            $items.eq(idx).addClass('mention-item-active').scrollIntoView({ block: 'nearest' });
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            idx = idx <= 0 ? $items.length - 1 : idx - 1;
+            $items.removeClass('mention-item-active');
+            $items.eq(idx).addClass('mention-item-active').scrollIntoView({ block: 'nearest' });
+        } else if (e.key === 'Enter' || e.key === 'Tab') {
+            e.preventDefault();
+            var $target = $active.length ? $active : $items.first();
+            if ($target.length) applyMention($target.data('name'));
+        }
+    }
+
+    function fetchUsersForMention(query, at) {
+        fetch('/api/users/search?q=' + encodeURIComponent(query))
+            .then(function(r) { return r.json(); })
+            .then(function(users) {
+                if (!Array.isArray(users) || users.length === 0) {
+                    hideMentionBox();
+                    return;
+                }
+                showMentionBox(users, at);
+            })
+            .catch(function() { hideMentionBox(); });
+    }
+
+    function showMentionBox(users, at) {
+        hideMentionBox();
+
+        var $textarea = $('#newCommentText');
+        if (!$textarea.length) return;
+
+        var html = users.map(function(u, i) {
+            var cls = 'mention-item' + (i === 0 ? ' mention-item-active' : '');
+            return '<div class="' + cls + '" ' +
+                   'data-name="' + utils.escapeHtml(u.full_name) + '">' +
+                   '<i class="bi bi-person-circle me-1"></i>' +
+                   '<strong>' + utils.escapeHtml(u.full_name) + '</strong>' +
+                   (u.login ? ' <small class="text-muted">@' + utils.escapeHtml(u.login) + '</small>' : '') +
+                   '</div>';
+        }).join('');
+
+        mentionBox = $('<div class="mention-box">' + html + '</div>');
+
+        // Позиционируем под textarea
+        var $wrapper = $textarea.closest('.comment-form');
+        if ($wrapper.length === 0) {
+            $wrapper = $textarea.parent();
+        }
+        $wrapper.css('position', 'relative');
+        mentionBox.appendTo($wrapper);
+
+        mentionBox.on('click', '.mention-item', function() {
+            applyMention($(this).data('name'));
+        });
+
+        mentionBox.on('mouseenter', '.mention-item', function() {
+            mentionBox.find('.mention-item').removeClass('mention-item-active');
+            $(this).addClass('mention-item-active');
+        });
+    }
+
+    function applyMention(fullName) {
+        var $textarea = $('#newCommentText');
+        if (!$textarea.length || mentionStart < 0) return;
+
+        var val = $textarea.val();
+        var pos = $textarea[0].selectionStart;
+        var before = val.slice(0, mentionStart);
+        var after = val.slice(pos);
+        // Пробел после — чтобы можно было продолжить ввод
+        var insert = '@' + fullName + ' ';
+
+        $textarea.val(before + insert + after);
+        var newPos = before.length + insert.length;
+        $textarea[0].setSelectionRange(newPos, newPos);
+        $textarea.focus();
+        hideMentionBox();
+    }
+
+    function hideMentionBox() {
+        if (mentionBox) { mentionBox.remove(); mentionBox = null; }
+        mentionStart = -1;
+    }
+
+    // ============================================================
+    // ИНИЦИАЛИЗАЦИЯ
+    // ============================================================
+    $(document).ready(function() {
+        initMentionAutocomplete();
+    });
+
+    // ============================================================
+    // ЭКСПОРТ
+    // ============================================================
     api.load = load;
     api.submit = submit;
     api.remove = remove;
     api.edit = edit;
     api.saveEdit = saveEdit;
     api.updateBadge = updateBadge;
+    api.highlightMentions = highlightMentions;
 
-    // Совместимость
     window.loadComments = load;
     window.submitComment = submit;
     window.deleteComment = remove;
@@ -217,5 +413,5 @@
     window.saveCommentEdit = saveEdit;
     window.updateCommentsBadge = updateBadge;
 
-    console.log('[task_comments] Загружено');
+    console.log('[task_comments] Загружено (v2: @mentions)');
 })();

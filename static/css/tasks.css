@@ -408,3 +408,56 @@
     .comment-item { padding: 8px; gap: 8px; }
     .attachments-grid { grid-template-columns: repeat(2, 1fr); }
 }
+/* ============================================================
+   @MENTIONS
+   ============================================================ */
+.mention {
+    background: rgba(102, 126, 234, 0.15);
+    color: #4e73df;
+    border-radius: 4px;
+    padding: 0 4px;
+    font-weight: 600;
+}
+[data-theme="dark"] .mention {
+    background: rgba(139, 155, 255, 0.18);
+    color: #8b9bff;
+}
+
+.mention-box {
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    right: 0;
+    max-height: 220px;
+    overflow-y: auto;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+    margin-bottom: 6px;
+    z-index: 1080;
+    animation: mentionFade 0.12s ease-out;
+}
+@keyframes mentionFade {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.mention-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.88rem;
+    color: var(--text-color);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.mention-item:last-child { border-bottom: none; }
+.mention-item:hover,
+.mention-item.mention-item-active {
+    background: var(--hover-bg);
+}
+.mention-item.mention-item-active {
+    box-shadow: inset 3px 0 0 #667eea;
+}

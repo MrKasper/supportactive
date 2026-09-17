@@ -57,13 +57,45 @@ def get_user(user_id):
         ''', [user['full_name']], one=True)
 
         user_dict = dict(user)
-        user_dict.pop('password', None)  # никогда не отдаём хеш
+        user_dict.pop('password', None)
         user_dict['statistics'] = dict(user_stats) if user_stats else {}
 
         return jsonify(user_dict)
     except Exception as e:
         log.exception('Ошибка получения пользователя')
         return jsonify({'error': f'Ошибка: {str(e)}'}), 500
+
+
+# ============================================================
+# ПОИСК ПОЛЬЗОВАТЕЛЕЙ (для @mentions)
+# ============================================================
+
+@users_bp.route('/api/users/search')
+@login_required
+def search_users():
+    """
+    Лёгкий поиск по full_name / login. Используется в @mentions-автокомплите.
+    Доступен всем авторизованным (нужен для автокомплита).
+    """
+    try:
+        q = (request.args.get('q') or '').strip()
+        if len(q) < 2:
+            return jsonify([])
+
+        rows = db.query('''
+            SELECT id, full_name, login, role
+            FROM users
+            WHERE is_active = 1
+              AND deleted_at IS NULL
+              AND (full_name LIKE ? OR login LIKE ?)
+            ORDER BY full_name
+            LIMIT 8
+        ''', [f'%{q}%', f'%{q}%'])
+
+        return jsonify([dict(r) for r in rows])
+    except Exception as e:
+        log.exception('Ошибка поиска пользователей')
+        return jsonify({'error': str(e)}), 500
 
 
 # ============================================================
@@ -92,10 +124,9 @@ def update_user(user_id):
         new_full_name = data.get('full_name', user['full_name'])
         new_role = user['role']
         new_login = data.get('login', user['login'])
-        new_password = user['password']  # текущий хеш
+        new_password = user['password']
         password_changed = False
 
-        # Пароль обновляем только если передан непустой
         if data.get('password') and str(data['password']).strip():
             new_password = hash_password(str(data['password']).strip())
             password_changed = True
@@ -106,7 +137,6 @@ def update_user(user_id):
             new_role = data.get('role', user['role'])
             new_is_active = data.get('is_active', user['is_active'])
 
-        # Проверка уникальности логина
         if new_login and new_login != user['login']:
             existing = db.query(
                 'SELECT id FROM users WHERE login = ? AND id != ? AND deleted_at IS NULL',
@@ -137,7 +167,6 @@ def update_user(user_id):
                 user_id
             ])
 
-        # Обновление сессии, если правит сам себя
         if is_self:
             session['user_name'] = new_full_name
             session['user_role'] = new_role
@@ -147,7 +176,6 @@ def update_user(user_id):
             session['user_department'] = data.get('department', user['department'])
             session['user_login'] = new_login
 
-        # Лог в аудит
         try:
             from audit import log_action
             log_action('update', 'user', user_id, {
@@ -272,7 +300,6 @@ def delete_user(user_id):
         if not user:
             return jsonify({'success': False, 'error': 'Пользователь не найден'}), 404
 
-        # Мягкое удаление
         now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         with db.transaction(immediate=True) as tx:
             tx.execute('UPDATE users SET deleted_at = ? WHERE id = ?', [now, user_id])

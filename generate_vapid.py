@@ -12,7 +12,7 @@ def generate_vapid_keys():
     """Генерирует пару ключей P-256 для VAPID."""
     private_key = ec.generate_private_key(ec.SECP256R1())
 
-    # Приватный ключ в формате PEM (сохранить в .env, никому не показывать!)
+    # Приватный ключ в формате PEM (сохранить в .env.example, никому не показывать!)
     private_pem = private_key.private_bytes(
         encoding=serialization.Encoding.PEM,
         format=serialization.PrivateFormat.PKCS8,
@@ -33,7 +33,7 @@ def generate_vapid_keys():
 if __name__ == '__main__':
     priv, pub = generate_vapid_keys()
     print("=" * 60)
-    print("Добавьте эти строки в .env:")
+    print("Добавьте эти строки в .env.example:")
     print("=" * 60)
     print(f"\nVAPID_PUBLIC_KEY={pub}")
     print(f"\nVAPID_PRIVATE_KEY=\"{priv}\"")
