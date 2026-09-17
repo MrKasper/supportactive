@@ -1,5 +1,8 @@
 # equipment_computers.py
-"""Компьютеры кабинета + пинг ПК + QR-код."""
+"""
+Компьютеры кабинета + пинг ПК + QR-код.
+QR ведёт на публичную карточку (/qr/pc/<id>), доступную без авторизации.
+"""
 import io
 import json
 
@@ -189,20 +192,22 @@ def ping_computer(pc_id):
 @login_required
 def computer_qr(pc_id):
     """
-    Генерирует QR-код, ведущий на карточку кабинета с фокусом на ПК.
-    Формат: {host}/?cabinet={cabinet_id}&pc={pc_id}
+    QR-код, ведущий на ПУБЛИЧНУЮ карточку ПК (/qr/pc/<id>).
+    Эта страница открывается без авторизации и показывает
+    только базовую информацию об устройстве.
     """
     try:
         import qrcode
 
-        pc = db.query('''
-            SELECT id, cabinet_id, name FROM cabinet_computers WHERE id = ?
-        ''', [pc_id], one=True)
+        pc = db.query(
+            'SELECT id, cabinet_id, name FROM cabinet_computers WHERE id = ?',
+            [pc_id], one=True,
+        )
         if not pc:
             return jsonify({'error': 'ПК не найден'}), 404
 
         base = request.host_url.rstrip('/')
-        target = f'{base}/?cabinet={pc["cabinet_id"]}&pc={pc_id}'
+        target = f'{base}/qr/pc/{pc_id}'
 
         qr = qrcode.QRCode(
             version=None,

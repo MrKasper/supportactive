@@ -2,6 +2,9 @@
 """
 Заявки: список, фильтры, создание, обновление, закрытие, удаление,
 массовые операции.
+
+Уведомления — через services/notifications.py с передачей actor_id
+(чтобы автор действия не получал уведомление о своём действии).
 """
 from datetime import datetime, timedelta
 
@@ -293,7 +296,7 @@ def get_task(task_id):
 
 
 # ============================================================
-# ПРОВЕРКА ЗАНЯТОСТИ
+# ПРОВЕРКА ЗАНЯТОСТИ ИСПОЛНИТЕЛЯ
 # ============================================================
 
 def _check_executor_busy(executor, deadline_str, duration_minutes,
@@ -439,12 +442,17 @@ def create_task():
             'executor': executor,
         })
 
-        notify_new_task(task_id, {
-            'description': data['description'],
-            'from_user': data.get('from_user', ''),
-            'executor': executor,
-            'assistant': assistant,
-        })
+        # ⚠️ Передаём actor_id, чтобы автор не получал уведомление о своём
+        notify_new_task(
+            task_id,
+            {
+                'description': data['description'],
+                'from_user': data.get('from_user', ''),
+                'executor': executor,
+                'assistant': assistant,
+            },
+            actor_id=session.get('user_id'),
+        )
 
         _invalidate_task_caches()
 
@@ -554,7 +562,12 @@ def close_task(task_id):
         updated = db.query(
             'SELECT * FROM tasks WHERE id = ?', [task_id], one=True,
         )
-        notify_task_completed(task_id, dict(updated))
+
+        # ⚠️ actor_id — тот, кто закрыл. Он не получит уведомление о своём действии.
+        notify_task_completed(
+            task_id, dict(updated),
+            actor_id=session.get('user_id'),
+        )
 
         _invalidate_task_caches()
 
@@ -613,7 +626,12 @@ def take_task(task_id):
         updated = db.query(
             'SELECT * FROM tasks WHERE id = ?', [task_id], one=True,
         )
-        notify_task_taken(task_id, dict(updated))
+
+        # ⚠️ actor_id — тот, кто взял. Он не получит уведомление о своём действии.
+        notify_task_taken(
+            task_id, dict(updated),
+            actor_id=session.get('user_id'),
+        )
 
         _invalidate_task_caches()
 
@@ -678,8 +696,8 @@ def bulk_tasks():
       {
         action: 'close' | 'assign' | 'priority' | 'delete',
         ids: [1, 2, 3],
-        executor: 'Петров П.П.',    # для action=assign
-        priority: 'Высокий'         # для action=priority
+        executor: 'Петров П.П.',    # для assign
+        priority: 'Высокий'         # для priority
       }
     """
     try:
@@ -713,6 +731,7 @@ def bulk_tasks():
             }), 400
 
         updated = 0
+        actor_id = session.get('user_id')
 
         # ---------- Закрытие ----------
         if action == 'close':
@@ -731,6 +750,16 @@ def bulk_tasks():
                     ])
                     if cur.rowcount:
                         updated += 1
+                        # Уведомляем по каждой закрытой заявке
+                        task = db.query(
+                            'SELECT * FROM tasks WHERE id = ?',
+                            [tid], one=True,
+                        )
+                        if task:
+                            notify_task_completed(
+                                tid, dict(task),
+                                actor_id=actor_id,
+                            )
 
         # ---------- Назначение ----------
         elif action == 'assign':

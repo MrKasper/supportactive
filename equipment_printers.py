@@ -1,5 +1,8 @@
 # equipment_printers.py
-"""Принтеры кабинета + привязка к ПК + импорт + QR-код."""
+"""
+Принтеры кабинета + привязка к ПК + импорт из Картриджей + QR-код.
+QR ведёт на публичную карточку (/qr/printer/<id>), доступную без авторизации.
+"""
 import io
 
 from flask import Blueprint, jsonify, request, send_file
@@ -272,7 +275,10 @@ def import_printers_from_cartridges(cabinet_id):
 @bp.route('/api/printers/<int:printer_id>/qr')
 @role_required(*EDITOR_ROLES)
 def printer_qr(printer_id):
-    """QR-код карточки кабинета с фокусом на принтере."""
+    """
+    QR-код на ПУБЛИЧНУЮ карточку принтера (/qr/printer/<id>).
+    Открывается без авторизации.
+    """
     try:
         import qrcode
 
@@ -284,7 +290,7 @@ def printer_qr(printer_id):
             return jsonify({'error': 'Принтер не найден'}), 404
 
         base = request.host_url.rstrip('/')
-        target = f'{base}/?cabinet={pr["cabinet_id"]}&printer={printer_id}'
+        target = f'{base}/qr/printer/{printer_id}'
 
         qr = qrcode.QRCode(
             error_correction=qrcode.constants.ERROR_CORRECT_M,
