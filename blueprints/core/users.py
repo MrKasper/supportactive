@@ -4,6 +4,7 @@ from database import Database
 from datetime import datetime
 from utils import login_required, role_required
 from passwords import hash_password, generate_password
+from services.notifications import invalidate_admins_cache
 from logger import get_logger
 import os
 import sqlite3
@@ -171,6 +172,8 @@ def update_user(user_id):
                 user_id
             ])
 
+        invalidate_admins_cache()
+
         if is_self:
             session['user_name'] = new_full_name
             session['user_role'] = new_role
@@ -233,6 +236,8 @@ def create_user():
             ''', [full_name, role, login, hash_password(password),
                   email, phone, department, 'default.png', 1])
 
+        invalidate_admins_cache()
+
         try:
             from audit import log_action
             log_action('create', 'user', user_id, {'login': login, 'role': role})
@@ -269,6 +274,8 @@ def toggle_user_status(user_id):
 
         with db.transaction(immediate=True) as tx:
             tx.execute('UPDATE users SET is_active = ? WHERE id = ?', [new_status, user_id])
+
+        invalidate_admins_cache()
 
         status_text = 'разблокирован' if new_status else 'заблокирован'
 
@@ -307,6 +314,8 @@ def delete_user(user_id):
         now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         with db.transaction(immediate=True) as tx:
             tx.execute('UPDATE users SET deleted_at = ? WHERE id = ?', [now, user_id])
+
+        invalidate_admins_cache()
 
         try:
             from audit import log_action
@@ -547,6 +556,8 @@ def import_users():
             except Exception as e:
                 skipped += 1
                 errors.append(f'{login}: {str(e)}')
+
+        invalidate_admins_cache()
 
         try:
             from audit import log_action

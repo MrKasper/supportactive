@@ -11,6 +11,7 @@
   • Безопасное сохранение с UUID-именем
   • Поиск файла среди нескольких папок (включая legacy-пути)
   • Безопасное удаление
+  • Человекочитаемый размер (реэкспорт из utils)
 """
 import os
 import uuid
@@ -18,6 +19,7 @@ import uuid
 from werkzeug.utils import secure_filename
 
 from logger import get_logger
+from utils import human_size  # noqa: F401  (реэкспорт для обратной совместимости)
 
 log = get_logger(__name__)
 
@@ -346,25 +348,3 @@ def delete_file_safe(path):
     except Exception as e:
         log.warning(f'Не удалось удалить файл {path}: {e}')
         return False
-
-
-# ============================================================
-# ХЕЛПЕР: человекочитаемый размер
-# ============================================================
-
-def human_size(bytes_count):
-    """Возвращает размер в читаемом виде: '1.2 МБ'."""
-    if not bytes_count:
-        return '0 Б'
-
-    k = 1024
-    sizes = ['Б', 'КБ', 'МБ', 'ГБ', 'ТБ']
-    i = 0
-    val = float(bytes_count)
-    while val >= k and i < len(sizes) - 1:
-        val /= k
-        i += 1
-
-    if i == 0:
-        return f'{int(val)} {sizes[i]}'
-    return f'{val:.1f} {sizes[i]}'

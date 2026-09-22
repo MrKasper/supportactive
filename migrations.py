@@ -669,6 +669,49 @@ def migrate_23_computer_monitors(conn):
     conn.commit()
 
 
+def migrate_24_additional_indexes(conn):
+    """
+    v24: дополнительные индексы для частых запросов.
+      • users.full_name — поиск по ФИО (@mentions, уведомления)
+      • computer_components_history (computer_id, component_type) — история компонента
+      • tasks (status, priority) — фильтр активных задач
+      • cartridges.cabinet — поиск в модуле «Картриджи»
+      • licenses.cabinet — выборки по кабинету
+      • audit_log (user_login, action) — топ действий по пользователю
+    """
+    cur = conn.cursor()
+
+    indexes = [
+        ('idx_users_full_name',
+         'CREATE INDEX IF NOT EXISTS idx_users_full_name '
+         'ON users(full_name)'),
+        ('idx_pc_hist_computer_type',
+         'CREATE INDEX IF NOT EXISTS idx_pc_hist_computer_type '
+         'ON computer_components_history(computer_id, component_type)'),
+        ('idx_tasks_status_priority',
+         'CREATE INDEX IF NOT EXISTS idx_tasks_status_priority '
+         'ON tasks(status, priority) WHERE deleted_at IS NULL'),
+        ('idx_cartridges_cabinet',
+         'CREATE INDEX IF NOT EXISTS idx_cartridges_cabinet '
+         'ON cartridges(cabinet)'),
+        ('idx_licenses_cabinet',
+         'CREATE INDEX IF NOT EXISTS idx_licenses_cabinet '
+         'ON licenses(cabinet)'),
+        ('idx_audit_user_action',
+         'CREATE INDEX IF NOT EXISTS idx_audit_user_action '
+         'ON audit_log(user_login, action)'),
+    ]
+
+    for name, sql in indexes:
+        try:
+            cur.execute(sql)
+            log.info(f'  → Создан индекс {name}')
+        except sqlite3.OperationalError as e:
+            log.warning(f'  → Не удалось создать {name}: {e}')
+
+    conn.commit()
+
+
 # ============================================================
 # РЕЕСТР МИГРАЦИЙ
 # ============================================================
@@ -696,6 +739,7 @@ MIGRATIONS = [
     (21, migrate_21_printer_replace_dates),
     (22, migrate_22_computer_peripherals_and_history),
     (23, migrate_23_computer_monitors),
+    (24, migrate_24_additional_indexes),
 ]
 
 

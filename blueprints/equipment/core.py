@@ -18,7 +18,7 @@ from utils import login_required, role_required
 from logger import get_logger
 from constants import EDITOR_ROLES
 from services.ping import ping_one_computer, PING_MAX_WORKERS, PING_INTERVAL_SEC
-from equipment_helpers import check_cabinet
+from .helpers import check_cabinet
 
 log = get_logger(__name__)
 db = Database()

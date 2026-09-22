@@ -6,7 +6,7 @@ from database import Database
 from utils import role_required
 from logger import get_logger
 from constants import EDITOR_ROLES
-from equipment_helpers import check_cabinet, next_sort_order, now_str
+from .helpers import check_cabinet, next_sort_order, now_str
 
 log = get_logger(__name__)
 db = Database()

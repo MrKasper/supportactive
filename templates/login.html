@@ -2,7 +2,7 @@
 {% extends "base.html" %}
 
 {% block head_extra %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/features/login.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -73,5 +73,5 @@
 
 {% block scripts %}
 <!-- 🆕 Логика страницы входа — вынесена из inline для CSP -->
-<script src="{{ url_for('static', filename='js/login_page.js') }}"></script>
+<script src="{{ url_for('static', filename='js/auth/login_page.js') }}"></script>
 {% endblock %}

@@ -505,10 +505,25 @@
         });
     }
 
-    // Периодически обновляем разметку (после каждого рендера таблицы)
+    // Обновляем разметку через MutationObserver — только когда таблица меняется
     function startRowEnhancer() {
         if (!isMobile()) return;
-        setInterval(enhanceTaskRowsForMobile, 1000);
+
+        var tbody = document.getElementById('tasksTableBody');
+        if (!tbody) return;
+
+        var scheduled = false;
+
+        var observer = new MutationObserver(function() {
+            if (scheduled) return;
+            scheduled = true;
+            requestAnimationFrame(function() {
+                scheduled = false;
+                enhanceTaskRowsForMobile();
+            });
+        });
+
+        observer.observe(tbody, { childList: true, subtree: false });
     }
 
     // ============================================================

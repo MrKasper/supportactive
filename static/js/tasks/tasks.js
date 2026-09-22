@@ -136,7 +136,15 @@
                 if (data.error) { showErrorInTable(data.error); return; }
                 renderTasksTable(data.items || []);
                 state.currentTotalPages = data.pages || 1;
-                renderPagination(data);
+
+                utils.renderPagination({
+                    container: '#tasksPagination',
+                    data: data,
+                    onClickFn: 'loadTasks',
+                    showFirstLast: true,
+                    showCounter: true,
+                    counterStyle: 'range'
+                });
             })
             .catch(function(err) {
                 console.error('[tasks] load error:', err);
@@ -174,50 +182,6 @@
             return;
         }
         tasks.forEach(function(t) { tbody.append(createTaskRow(t)); });
-    }
-
-    function renderPagination(data) {
-        var $pag = $('#tasksPagination');
-        if (!data || data.pages <= 1) { $pag.empty(); return; }
-
-        var page = data.page, pages = data.pages;
-        var html = '<nav><ul class="pagination pagination-sm justify-content-center mb-0">';
-
-        html += '<li class="page-item ' + (page === 1 ? 'disabled' : '') + '">' +
-                '<a class="page-link" href="#" onclick="loadTasks(1); return false;">' +
-                '<i class="bi bi-chevron-double-left"></i></a></li>';
-        html += '<li class="page-item ' + (page === 1 ? 'disabled' : '') + '">' +
-                '<a class="page-link" href="#" onclick="loadTasks(' + (page - 1) + '); return false;">' +
-                '<i class="bi bi-chevron-left"></i></a></li>';
-
-        var start = Math.max(1, page - 2), end = Math.min(pages, page + 2);
-
-        if (start > 1) {
-            html += '<li class="page-item"><a class="page-link" href="#" onclick="loadTasks(1); return false;">1</a></li>';
-            if (start > 2) html += '<li class="page-item disabled"><span class="page-link">…</span></li>';
-        }
-        for (var i = start; i <= end; i++) {
-            html += '<li class="page-item ' + (i === page ? 'active' : '') + '">' +
-                    '<a class="page-link" href="#" onclick="loadTasks(' + i + '); return false;">' + i + '</a></li>';
-        }
-        if (end < pages) {
-            if (end < pages - 1) html += '<li class="page-item disabled"><span class="page-link">…</span></li>';
-            html += '<li class="page-item"><a class="page-link" href="#" onclick="loadTasks(' + pages + '); return false;">' + pages + '</a></li>';
-        }
-
-        html += '<li class="page-item ' + (page === pages ? 'disabled' : '') + '">' +
-                '<a class="page-link" href="#" onclick="loadTasks(' + (page + 1) + '); return false;">' +
-                '<i class="bi bi-chevron-right"></i></a></li>';
-        html += '<li class="page-item ' + (page === pages ? 'disabled' : '') + '">' +
-                '<a class="page-link" href="#" onclick="loadTasks(' + pages + '); return false;">' +
-                '<i class="bi bi-chevron-double-right"></i></a></li>';
-        html += '</ul></nav>';
-
-        html += '<div class="text-center text-muted small mt-2">' +
-                'Показано ' + ((page - 1) * data.per_page + 1) + '–' +
-                Math.min(page * data.per_page, data.total) + ' из ' + data.total + '</div>';
-
-        $pag.html(html);
     }
 
     function updateTableHeaders() {
@@ -413,7 +377,16 @@
             }
         });
 
-        $(window).on('scroll', function() { $('#contextMenu').remove(); });
+        // Throttle: не чаще 1 раза в 100 мс
+        var scrollThrottleTimer = null;
+        $(window).on('scroll', function() {
+            if (scrollThrottleTimer) return;
+            scrollThrottleTimer = setTimeout(function() {
+                scrollThrottleTimer = null;
+                $('#contextMenu').remove();
+            }, 100);
+        });
+
         $(document).on('keydown', function(event) {
             if (event.key === 'Escape') $('#contextMenu').remove();
         });

@@ -1,7 +1,8 @@
 # utils.py
 """
 Общие утилиты: декораторы авторизации, работа с JSON-запросами,
-защита от CSV-инъекций, определение IP клиента.
+защита от CSV-инъекций, определение IP клиента, размеры файлов,
+безопасное приведение идентификаторов.
 """
 from functools import wraps
 from flask import session, jsonify, request
@@ -148,6 +149,49 @@ def safe_float(value, default=0.0):
         return float(value)
     except (ValueError, TypeError):
         return default
+
+
+# ============================================================
+# ИДЕНТИФИКАТОРЫ
+# ============================================================
+
+def normalize_int_id(value):
+    """
+    Безопасно приводит значение к int для использования как ID.
+    Возвращает int или None.
+
+    Пустые и мусорные значения ('', 'null', 'undefined', None, 'abc')
+    → None. Строки с числом → int. Уже int → как есть.
+    """
+    if value in (None, '', 'null', 'undefined'):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+# ============================================================
+# РАЗМЕРЫ ФАЙЛОВ
+# ============================================================
+
+def human_size(bytes_count):
+    """
+    Человекочитаемый размер файла: '1.2 МБ', '512 Б', '0 Б'.
+    Используется везде: в dev-консоли, логах, карточках, драйверах.
+    """
+    if not bytes_count:
+        return '0 Б'
+    k = 1024
+    sizes = ['Б', 'КБ', 'МБ', 'ГБ', 'ТБ']
+    i = 0
+    val = float(bytes_count)
+    while val >= k and i < len(sizes) - 1:
+        val /= k
+        i += 1
+    if i == 0:
+        return f'{int(val)} {sizes[i]}'
+    return f'{val:.1f} {sizes[i]}'
 
 
 def mask_secret(value, keep_start=4, keep_end=4):

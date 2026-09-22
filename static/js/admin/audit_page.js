@@ -39,7 +39,7 @@
                 }
 
                 renderRows(log.items || []);
-                renderPagination(log);
+                _renderPagination(log);
             })
             .catch(function(err) {
                 console.error('[audit_page] load error:', err);
@@ -167,7 +167,7 @@
                     return;
                 }
                 renderRows(data.items || []);
-                renderPagination(data);
+                _renderPagination(data);
             })
             .catch(function(err) {
                 console.error('[audit_page] loadLog error:', err);
@@ -230,63 +230,18 @@
     }
 
     // ============================================================
-    // ПАГИНАЦИЯ
+    // ПАГИНАЦИЯ (обёртка над utils.renderPagination)
     // ============================================================
-    function renderPagination(data) {
-        var $p = $('#auditPagination');
-        if (!data || data.pages <= 1) {
-            if (data && data.total) {
-                $p.html(
-                    '<div class="text-center text-muted small py-2">' +
-                    'Всего: ' + data.total + '</div>'
-                );
-            } else {
-                $p.empty();
-            }
-            return;
-        }
-
-        var html = '<nav><ul class="pagination pagination-sm ' +
-            'justify-content-center mb-0">';
-
-        html += '<li class="page-item ' +
-            (data.page === 1 ? 'disabled' : '') + '">' +
-            '<a class="page-link" href="#" ' +
-            'onclick="AuditPage.loadLog(1); return false;">&laquo;&laquo;</a></li>';
-        html += '<li class="page-item ' +
-            (data.page === 1 ? 'disabled' : '') + '">' +
-            '<a class="page-link" href="#" ' +
-            'onclick="AuditPage.loadLog(' + (data.page - 1) + '); return false;">' +
-            '&laquo;</a></li>';
-
-        var s = Math.max(1, data.page - 2);
-        var e = Math.min(data.pages, data.page + 2);
-        for (var i = s; i <= e; i++) {
-            html += '<li class="page-item ' +
-                (i === data.page ? 'active' : '') + '">' +
-                '<a class="page-link" href="#" ' +
-                'onclick="AuditPage.loadLog(' + i + '); return false;">' +
-                i + '</a></li>';
-        }
-
-        html += '<li class="page-item ' +
-            (data.page === data.pages ? 'disabled' : '') + '">' +
-            '<a class="page-link" href="#" ' +
-            'onclick="AuditPage.loadLog(' + (data.page + 1) + '); return false;">' +
-            '&raquo;</a></li>';
-        html += '<li class="page-item ' +
-            (data.page === data.pages ? 'disabled' : '') + '">' +
-            '<a class="page-link" href="#" ' +
-            'onclick="AuditPage.loadLog(' + data.pages + '); return false;">' +
-            '&raquo;&raquo;</a></li>';
-
-        html += '</ul></nav>';
-        html += '<div class="text-center text-muted small mt-2">' +
-            'Всего: ' + data.total +
-            ' · Страница ' + data.page + ' из ' + data.pages +
-            '</div>';
-
-        $p.html(html);
+    function _renderPagination(data) {
+        utils.renderPagination({
+            container: '#auditPagination',
+            data: data,
+            onClickFn: 'AuditPage.loadLog',
+            showFirstLast: true,
+            showCounter: true,
+            counterStyle: 'total',
+            countLabel: 'Всего'
+        });
     }
 
     // ============================================================

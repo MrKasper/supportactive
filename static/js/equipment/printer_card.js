@@ -22,20 +22,6 @@
     // ============================================================
     // ХЕЛПЕРЫ
     // ============================================================
-    function formatDate(iso) {
-        if (!iso) return '—';
-        try {
-            var d = new Date(iso.replace(' ', 'T'));
-            if (isNaN(d.getTime())) return iso;
-            var day = String(d.getDate()).padStart(2, '0');
-            var month = String(d.getMonth() + 1).padStart(2, '0');
-            var year = d.getFullYear();
-            var hh = String(d.getHours()).padStart(2, '0');
-            var mm = String(d.getMinutes()).padStart(2, '0');
-            return day + '.' + month + '.' + year + ' ' + hh + ':' + mm;
-        } catch (e) { return iso; }
-    }
-
     function connLabel(type) {
         return type === 'usb' ? 'USB' : 'Сетевой';
     }
@@ -239,13 +225,13 @@
                 '<span class="pc-date-value ' +
                 (lastPrinter ? '' : 'empty') +
                 '" id="pc-date-printer">' +
-                formatDate(lastPrinter) + '</span></div>';
+                utils.formatDateShort(lastPrinter) + '</span></div>';
         html += '<div class="pc-date-badge">' +
                 '<span class="pc-date-label">🧴 Картридж:</span>' +
                 '<span class="pc-date-value ' +
                 (lastCartridge ? '' : 'empty') +
                 '" id="pc-date-cartridge">' +
-                formatDate(lastCartridge) + '</span></div>';
+                utils.formatDateShort(lastCartridge) + '</span></div>';
         html += '</div>';
 
         // Кнопки замен
@@ -302,7 +288,7 @@
 
                     var el = document.getElementById('pc-date-cartridge');
                     if (el) {
-                        el.textContent = formatDate(latest);
+                        el.textContent = utils.formatDateShort(latest);
                         el.classList.remove('empty');
                     }
                 }).catch(function() { /* тихо игнорируем */ });

@@ -235,14 +235,11 @@
             });
     }
 
-    function escapeForPrint(str) {
-        if (str === null || str === undefined) return '';
-        return String(str)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
+    // Тонкий алиас — вся реальная работа в utils.escapeHtml
+    // (после рефакторинга utils.escapeHtml использует строковые замены
+    // и корректно обрабатывает null / undefined).
+    function esc(s) {
+        return utils.escapeHtml(s);
     }
 
     function openPrintWindow(data) {
@@ -259,8 +256,6 @@
             utils.showErrorMessage('Разрешите всплывающие окна для печати');
             return;
         }
-
-        function esc(s) { return escapeForPrint(s); }
 
         let html = '<!DOCTYPE html><html lang="ru"><head>';
         html += '<meta charset="UTF-8">';

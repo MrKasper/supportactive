@@ -28,7 +28,7 @@ from flask import (
 )
 
 from database import Database
-from utils import role_required
+from utils import role_required, human_size
 from logger import get_logger
 from constants import ROLE_ADMIN, ROLE_DEVELOPER
 
@@ -83,19 +83,6 @@ _FORBIDDEN_SQL_KEYWORDS = (
 # ============================================================
 # ХЕЛПЕРЫ
 # ============================================================
-
-def _human_size(b):
-    if not b:
-        return '0 Б'
-    k = 1024
-    sizes = ['Б', 'КБ', 'МБ', 'ГБ', 'ТБ']
-    i = 0
-    v = float(b)
-    while v >= k and i < len(sizes) - 1:
-        v /= k
-        i += 1
-    return f'{int(v)} {sizes[i]}' if i == 0 else f'{v:.1f} {sizes[i]}'
-
 
 def _is_protected(table_name):
     """
@@ -236,7 +223,7 @@ def db_info():
             'path': db_path,
             'exists': exists,
             'size_bytes': size,
-            'size_human': _human_size(size),
+            'size_human': human_size(size),
             'modified_at': modified,
             'counts': counts,
         })
@@ -601,7 +588,7 @@ def db_download():
 
         log.info(
             f'[{session.get("user_login")}] Скачивание БД '
-            f'({_human_size(os.path.getsize(backup_path))})'
+            f'({human_size(os.path.getsize(backup_path))})'
         )
 
         return send_file(
@@ -816,7 +803,7 @@ def logs_list():
                 files.append({
                     'name': name,
                     'size': st.st_size,
-                    'size_human': _human_size(st.st_size),
+                    'size_human': human_size(st.st_size),
                     'modified_at': datetime.fromtimestamp(st.st_mtime).isoformat(),
                 })
 

@@ -2,10 +2,12 @@
 {% extends "base.html" %}
 
 {% block head_extra %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/tasks.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/hotkeys.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/mobile-ux.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/equipment.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/features/tasks.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/features/hotkeys.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/features/mobile-ux.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/features/equipment.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/features/printer_card.css') }}">
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 {% endblock %}
 
 {% block content %}
@@ -607,44 +609,45 @@
 
 {% block scripts %}
 <!-- 🎯 Ядро -->
-<script src="{{ url_for('static', filename='js/core.js') }}"></script>
-<script src="{{ url_for('static', filename='js/utils.js') }}"></script>
+<script src="{{ url_for('static', filename='js/core/core.js') }}"></script>
+<script src="{{ url_for('static', filename='js/core/utils.js') }}"></script>
 
 <!-- Модули -->
-<script src="{{ url_for('static', filename='js/theme.js') }}"></script>
-<script src="{{ url_for('static', filename='js/login.js') }}"></script>
-<script src="{{ url_for('static', filename='js/notifications.js') }}"></script>
-<script src="{{ url_for('static', filename='js/notifications_sse.js') }}"></script>
+<script src="{{ url_for('static', filename='js/core/theme.js') }}"></script>
+<script src="{{ url_for('static', filename='js/auth/login.js') }}"></script>
+<script src="{{ url_for('static', filename='js/infra/notifications.js') }}"></script>
+<script src="{{ url_for('static', filename='js/infra/notifications_sse.js') }}"></script>
 
 <!-- Заявки -->
-<script src="{{ url_for('static', filename='js/tasks.js') }}"></script>
-<script src="{{ url_for('static', filename='js/tasks_bulk.js') }}"></script>
-<script src="{{ url_for('static', filename='js/task_details.js') }}"></script>
-<script src="{{ url_for('static', filename='js/task_comments.js') }}"></script>
-<script src="{{ url_for('static', filename='js/task_attachments.js') }}"></script>
+<script src="{{ url_for('static', filename='js/tasks/tasks.js') }}"></script>
+<script src="{{ url_for('static', filename='js/tasks/tasks_bulk.js') }}"></script>
+<script src="{{ url_for('static', filename='js/tasks/task_details.js') }}"></script>
+<script src="{{ url_for('static', filename='js/tasks/task_comments.js') }}"></script>
+<script src="{{ url_for('static', filename='js/tasks/task_attachments.js') }}"></script>
 
 <!-- Разделы -->
-<script src="{{ url_for('static', filename='js/users.js') }}"></script>
-<script src="{{ url_for('static', filename='js/cartridges.js') }}"></script>
-<script src="{{ url_for('static', filename='js/licenses.js') }}"></script>
-<script src="{{ url_for('static', filename='js/contacts.js') }}"></script>
-<script src="{{ url_for('static', filename='js/directory.js') }}"></script>
-<script src="{{ url_for('static', filename='js/cabinets_manage.js') }}"></script>
-<script src="{{ url_for('static', filename='js/excel.js') }}"></script>
-<script src="{{ url_for('static', filename='js/audit.js') }}"></script>
-<script src="{{ url_for('static', filename='js/webpush.js') }}"></script>
+<script src="{{ url_for('static', filename='js/users/users.js') }}"></script>
+<script src="{{ url_for('static', filename='js/catalog/cartridges.js') }}"></script>
+<script src="{{ url_for('static', filename='js/catalog/licenses.js') }}"></script>
+<script src="{{ url_for('static', filename='js/catalog/contacts.js') }}"></script>
+<script src="{{ url_for('static', filename='js/catalog/directory.js') }}"></script>
+<script src="{{ url_for('static', filename='js/infra/cabinets_manage.js') }}"></script>
+<script src="{{ url_for('static', filename='js/admin/excel.js') }}"></script>
+<script src="{{ url_for('static', filename='js/infra/webpush.js') }}"></script>
 
 <!-- Оборудование кабинета -->
-<script src="{{ url_for('static', filename='js/cabinet_core.js') }}"></script>
-<script src="{{ url_for('static', filename='js/cabinet_devices.js') }}"></script>
-<script src="{{ url_for('static', filename='js/printer_card.js') }}"></script>
-<script src="{{ url_for('static', filename='js/computer_card.js') }}"></script>
-<script src="{{ url_for('static', filename='js/cabinet_documents.js') }}"></script>
+<script src="{{ url_for('static', filename='js/equipment/cabinet_core.js') }}"></script>
+<script src="{{ url_for('static', filename='js/equipment/cabinet_devices.js') }}"></script>
+<script src="{{ url_for('static', filename='js/equipment/cabinet_device_modals.js') }}"></script>
+<script src="{{ url_for('static', filename='js/equipment/cabinet_device_actions.js') }}"></script>
+<script src="{{ url_for('static', filename='js/equipment/printer_card.js') }}"></script>
+<script src="{{ url_for('static', filename='js/equipment/computer_card.js') }}"></script>
+<script src="{{ url_for('static', filename='js/equipment/cabinet_documents.js') }}"></script>
 
 <!-- Горячие клавиши и мобильный UX -->
-<script src="{{ url_for('static', filename='js/hotkeys.js') }}"></script>
-<script src="{{ url_for('static', filename='js/mobile_ux.js') }}"></script>
+<script src="{{ url_for('static', filename='js/core/hotkeys.js') }}"></script>
+<script src="{{ url_for('static', filename='js/core/mobile_ux.js') }}"></script>
 
 <!-- 🎯 Инициализатор — ВСЕГДА ПОСЛЕДНИЙ -->
-<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+<script src="{{ url_for('static', filename='js/core/main.js') }}"></script>
 {% endblock %}

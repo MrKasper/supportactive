@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block head_extra %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/tasks.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/features/tasks.css') }}">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 {% endblock %}
 
@@ -124,5 +124,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+<script src="{{ url_for('static', filename='js/admin/dashboard.js') }}"></script>
 {% endblock %}

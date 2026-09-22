@@ -1,5 +1,5 @@
 // static/js/computer_card.js
-// Карточка ПК: RAM/диски с историей замен + периферия + мониторы.
+// Карточка ПК: RAM/диски/мониторы с историей замен + периферия.
 
 (function() {
     'use strict';
@@ -17,18 +17,6 @@
     // ХЕЛПЕРЫ
     // ============================================================
     function esc(s) { return utils.escapeHtml(s); }
-
-    function fmtDate(iso) {
-        if (!iso) return '—';
-        try {
-            var d = new Date(iso.replace(' ', 'T'));
-            if (isNaN(d.getTime())) return iso;
-            var p = function(n) { return String(n).padStart(2, '0'); };
-            return p(d.getDate()) + '.' + p(d.getMonth() + 1) + '.' +
-                   d.getFullYear() + ' ' + p(d.getHours()) + ':' +
-                   p(d.getMinutes());
-        } catch (e) { return iso; }
-    }
 
     function canEdit() {
         if (window.App.Cabinet && typeof window.App.Cabinet.canEdit === 'function') {
@@ -74,7 +62,7 @@
             html += '<div class="cc-hist-top">';
             html += '<span class="cc-hist-action">' + actionLabel + '</span>';
             html += '<span class="cc-hist-date">' +
-                    esc(fmtDate(h.created_at)) + '</span>';
+                    esc(utils.formatDateShort(h.created_at)) + '</span>';
             html += '</div>';
 
             html += '<div class="cc-hist-values">';
@@ -168,7 +156,7 @@
 
         var statusCls = pc.status === 'online' ? 'online' : 'offline';
         var statusText = pc.status === 'online' ? 'Онлайн' : 'Офлайн';
-        var lastPing = pc.last_ping_at ? fmtDate(pc.last_ping_at) : '—';
+        var lastPing = pc.last_ping_at ? utils.formatDateShort(pc.last_ping_at) : '—';
 
         var html = '<div class="cc-card">';
 

@@ -8,7 +8,7 @@ from database import Database
 from utils import login_required, role_required
 from logger import get_logger
 from constants import EDITOR_ROLES, ALLOWED_DOCUMENT_EXT
-from equipment_helpers import (
+from .helpers import (
     check_cabinet, now_str,
     DOCUMENTS_FOLDER, BASE_DIR, MAX_DOC_SIZE,
 )

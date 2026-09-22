@@ -35,14 +35,13 @@
           href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
 
     <!-- 🎨 Стили проекта -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/variables.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/sidebar.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/dark-theme.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/mobile.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/toasts.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/printer_card.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/computer_card.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/core/variables.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/core/sidebar.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/core/components.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/core/dark-theme.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/core/mobile.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/features/toasts.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/features/computer_card.css') }}">
 
     {% block head_extra %}{% endblock %}
 
@@ -120,27 +119,21 @@
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-    <!-- SortableJS -->
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
-
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-
     <!-- 🔒 CSRF-обёртка -->
-    <script src="{{ url_for('static', filename='js/csrf.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/core/csrf.js') }}"></script>
 
     <!-- 🎯 Ядро -->
-    <script src="{{ url_for('static', filename='js/core.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/utils.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/core/core.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/core/utils.js') }}"></script>
 
     <!-- 🆕 Toast-уведомления (не конфликтуют с SweetAlert2) -->
-    <script src="{{ url_for('static', filename='js/toasts.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/core/toasts.js') }}"></script>
 
     <!-- 🆕 Единая обёртка API -->
-    <script src="{{ url_for('static', filename='js/api.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/core/api.js') }}"></script>
 
     <!-- 🆕 Impersonation — доступна на всех страницах -->
-    <script src="{{ url_for('static', filename='js/dev_impersonate.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/admin/dev_impersonate.js') }}"></script>
 
     <!-- PWA: Service Worker -->
     <script>

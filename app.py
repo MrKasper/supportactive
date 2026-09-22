@@ -269,39 +269,49 @@ def _start_ping_scheduler_if_needed():
 # ============================================================
 def _register_blueprints(app):
     # Ядро
-    from login import auth_bp
-    from tasks import tasks_bp
-    from users import users_bp
+    from blueprints.core.auth import auth_bp
+    from blueprints.core.users import users_bp
+    from blueprints.core.tasks import tasks_bp
+    from blueprints.core.tasks_bulk import tasks_bulk_bp
+    from blueprints.core.tasks_filters import tasks_filters_bp
 
-    # Разделы
-    from cartridges import cartridges_bp
-    from licenses import licenses_bp
-    from contacts import contacts_bp
-    from directory import directory_bp
-    from excel import excel_bp
-    from notifications import notifications_bp
-    from webpush import webpush_bp
+    # Справочники
+    from blueprints.catalog.cartridges import cartridges_bp
+    from blueprints.catalog.licenses import licenses_bp
+    from blueprints.catalog.contacts import contacts_bp
+    from blueprints.catalog.directory import directory_bp
+
+    # Инфра
+    from blueprints.infra.attachments import attachments_bp
+    from blueprints.infra.comments import comments_bp
+    from blueprints.infra.notifications import notifications_bp
+    from blueprints.infra.webpush import webpush_bp
+    from blueprints.infra.dashboard import dashboard_bp
+
+    # Админ
+    from blueprints.admin.database_admin import db_admin_bp
+    from blueprints.admin.excel import excel_bp
+
+    # Public
+    from blueprints.public.public_qr import public_qr_bp
+
+    # Аудит — в корне
     from audit import audit_bp
-    from attachments import attachments_bp
-    from comments import comments_bp
-    from dashboard import dashboard_bp
-
-    # Публичные страницы для QR
-    from public_qr import public_qr_bp
-
-    # Консоль разработчика
-    from database_admin import db_admin_bp
 
     # Оборудование кабинета
-    from equipment_core import bp as equipment_core_bp
-    from equipment_network import bp as equipment_network_bp
-    from equipment_computers import bp as equipment_computers_bp
-    from equipment_printers import bp as equipment_printers_bp
-    from equipment_documents import bp as equipment_documents_bp
+    from blueprints.equipment.core import bp as equipment_core_bp
+    from blueprints.equipment.network import bp as equipment_network_bp
+    from blueprints.equipment.computers import bp as equipment_computers_bp
+    from blueprints.equipment.computer_components import bp as equipment_computer_components_bp
+    from blueprints.equipment.printers import bp as equipment_printers_bp
+    from blueprints.equipment.drivers import bp as equipment_drivers_bp
+    from blueprints.equipment.documents import bp as equipment_documents_bp
 
     all_blueprints = (
         auth_bp,
         tasks_bp,
+        tasks_bulk_bp,
+        tasks_filters_bp,
         users_bp,
         cartridges_bp,
         licenses_bp,
@@ -319,7 +329,9 @@ def _register_blueprints(app):
         equipment_core_bp,
         equipment_network_bp,
         equipment_computers_bp,
+        equipment_computer_components_bp,
         equipment_printers_bp,
+        equipment_drivers_bp,
         equipment_documents_bp,
     )
 
@@ -477,7 +489,7 @@ def _register_base_routes(app):
     def health():
         return jsonify({
             'status': 'ok',
-            'version': '2.8',
+            'version': '2.9',
             'session_type': app.config.get('SESSION_TYPE', 'filesystem'),
             'cache_type': app.config.get('CACHE_TYPE'),
             'timestamp': datetime.now().isoformat(),
