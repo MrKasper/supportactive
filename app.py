@@ -288,6 +288,9 @@ def _register_blueprints(app):
     # Публичные страницы для QR
     from public_qr import public_qr_bp
 
+    # 🆕 Консоль разработчика
+    from database_admin import db_admin_bp
+
     # Оборудование кабинета
     from equipment_core import bp as equipment_core_bp
     from equipment_network import bp as equipment_network_bp
@@ -311,6 +314,7 @@ def _register_blueprints(app):
         comments_bp,
         dashboard_bp,
         public_qr_bp,
+        db_admin_bp,
         equipment_core_bp,
         equipment_network_bp,
         equipment_computers_bp,
@@ -343,7 +347,7 @@ def _register_context_processors(app):
     def inject_app_config():
         return dict(
             ENABLE_SSE=app.config.get('ENABLE_SSE', True),
-            APP_VERSION='2.7',
+            APP_VERSION='2.8',
         )
 
 
@@ -460,6 +464,11 @@ def _register_base_routes(app):
     def index():
         if 'user_id' not in session:
             return redirect(url_for('auth.login'))
+
+        # Разработчик → сразу в консоль
+        if session.get('user_role') == 'Разработчик':
+            return redirect(url_for('db_admin.dev_console_page'))
+
         return render_template('index.html')
 
     # ---------- Health ----------
@@ -467,7 +476,7 @@ def _register_base_routes(app):
     def health():
         return jsonify({
             'status': 'ok',
-            'version': '2.7',
+            'version': '2.8',
             'session_type': app.config.get('SESSION_TYPE', 'filesystem'),
             'cache_type': app.config.get('CACHE_TYPE'),
             'timestamp': datetime.now().isoformat(),
@@ -627,7 +636,7 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
 
     log.info('=' * 60)
-    log.info('Support Active System v2.7')
+    log.info('Support Active System v2.8')
     log.info(f'Режим: {"DEBUG" if debug_mode else "PRODUCTION"}')
     log.info(f'Сервер: http://{host}:{port}')
     log.info(f'Сессии: {app.config.get("SESSION_TYPE", "filesystem")}')

@@ -1,5 +1,5 @@
 // static/js/main.js
-// Инициализация приложения, навигация, роли
+// Инициализация приложения, навигация, роли.
 
 (function() {
     'use strict';
@@ -9,13 +9,11 @@
         return;
     }
 
-    // ⚠️ НЕ называем переменную 'api' — она забивает App.api.
     var mod = window.App.register('Main');
     var api = window.App.api || {};
     var utils = window.App.utils;
     var state = window.App.state;
 
-    // Проверка: api.js должен быть загружен до main.js
     if (typeof api.get !== 'function') {
         console.error(
             '[main] App.api не загружен. Убедитесь, что api.js ' +
@@ -84,12 +82,17 @@
                     '| Роль:', data.role
                 );
 
+                // 🆕 Разработчик → редирект в консоль разработчика
+                if (data.role === 'Разработчик') {
+                    window.location.href = '/dev';
+                    return;
+                }
+
                 setupInterfaceByRole(data.role);
                 loadInitialData();
             })
             .catch(function(error) {
                 console.error('[main] Auth check failed:', error);
-                // НЕ редиректим, если ошибка сетевая — иначе цикл
                 if (error && (error.status === 401 || !error.status)) {
                     window.location.href = '/login';
                 }
@@ -143,30 +146,28 @@
     function setupInterfaceByRole(role) {
         console.log('[main] setupInterfaceByRole:', role);
 
+        // Универсальная функция скрытия по data-role
+        function applyRoleVisibility() {
+            $('.sidebar .nav-link[data-role]').each(function() {
+                var allowed = ($(this).attr('data-role') || '').split(',');
+                var show = allowed.indexOf(role) !== -1;
+                $(this).toggle(show);
+            });
+        }
+
         if (role === 'Техник') {
-            $('.sidebar .nav-link[data-page="users"]').hide();
-            $('.sidebar .nav-link[data-page="directory"]').hide();
-            $('.sidebar .nav-link[data-page="report"]').hide();
-            $('.sidebar .nav-link[data-page="audit"]').hide();
-            $('.sidebar .nav-link[data-page="dashboard"]').hide();
+            applyRoleVisibility();
 
             $('#tasksBlock .btn-danger').hide();
             $('#tasksBlock .btn-success').hide();
             $('#filterUserBlock').hide();
 
             $('#statMyCompleted').closest('.col-3').hide();
-            $('.user-card .col-md-6 .col-3').removeClass('col-3').addClass('col-4');
+            $('.user-card .col-md-6 .col-3')
+                .removeClass('col-3').addClass('col-4');
 
         } else if (role === 'Пользователь') {
-            $('.sidebar .nav-link[data-page="users"]').hide();
-            $('.sidebar .nav-link[data-page="cartridges"]').hide();
-            $('.sidebar .nav-link[data-page="licenses"]').hide();
-            $('.sidebar .nav-link[data-page="contacts"]').hide();
-            $('.sidebar .nav-link[data-page="directory"]').hide();
-            $('.sidebar .nav-link[data-page="cabinets-manage"]').hide();
-            $('.sidebar .nav-link[data-page="report"]').hide();
-            $('.sidebar .nav-link[data-page="audit"]').hide();
-            $('.sidebar .nav-link[data-page="dashboard"]').hide();
+            applyRoleVisibility();
 
             $('.user-card .col-md-6').hide();
             $('.filters-section').hide();
@@ -183,7 +184,24 @@
             $('#userCreateTaskBtn').show();
 
         } else if (role === 'Администратор') {
+            // Показываем ВСЕ пункты без data-role
+            $('.sidebar .nav-link').show();
             $('#userCreateTaskBtn').hide();
+
+        } else if (role === 'Разработчик') {
+            // Обычно сюда не попадаем — редирект выше.
+            // На случай прямого захода на /:
+            applyRoleVisibility();
+
+            $('#tasksBlock .btn-danger').hide();
+            $('#tasksBlock .btn-success').hide();
+            $('.filters-section .btn-success').hide();
+            $('#userCreateTaskBtn').hide();
+            $('.user-card .col-md-6').hide();
+
+        } else {
+            // Неизвестная роль — прячем всё с data-role
+            applyRoleVisibility();
         }
     }
 
@@ -193,8 +211,21 @@
     function loadPage(pageName) {
         console.log('[main] loadPage:', pageName);
 
+        // Дашборд — отдельная страница
         if (pageName === 'dashboard') {
             window.location.href = '/dashboard';
+            return;
+        }
+
+        // Консоль разработчика — отдельная страница
+        if (pageName === 'dev-console') {
+            window.location.href = '/dev';
+            return;
+        }
+
+        // Журнал аудита — отдельная страница
+        if (pageName === 'audit') {
+            window.location.href = '/audit';
             return;
         }
 
@@ -229,6 +260,7 @@
         $('#tasksBlock').hide();
         $('#otherPagesBlock').show();
 
+        // Встроенные модули, у которых есть метод .load()
         var moduleMap = {
             'users': window.App.Users,
             'cartridges': window.App.Cartridges,
@@ -237,7 +269,6 @@
             'directory': window.App.Directory,
             'cabinets-manage': window.App.CabinetsManage,
             'report': window.App.Reports,
-            'audit': window.App.Audit,
         };
 
         var module = moduleMap[pageName];

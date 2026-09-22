@@ -10,9 +10,15 @@
 ROLE_ADMIN = 'Администратор'
 ROLE_TECH = 'Техник'
 ROLE_USER = 'Пользователь'
+ROLE_DEVELOPER = 'Разработчик'  # 🆕
 
-ALL_ROLES = (ROLE_ADMIN, ROLE_TECH, ROLE_USER)
+ALL_ROLES = (ROLE_ADMIN, ROLE_TECH, ROLE_USER, ROLE_DEVELOPER)
+
+# Кто может редактировать контент (заявки, оборудование, картриджи)
 EDITOR_ROLES = (ROLE_ADMIN, ROLE_TECH)
+
+# Кто имеет доступ к инструментам разработчика
+DEV_ROLES = (ROLE_ADMIN, ROLE_DEVELOPER)
 
 
 # ============================================================
@@ -117,3 +123,14 @@ CONTACT_CATEGORIES = (
     'Поставщики', 'Сервис', 'Клиенты',
     'Партнеры', 'Госорганы', 'Другое',
 )
+
+
+# ============================================================
+# СТАТУСЫ-БЕЙДЖИ (для UI)
+# ============================================================
+STATUS_COLORS = {
+    STATUS_NEW: 'primary',
+    STATUS_IN_PROGRESS: 'warning',
+    STATUS_COMPLETED: 'success',
+    STATUS_CANCELLED: 'secondary',
+}

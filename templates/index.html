@@ -24,55 +24,81 @@
 
     <div class="sidebar-menu">
         <nav class="nav flex-column">
-            <a class="nav-link active" href="#" data-page="tasks" onclick="loadPage('tasks'); return false;">
+            <!-- Заявки — видят все -->
+            <a class="nav-link active" href="#" data-page="tasks"
+               onclick="loadPage('tasks'); return false;">
                 <i class="bi bi-list-check"></i>
                 <span>Заявки</span>
             </a>
 
-            <a class="nav-link" href="#" data-page="users" onclick="loadPage('users'); return false;">
+            <!-- Пользователи — только админ -->
+            <a class="nav-link" href="#" data-page="users"
+               data-role="admin"
+               onclick="loadPage('users'); return false;">
                 <i class="bi bi-people"></i>
                 <span>Пользователи</span>
             </a>
 
-            <a class="nav-link" href="#" data-page="cartridges" onclick="loadPage('cartridges'); return false;">
+            <!-- Картриджи — админ и техник -->
+            <a class="nav-link" href="#" data-page="cartridges"
+               data-role="admin,tech"
+               onclick="loadPage('cartridges'); return false;">
                 <i class="bi bi-printer"></i>
                 <span>Картриджи</span>
             </a>
 
-            <a class="nav-link" href="#" data-page="licenses" onclick="loadPage('licenses'); return false;">
+            <!-- Лицензии — админ и техник -->
+            <a class="nav-link" href="#" data-page="licenses"
+               data-role="admin,tech"
+               onclick="loadPage('licenses'); return false;">
                 <i class="bi bi-key"></i>
                 <span>Лицензии</span>
             </a>
 
-            <a class="nav-link" href="#" data-page="contacts" onclick="loadPage('contacts'); return false;">
+            <!-- Внешние контакты — админ и техник -->
+            <a class="nav-link" href="#" data-page="contacts"
+               data-role="admin,tech"
+               onclick="loadPage('contacts'); return false;">
                 <i class="bi bi-person-lines-fill"></i>
                 <span>Внешние контакты</span>
             </a>
 
-            <a class="nav-link" href="#" data-page="directory" onclick="loadPage('directory'); return false;">
+            <!-- Справочник — только админ -->
+            <a class="nav-link" href="#" data-page="directory"
+               data-role="admin"
+               onclick="loadPage('directory'); return false;">
                 <i class="bi bi-book"></i>
                 <span>Справочник</span>
             </a>
 
-            <a class="nav-link" href="#" data-page="cabinets-manage" onclick="loadPage('cabinets-manage'); return false;">
+            <!-- Управление кабинетами — админ и техник -->
+            <a class="nav-link" href="#" data-page="cabinets-manage"
+               data-role="admin,tech"
+               onclick="loadPage('cabinets-manage'); return false;">
                 <i class="bi bi-door-closed"></i>
                 <span>Управление кабинетами</span>
             </a>
 
-            <a class="nav-link" href="/dashboard" data-page="dashboard">
+            <!-- Дашборд — только админ -->
+            <a class="nav-link" href="/dashboard" data-page="dashboard"
+               data-role="admin">
                 <i class="bi bi-graph-up"></i>
                 <span>Дашборд</span>
             </a>
 
-            <a class="nav-link" href="#" data-page="report" onclick="loadPage('report'); return false;">
+            <!-- Отчет по задачам — только админ -->
+            <a class="nav-link" href="#" data-page="report"
+               data-role="admin"
+               onclick="loadPage('report'); return false;">
                 <i class="bi bi-file-text"></i>
                 <span>Отчет по задачам</span>
             </a>
 
-            <a class="nav-link" href="#" data-page="audit" onclick="loadPage('audit'); return false;">
-                <i class="bi bi-journal-text"></i>
-                <span>Журнал аудита</span>
-            </a>
+            <!--
+                Журнал аудита и Консоль разработчика доступны только
+                по прямой ссылке (/audit и /dev) для роли «Разработчик».
+                У Администратора этих пунктов нет.
+            -->
         </nav>
     </div>
 </div>
@@ -456,6 +482,7 @@
                             <option value="Администратор">Администратор</option>
                             <option value="Техник">Техник</option>
                             <option value="Пользователь">Пользователь</option>
+                            <option value="Разработчик">Разработчик</option>
                         </select>
                     </div>
 
