@@ -40,6 +40,9 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/dark-theme.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/mobile.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/toasts.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/printer_card.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/computer_card.css') }}">
 
     {% block head_extra %}{% endblock %}
 
@@ -120,7 +123,7 @@
     <!-- SortableJS -->
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 
-    <!-- Chart.js (для дашборда) -->
+    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
     <!-- 🔒 CSRF-обёртка -->
@@ -129,6 +132,9 @@
     <!-- 🎯 Ядро -->
     <script src="{{ url_for('static', filename='js/core.js') }}"></script>
     <script src="{{ url_for('static', filename='js/utils.js') }}"></script>
+
+    <!-- 🆕 Toast-уведомления (не конфликтуют с SweetAlert2) -->
+    <script src="{{ url_for('static', filename='js/toasts.js') }}"></script>
 
     <!-- 🆕 Единая обёртка API -->
     <script src="{{ url_for('static', filename='js/api.js') }}"></script>
@@ -140,7 +146,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/static/sw.js?v=7', { scope: '/' })
+                navigator.serviceWorker.register('/static/sw.js?v=9', { scope: '/' })
                     .then(function(reg) {
                         console.log('[PWA] SW зарегистрирован:', reg.scope);
                     })

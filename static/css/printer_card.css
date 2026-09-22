@@ -1,0 +1,417 @@
+/* static/css/printer_card.css */
+/* Карточка принтера: светлая + тёмная тема, список драйверов. */
+
+/* ============================================================
+   КАРТОЧКА
+   ============================================================ */
+.pc-card {
+    background: var(--card-bg);
+    border-radius: 1.5rem;
+    overflow: hidden;
+    text-align: left;
+    color: var(--text-color);
+}
+
+.pc-image {
+    position: relative;
+    background: var(--hover-bg);
+    padding: 1.5rem 1rem 1.2rem;
+    text-align: center;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.pc-image-wrapper {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 150px;
+    height: 150px;
+    background: var(--card-bg);
+    border-radius: 1.5rem;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+}
+
+.pc-image-wrapper i {
+    font-size: 4rem;
+    color: #667eea;
+    opacity: 0.85;
+}
+
+.pc-badge {
+    position: absolute;
+    top: 16px;
+    right: 20px;
+    padding: 5px 14px;
+    border-radius: 40px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    font-family: 'SF Mono', Consolas, monospace;
+    color: #fff;
+    backdrop-filter: blur(2px);
+}
+
+.pc-badge.pc-badge-network {
+    background: rgba(23, 162, 184, 0.9);
+}
+.pc-badge.pc-badge-usb {
+    background: rgba(108, 117, 125, 0.9);
+}
+
+.pc-content {
+    padding: 1.5rem 1.5rem 1.2rem;
+}
+
+.pc-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text-color);
+    margin: 0 0 1rem 0;
+    line-height: 1.3;
+}
+
+.pc-info-row {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    margin-bottom: 0.8rem;
+    padding-bottom: 0.55rem;
+    border-bottom: 1px dashed var(--border-color);
+}
+
+.pc-info-row:last-of-type {
+    border-bottom: none;
+}
+
+.pc-info-label {
+    width: 145px;
+    font-weight: 700;
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    flex-shrink: 0;
+}
+
+.pc-info-value {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.92rem;
+    font-weight: 500;
+    color: var(--text-color);
+    word-break: break-word;
+}
+
+.pc-inv {
+    font-family: 'SF Mono', Consolas, monospace;
+    background: rgba(102, 126, 234, 0.12);
+    color: #667eea;
+    padding: 0.15rem 0.6rem;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.82rem;
+}
+
+/* ============================================================
+   ДАТЫ
+   ============================================================ */
+.pc-dates {
+    background: rgba(102, 126, 234, 0.05);
+    border-radius: 1rem;
+    padding: 0.75rem 1rem;
+    margin: 1rem 0 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    border: 1px solid var(--border-color);
+}
+
+.pc-date-badge {
+    flex: 1;
+    min-width: 180px;
+    background: var(--card-bg);
+    border-radius: 40px;
+    padding: 6px 14px;
+    font-size: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+    border: 1px solid var(--border-color);
+}
+
+.pc-date-label {
+    color: var(--text-muted);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.pc-date-value {
+    font-family: 'SF Mono', Consolas, monospace;
+    font-weight: 600;
+    color: var(--text-color);
+    margin-left: auto;
+    white-space: nowrap;
+}
+
+.pc-date-value.empty {
+    color: var(--text-muted);
+    font-weight: 400;
+}
+
+/* ============================================================
+   КНОПКИ
+   ============================================================ */
+.pc-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 1rem;
+}
+
+.pc-actions .btn {
+    flex: 1;
+    min-width: 140px;
+    border-radius: 60px;
+    padding: 0.7rem 1rem;
+    font-weight: 600;
+    font-size: 0.88rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.pc-actions-secondary {
+    margin-top: 8px;
+}
+.pc-actions-secondary .btn {
+    flex: 1;
+}
+
+/* ============================================================
+   ВСПЫШКА
+   ============================================================ */
+@keyframes pc-flash {
+    0%   { background-color: rgba(102, 126, 234, 0.18); }
+    100% { background-color: transparent; }
+}
+.pc-flash {
+    animation: pc-flash 0.6s ease-out;
+}
+
+/* ============================================================
+   СПИСОК ДРАЙВЕРОВ
+   ============================================================ */
+
+/* Шапка модалки */
+.drivers-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 12px;
+    background: rgba(102, 126, 234, 0.06);
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    flex-wrap: wrap;
+}
+
+.drivers-header-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.drivers-header-model {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--text-color);
+    margin-bottom: 3px;
+    word-break: break-word;
+}
+
+.drivers-header-path {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.drivers-header-path code {
+    background: transparent;
+    color: #667eea;
+    padding: 0;
+    font-size: 0.75rem;
+}
+
+/* Список файлов */
+.drivers-list {
+    max-height: 420px;
+    overflow-y: auto;
+    margin: 0 -6px;
+    padding: 0 6px;
+}
+
+.driver-item {
+    display: flex;
+    align-items: stretch;
+    gap: 6px;
+    margin-bottom: 6px;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    background: var(--hover-bg);
+    transition: all 0.15s;
+    overflow: hidden;
+}
+
+.driver-item:hover {
+    border-color: #667eea;
+    background: rgba(102, 126, 234, 0.06);
+}
+
+.driver-main {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    text-decoration: none !important;
+    color: var(--text-color) !important;
+    min-width: 0;
+}
+
+.driver-icon {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+}
+
+.driver-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.driver-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text-color);
+}
+
+.driver-meta {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.badge-common {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 8px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    background: rgba(23, 162, 184, 0.15);
+    color: #0c7489;
+    margin-left: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.driver-action {
+    flex-shrink: 0;
+    color: #667eea;
+    font-size: 1.2rem;
+    padding-right: 4px;
+}
+
+/* Кнопка удаления */
+.driver-delete-btn {
+    flex-shrink: 0;
+    width: 42px;
+    border: none;
+    background: transparent;
+    color: #dc3545;
+    font-size: 1rem;
+    cursor: pointer;
+    border-left: 1px solid var(--border-color);
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.driver-delete-btn:hover {
+    background: rgba(220, 53, 69, 0.12);
+    color: #a71d2a;
+}
+
+/* ============================================================
+   ТЁМНАЯ ТЕМА
+   ============================================================ */
+[data-theme="dark"] .pc-image-wrapper {
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+[data-theme="dark"] .pc-dates {
+    background: rgba(139, 155, 255, 0.06);
+}
+[data-theme="dark"] .pc-date-badge {
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+[data-theme="dark"] .pc-inv {
+    background: rgba(139, 155, 255, 0.15);
+    color: #8b9bff;
+}
+[data-theme="dark"] .pc-image-wrapper i {
+    color: #8b9bff;
+}
+[data-theme="dark"] .driver-item {
+    background: rgba(255, 255, 255, 0.03);
+}
+[data-theme="dark"] .driver-item:hover {
+    background: rgba(139, 155, 255, 0.1);
+}
+[data-theme="dark"] .drivers-header {
+    background: rgba(139, 155, 255, 0.08);
+}
+[data-theme="dark"] .drivers-header-path code {
+    color: #8b9bff;
+}
+[data-theme="dark"] .badge-common {
+    background: rgba(23, 162, 184, 0.25);
+    color: #63d4e8;
+}
+[data-theme="dark"] .driver-delete-btn:hover {
+    background: rgba(220, 53, 69, 0.25);
+}
+
+/* ============================================================
+   МОБИЛЬНАЯ АДАПТАЦИЯ
+   ============================================================ */
+@media (max-width: 540px) {
+    .pc-content { padding: 1.2rem; }
+    .pc-info-label { width: 100%; margin-bottom: 3px; }
+    .pc-info-value { font-size: 0.85rem; }
+    .pc-dates { flex-direction: column; }
+    .pc-image-wrapper { width: 110px; height: 110px; }
+    .pc-image-wrapper i { font-size: 3rem; }
+    .pc-actions .btn {
+        font-size: 0.82rem;
+        padding: 0.65rem 0.7rem;
+        min-width: 100%;
+    }
+    .drivers-header { flex-direction: column; align-items: stretch; }
+    .driver-icon { width: 34px; height: 34px; font-size: 1.1rem; }
+    .driver-delete-btn { width: 38px; }
+}

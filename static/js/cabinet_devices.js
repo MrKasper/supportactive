@@ -373,128 +373,45 @@
     }
 
     // ============================================================
-    // ПРОСМОТР
+    // ПРОСМОТР ПК
     // ============================================================
     function viewComputer(pcId) {
         var p = Cabinet().data.computers.find(function(x) { return x.id === pcId; });
-        if (!p) return;
+        if (!p) {
+            utils.showErrorMessage('ПК не найден');
+            return;
+        }
 
-        var ramList = (p.ram || []).map(function(r) {
-            return '<li>' + utils.escapeHtml(
-                (r.size || '') + ' ' + (r.type || '')
-            ) + '</li>';
-        }).join('') || '<li class="text-muted">не указано</li>';
-
-        var storageList = (p.storage || []).map(function(s) {
-            return '<li>' + utils.escapeHtml(
-                (s.capacity || '') + ' ' + (s.type || '')
-            ) + '</li>';
-        }).join('') || '<li class="text-muted">не указано</li>';
-
-        var softwareList = (p.software || []).map(function(s) {
-            return '<li>' + utils.escapeHtml(s) + '</li>';
-        }).join('') || '<li class="text-muted">не указано</li>';
-
-        var statusBadge = p.status === 'online'
-            ? '<span class="eq-status online">Онлайн</span>'
-            : '<span class="eq-status offline">Офлайн</span>';
-
-        var pingCount = p.ping_count || 0;
-        var pingSuccess = p.ping_success_count || 0;
-        var pingFail = pingCount - pingSuccess;
-
-        Swal.fire({
-            title: '<i class="bi bi-pc-display"></i> ' +
-                   utils.escapeHtml(p.name || 'ПК'),
-            html: '<div class="text-start">' +
-                '<p><strong>Инв. номер:</strong> ' +
-                utils.escapeHtml(p.inventory_number || '—') + '</p>' +
-                '<p><strong>Статус:</strong> ' + statusBadge + '</p>' +
-                (pingCount > 0
-                    ? '<p><strong>Проверок:</strong> ' + pingCount +
-                      ' (✓ ' + pingSuccess + ' / ✗ ' + pingFail + ')</p>'
-                    : '') +
-                '<hr>' +
-                '<p><strong>Материнская плата:</strong> ' +
-                utils.escapeHtml(p.motherboard || '—') +
-                (p.motherboard_socket
-                    ? ' (' + utils.escapeHtml(p.motherboard_socket) + ')' : '') +
-                '</p>' +
-                '<p><strong>Процессор:</strong> ' +
-                utils.escapeHtml(p.cpu || '—') + '</p>' +
-                '<p><strong>IP-адрес:</strong> ' +
-                utils.escapeHtml(p.ip_address || '—') + '</p>' +
-                '<p><strong>ОЗУ:</strong></p><ul>' + ramList + '</ul>' +
-                '<p><strong>Диски:</strong></p><ul>' + storageList + '</ul>' +
-                '<p><strong>Установленное ПО:</strong></p><ul>' +
-                softwareList + '</ul>' +
-                (p.notes
-                    ? '<p><strong>Примечание:</strong> ' +
-                      utils.escapeHtml(p.notes) + '</p>'
-                    : '') +
-                '</div>',
-            confirmButtonText: 'Закрыть',
-            showCancelButton: Cabinet().canEdit(),
-            cancelButtonText: '<i class="bi bi-pencil"></i> Редактировать',
-            cancelButtonColor: '#28a745',
-            customClass: { popup: 'swal-wide' },
-        }).then(function(r) {
-            if (r.dismiss === Swal.DismissReason.cancel && Cabinet().canEdit()) {
-                editComputer(pcId);
-            }
-        });
+        // Используем новый модуль карточки ПК
+        if (window.App.ComputerCard &&
+            typeof window.App.ComputerCard.show === 'function') {
+            window.App.ComputerCard.show(p, Cabinet().data.cabinet);
+        } else {
+            // Fallback — старая модалка (упрощённая)
+            utils.showErrorMessage(
+                'Модуль карточки ПК не загружен'
+            );
+        }
     }
 
+    // ============================================================
+    // ПРОСМОТР ПРИНТЕРА
+    // ============================================================
     function viewPrinter(prId) {
-        var pr = Cabinet().data.printers.find(function(x) { return x.id === prId; });
+        var pr = Cabinet().data.printers.find(function(x) {
+            return x.id === prId;
+        });
         if (!pr) return;
 
-        var connectedPc = Cabinet().data.computers.find(function(pc) {
-            return pc.id === pr.connected_to_pc_id;
-        });
-        var connType = pr.connection_type || 'network';
-        var connLabel = connType === 'network'
-            ? '<span class="eq-conn-badge eq-conn-network">' +
-              '<i class="bi bi-globe"></i> Сетевой</span>'
-            : '<span class="eq-conn-badge eq-conn-usb">' +
-              '<i class="bi bi-usb-symbol"></i> USB</span>';
-
-        var html = '<div class="text-start">' +
-            '<p><strong>Тип подключения:</strong> ' + connLabel + '</p>' +
-            '<p><strong>Инв. номер:</strong> ' +
-            utils.escapeHtml(pr.inventory_number || '—') + '</p>' +
-            '<p><strong>Картридж:</strong> ' +
-            utils.escapeHtml(pr.cartridge || '—') + '</p>';
-
-        if (connType === 'network') {
-            html += '<p><strong>IP-адрес:</strong> ' +
-                    utils.escapeHtml(pr.ip_address || '—') + '</p>';
+        // Используем модуль карточки принтера
+        if (window.App.PrinterCard &&
+            typeof window.App.PrinterCard.show === 'function') {
+            window.App.PrinterCard.show(pr, Cabinet().data.cabinet);
         } else {
-            html += '<p><strong>Подключен к:</strong> ' +
-                (connectedPc
-                    ? utils.escapeHtml(connectedPc.name)
-                    : '— не подключен —') + '</p>';
+            utils.showErrorMessage(
+                'Модуль карточки принтера не загружен'
+            );
         }
-
-        if (pr.notes) {
-            html += '<p><strong>Примечание:</strong> ' +
-                    utils.escapeHtml(pr.notes) + '</p>';
-        }
-        html += '</div>';
-
-        Swal.fire({
-            title: '<i class="bi bi-printer"></i> ' +
-                   utils.escapeHtml(pr.model || 'Принтер'),
-            html: html,
-            confirmButtonText: 'Закрыть',
-            showCancelButton: Cabinet().canEdit(),
-            cancelButtonText: '<i class="bi bi-pencil"></i> Редактировать',
-            cancelButtonColor: '#28a745',
-        }).then(function(r) {
-            if (r.dismiss === Swal.DismissReason.cancel && Cabinet().canEdit()) {
-                editPrinter(prId);
-            }
-        });
     }
 
     // ============================================================
@@ -593,7 +510,7 @@
             '<span class="spinner-border spinner-border-sm"></span> Проверка...'
         );
 
-        api.post('/api/computers/' + pcId + '/ping')
+        api.post('/api/computers/' + pcId + '/ping', {})
             .then(function(data) {
                 $btn.prop('disabled', false).html(oldHtml);
 
@@ -646,7 +563,7 @@
                 didOpen: function() { Swal.showLoading(); },
             });
 
-            api.post('/api/cabinets/' + Cabinet().currentId + '/ping-all')
+            api.post('/api/cabinets/' + Cabinet().currentId + '/ping-all', {})
                 .then(function(data) {
                     Swal.close();
                     if (data.success) {
@@ -1349,7 +1266,7 @@
             });
 
             api.post('/api/cabinets/' + Cabinet().currentId +
-                     '/printers/import-from-cartridges')
+                     '/printers/import-from-cartridges', {})
                 .then(function(data) {
                     Swal.close();
                     if (data.success) {
@@ -1393,12 +1310,12 @@
     window.editComputer = editComputer;
     window.deleteComputer = deleteComputer;
     window.viewComputer = viewComputer;
+    window.viewPrinter = viewPrinter;
     window.pingPc = pingPc;
     window.pingAllInCabinet = pingAllInCabinet;
     window.showAddPrinter = showAddPrinter;
     window.editPrinter = editPrinter;
     window.deletePrinter = deletePrinter;
-    window.viewPrinter = viewPrinter;
     window.connectPrinter = connectPrinter;
     window.editIp = editIp;
     window.importPrintersFromCartridges = importPrintersFromCartridges;

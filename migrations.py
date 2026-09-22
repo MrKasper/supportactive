@@ -577,6 +577,98 @@ def migrate_20_sort_order(conn):
     conn.commit()
 
 
+def migrate_21_printer_replace_dates(conn):
+    """
+    v21: даты последней замены принтера и картриджа.
+      • last_printer_replaced_at — когда заменён сам принтер
+      • last_cartridge_replaced_at — когда заменён картридж
+    """
+    fields = (
+        'last_printer_replaced_at',
+        'last_cartridge_replaced_at',
+    )
+    for col in fields:
+        if not _column_exists(conn, 'cabinet_printers', col):
+            try:
+                conn.execute(
+                    f'ALTER TABLE cabinet_printers '
+                    f'ADD COLUMN {col} TEXT DEFAULT NULL'
+                )
+                log.info(f'  → Добавлена колонка cabinet_printers.{col}')
+            except sqlite3.OperationalError as e:
+                log.warning(f'  → Не удалось добавить {col}: {e}')
+    conn.commit()
+
+
+def migrate_22_computer_peripherals_and_history(conn):
+    """
+    v22: периферия ПК + история замен компонентов.
+      • cabinet_computers.speakers / webcam / headphones / microphone — JSON
+      • computer_components_history — журнал замен RAM / дисков / периферии
+    """
+    cur = conn.cursor()
+
+    # Поля периферии (JSON-объекты вида {"model": "..."})
+    for col in ('speakers', 'webcam', 'headphones', 'microphone'):
+        if not _column_exists(conn, 'cabinet_computers', col):
+            try:
+                cur.execute(
+                    f'ALTER TABLE cabinet_computers '
+                    f'ADD COLUMN {col} TEXT DEFAULT NULL'
+                )
+                log.info(f'  → Добавлена колонка cabinet_computers.{col}')
+            except sqlite3.OperationalError as e:
+                log.warning(f'  → Не удалось добавить {col}: {e}')
+
+    # Таблица истории
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS computer_components_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            computer_id INTEGER NOT NULL,
+            component_type TEXT NOT NULL,
+            action TEXT NOT NULL,
+            old_value TEXT,
+            new_value TEXT,
+            user_id INTEGER,
+            user_name TEXT,
+            note TEXT,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (computer_id) REFERENCES cabinet_computers(id) ON DELETE CASCADE
+        )
+    ''')
+    cur.execute(
+        'CREATE INDEX IF NOT EXISTS idx_pc_hist_computer '
+        'ON computer_components_history(computer_id)'
+    )
+    cur.execute(
+        'CREATE INDEX IF NOT EXISTS idx_pc_hist_type '
+        'ON computer_components_history(component_type)'
+    )
+    cur.execute(
+        'CREATE INDEX IF NOT EXISTS idx_pc_hist_created '
+        'ON computer_components_history(created_at)'
+    )
+
+    conn.commit()
+
+
+def migrate_23_computer_monitors(conn):
+    """
+    v23: мониторы ПК (массив JSON вида
+    [{"model": "...", "inventory_number": "..."}]).
+    """
+    if not _column_exists(conn, 'cabinet_computers', 'monitors'):
+        try:
+            conn.execute(
+                'ALTER TABLE cabinet_computers '
+                'ADD COLUMN monitors TEXT DEFAULT NULL'
+            )
+            log.info('  → Добавлена колонка cabinet_computers.monitors')
+        except sqlite3.OperationalError as e:
+            log.warning(f'  → Не удалось добавить monitors: {e}')
+    conn.commit()
+
+
 # ============================================================
 # РЕЕСТР МИГРАЦИЙ
 # ============================================================
@@ -601,6 +693,9 @@ MIGRATIONS = [
     (18, migrate_18_license_documents),
     (19, migrate_19_printer_connection_type),
     (20, migrate_20_sort_order),
+    (21, migrate_21_printer_replace_dates),
+    (22, migrate_22_computer_peripherals_and_history),
+    (23, migrate_23_computer_monitors),
 ]
 
 

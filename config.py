@@ -82,6 +82,7 @@ class Config:
     PRIVATE_UPLOADS = os.path.join(BASE_DIR, 'private_uploads')
     ATTACHMENTS_FOLDER = os.path.join(PRIVATE_UPLOADS, 'attachments')
     DOCUMENTS_FOLDER = os.path.join(PRIVATE_UPLOADS, 'documents')
+    DRIVERS_FOLDER = os.path.join(PRIVATE_UPLOADS, 'drivers')   # ← добавить
     LOG_DIR = os.path.join(BASE_DIR, 'logs')
 
 

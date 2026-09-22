@@ -128,6 +128,7 @@ def create_app(config_class=None):
         'UPLOAD_FOLDER_AVATARS',
         'ATTACHMENTS_FOLDER',
         'DOCUMENTS_FOLDER',
+        'DRIVERS_FOLDER',
         'LOG_DIR',
     ):
         path = app.config.get(folder_key)
@@ -288,7 +289,7 @@ def _register_blueprints(app):
     # Публичные страницы для QR
     from public_qr import public_qr_bp
 
-    # 🆕 Консоль разработчика
+    # Консоль разработчика
     from database_admin import db_admin_bp
 
     # Оборудование кабинета
@@ -347,7 +348,7 @@ def _register_context_processors(app):
     def inject_app_config():
         return dict(
             ENABLE_SSE=app.config.get('ENABLE_SSE', True),
-            APP_VERSION='2.8',
+            APP_VERSION='2.9',
         )
 
 
@@ -636,7 +637,7 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
 
     log.info('=' * 60)
-    log.info('Support Active System v2.8')
+    log.info('Support Active System v2.9')
     log.info(f'Режим: {"DEBUG" if debug_mode else "PRODUCTION"}')
     log.info(f'Сервер: http://{host}:{port}')
     log.info(f'Сессии: {app.config.get("SESSION_TYPE", "filesystem")}')

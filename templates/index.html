@@ -24,54 +24,21 @@
 
     <div class="sidebar-menu">
         <nav class="nav flex-column">
-            <!-- Заявки — видят все -->
+            <!-- 1) Дашборд — только админ -->
+            <a class="nav-link" href="/dashboard" data-page="dashboard"
+               data-role="admin">
+                <i class="bi bi-graph-up"></i>
+                <span>Дашборд</span>
+            </a>
+
+            <!-- 2) Заявки — видят все -->
             <a class="nav-link active" href="#" data-page="tasks"
                onclick="loadPage('tasks'); return false;">
                 <i class="bi bi-list-check"></i>
                 <span>Заявки</span>
             </a>
 
-            <!-- Пользователи — только админ -->
-            <a class="nav-link" href="#" data-page="users"
-               data-role="admin"
-               onclick="loadPage('users'); return false;">
-                <i class="bi bi-people"></i>
-                <span>Пользователи</span>
-            </a>
-
-            <!-- Картриджи — админ и техник -->
-            <a class="nav-link" href="#" data-page="cartridges"
-               data-role="admin,tech"
-               onclick="loadPage('cartridges'); return false;">
-                <i class="bi bi-printer"></i>
-                <span>Картриджи</span>
-            </a>
-
-            <!-- Лицензии — админ и техник -->
-            <a class="nav-link" href="#" data-page="licenses"
-               data-role="admin,tech"
-               onclick="loadPage('licenses'); return false;">
-                <i class="bi bi-key"></i>
-                <span>Лицензии</span>
-            </a>
-
-            <!-- Внешние контакты — админ и техник -->
-            <a class="nav-link" href="#" data-page="contacts"
-               data-role="admin,tech"
-               onclick="loadPage('contacts'); return false;">
-                <i class="bi bi-person-lines-fill"></i>
-                <span>Внешние контакты</span>
-            </a>
-
-            <!-- Справочник — только админ -->
-            <a class="nav-link" href="#" data-page="directory"
-               data-role="admin"
-               onclick="loadPage('directory'); return false;">
-                <i class="bi bi-book"></i>
-                <span>Справочник</span>
-            </a>
-
-            <!-- Управление кабинетами — админ и техник -->
+            <!-- 3) Управление кабинетами — админ и техник -->
             <a class="nav-link" href="#" data-page="cabinets-manage"
                data-role="admin,tech"
                onclick="loadPage('cabinets-manage'); return false;">
@@ -79,14 +46,47 @@
                 <span>Управление кабинетами</span>
             </a>
 
-            <!-- Дашборд — только админ -->
-            <a class="nav-link" href="/dashboard" data-page="dashboard"
-               data-role="admin">
-                <i class="bi bi-graph-up"></i>
-                <span>Дашборд</span>
+            <!-- 4) Пользователи — только админ -->
+            <a class="nav-link" href="#" data-page="users"
+               data-role="admin"
+               onclick="loadPage('users'); return false;">
+                <i class="bi bi-people"></i>
+                <span>Пользователи</span>
             </a>
 
-            <!-- Отчет по задачам — только админ -->
+            <!-- 5) Картриджи — админ и техник -->
+            <a class="nav-link" href="#" data-page="cartridges"
+               data-role="admin,tech"
+               onclick="loadPage('cartridges'); return false;">
+                <i class="bi bi-printer"></i>
+                <span>Картриджи</span>
+            </a>
+
+            <!-- 6) Лицензии — админ и техник -->
+            <a class="nav-link" href="#" data-page="licenses"
+               data-role="admin,tech"
+               onclick="loadPage('licenses'); return false;">
+                <i class="bi bi-key"></i>
+                <span>Лицензии</span>
+            </a>
+
+            <!-- 7) Внешние контакты — админ и техник -->
+            <a class="nav-link" href="#" data-page="contacts"
+               data-role="admin,tech"
+               onclick="loadPage('contacts'); return false;">
+                <i class="bi bi-person-lines-fill"></i>
+                <span>Внешние контакты</span>
+            </a>
+
+            <!-- 8) Справочник — только админ -->
+            <a class="nav-link" href="#" data-page="directory"
+               data-role="admin"
+               onclick="loadPage('directory'); return false;">
+                <i class="bi bi-book"></i>
+                <span>Справочник</span>
+            </a>
+
+            <!-- 9) Отчёт по задачам — только админ -->
             <a class="nav-link" href="#" data-page="report"
                data-role="admin"
                onclick="loadPage('report'); return false;">
@@ -637,6 +637,8 @@
 <!-- Оборудование кабинета -->
 <script src="{{ url_for('static', filename='js/cabinet_core.js') }}"></script>
 <script src="{{ url_for('static', filename='js/cabinet_devices.js') }}"></script>
+<script src="{{ url_for('static', filename='js/printer_card.js') }}"></script>
+<script src="{{ url_for('static', filename='js/computer_card.js') }}"></script>
 <script src="{{ url_for('static', filename='js/cabinet_documents.js') }}"></script>
 
 <!-- Горячие клавиши и мобильный UX -->

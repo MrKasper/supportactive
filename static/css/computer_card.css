@@ -1,0 +1,422 @@
+/* static/css/computer_card.css */
+/* Карточка ПК в модалке «Управление кабинетами» */
+
+.cc-card {
+    text-align: left;
+    background: var(--card-bg);
+    color: var(--text-color);
+    border-radius: 1rem;
+    overflow: hidden;
+}
+
+/* ============================================================
+   ШАПКА
+   ============================================================ */
+.cc-header {
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid var(--border-color);
+    background: linear-gradient(
+        135deg,
+        rgba(102, 126, 234, 0.08),
+        rgba(102, 126, 234, 0.02)
+    );
+}
+.cc-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-color);
+    flex-wrap: wrap;
+}
+.cc-title i { color: #667eea; }
+.cc-inv {
+    font-family: 'SF Mono', Consolas, monospace;
+    background: rgba(102, 126, 234, 0.12);
+    color: #667eea;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-left: auto;
+}
+.cc-subtitle {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+.cc-subtitle i { color: #667eea; margin-right: 4px; }
+
+/* ============================================================
+   ХАРАКТЕРИСТИКИ
+   ============================================================ */
+.cc-specs {
+    padding: 12px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    border-bottom: 1px solid var(--border-color);
+}
+.cc-spec-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    flex-wrap: wrap;
+}
+.cc-spec-icon {
+    width: 22px;
+    color: #667eea;
+    text-align: center;
+    flex-shrink: 0;
+}
+.cc-spec-label {
+    font-weight: 600;
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    min-width: 90px;
+}
+.cc-spec-value {
+    color: var(--text-color);
+    word-break: break-word;
+}
+.cc-spec-value code {
+    background: rgba(102, 126, 234, 0.08);
+    color: #667eea;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 0.82rem;
+}
+.cc-spec-meta {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+}
+
+.cc-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+.cc-status.online  { background: #dcfce7; color: #166534; }
+.cc-status.offline { background: #fee2e2; color: #991b1b; }
+[data-theme="dark"] .cc-status.online  { background: #1e4a2e; color: #7fd39a; }
+[data-theme="dark"] .cc-status.offline { background: #4a1e28; color: #e88a98; }
+
+/* ============================================================
+   СЕКЦИИ (ОЗУ / Диски / Периферия)
+   ============================================================ */
+.cc-section {
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+.cc-section:last-child { border-bottom: none; }
+
+.cc-section-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.cc-section-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-color);
+}
+.cc-section-title i { color: #667eea; }
+
+.cc-section-body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* ============================================================
+   КАРТОЧКА КОМПОНЕНТА
+   ============================================================ */
+.cc-item,
+.cc-periph {
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--bg-color);
+    overflow: hidden;
+    transition: border-color 0.15s;
+}
+.cc-item:hover,
+.cc-periph:hover {
+    border-color: rgba(102, 126, 234, 0.4);
+}
+
+.cc-item-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    flex-wrap: wrap;
+}
+.cc-item-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    background: rgba(102, 126, 234, 0.12);
+    color: #667eea;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.cc-item-label {
+    flex: 1;
+    font-weight: 600;
+    font-size: 0.88rem;
+    color: var(--text-color);
+    min-width: 100px;
+}
+
+.cc-periph-label {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--text-color);
+    min-width: 90px;
+}
+.cc-periph-value {
+    flex: 1;
+    font-size: 0.88rem;
+    color: var(--text-color);
+    min-width: 100px;
+}
+.cc-muted {
+    color: var(--text-muted);
+    font-style: italic;
+    font-size: 0.82rem;
+}
+
+.cc-item-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+/* ============================================================
+   КНОПКИ
+   ============================================================ */
+.cc-btn {
+    border: 1px solid transparent;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 4px 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    line-height: 1.2;
+    background: transparent;
+}
+.cc-btn i { font-size: 0.9em; }
+
+.cc-btn-add {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: #fff;
+}
+.cc-btn-add:hover { filter: brightness(1.1); }
+
+.cc-btn-replace {
+    background: linear-gradient(135deg, #f6c23e, #fd7e14);
+    color: #fff;
+}
+.cc-btn-replace:hover { filter: brightness(1.1); }
+
+.cc-btn-remove {
+    background: #dc3545;
+    color: #fff;
+    padding: 4px 8px;
+}
+.cc-btn-remove:hover { background: #b02a37; }
+
+/* ============================================================
+   ИСТОРИЯ ЗАМЕН
+   ============================================================ */
+.cc-history-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-top: 1px dashed var(--border-color);
+    background: rgba(102, 126, 234, 0.03);
+    transition: color 0.15s, background 0.15s;
+    user-select: none;
+}
+.cc-history-toggle:hover {
+    color: #667eea;
+    background: rgba(102, 126, 234, 0.08);
+}
+.cc-history-toggle i:first-child { font-size: 0.9em; }
+.cc-history-arrow {
+    margin-left: auto;
+    transition: transform 0.2s;
+}
+.cc-history-toggle.cc-open .cc-history-arrow {
+    transform: rotate(180deg);
+}
+
+.cc-history-body {
+    padding: 10px 12px 14px;
+    background: rgba(102, 126, 234, 0.02);
+    border-top: 1px solid var(--border-color);
+}
+.cc-history-loading {
+    text-align: center;
+    padding: 10px;
+    color: #667eea;
+}
+.cc-history-empty {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    padding: 8px;
+    font-style: italic;
+}
+.cc-history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.cc-history-item {
+    border-left: 3px solid var(--border-color);
+    padding: 6px 10px;
+    border-radius: 6px;
+    background: var(--card-bg);
+    font-size: 0.78rem;
+}
+.cc-history-item.cc-hist-replace { border-left-color: #f6c23e; }
+.cc-history-item.cc-hist-add     { border-left-color: #28a745; }
+.cc-history-item.cc-hist-remove  { border-left-color: #dc3545; }
+
+.cc-hist-top {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 2px;
+}
+.cc-hist-action {
+    font-weight: 700;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--text-muted);
+}
+.cc-hist-date {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+.cc-hist-values {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 4px 0;
+}
+.cc-hist-val {
+    font-size: 0.78rem;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.cc-hist-val-old { color: var(--text-muted); text-decoration: line-through; }
+.cc-hist-val-new { color: #28a745; font-weight: 600; }
+.cc-hist-meta {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+.cc-hist-meta i { color: #667eea; opacity: 0.6; }
+
+/* ============================================================
+   ПУСТО
+   ============================================================ */
+.cc-empty {
+    text-align: center;
+    padding: 14px;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    font-style: italic;
+}
+.cc-empty i {
+    display: block;
+    font-size: 1.6rem;
+    opacity: 0.35;
+    margin-bottom: 4px;
+}
+
+/* ============================================================
+   МОДАЛКА
+   ============================================================ */
+.swal-computer-card {
+    padding: 0 !important;
+}
+.swal-computer-card .swal2-html-container {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* ============================================================
+   ТЁМНАЯ ТЕМА
+   ============================================================ */
+[data-theme="dark"] .cc-item,
+[data-theme="dark"] .cc-periph {
+    background: rgba(255, 255, 255, 0.03);
+}
+[data-theme="dark"] .cc-history-body {
+    background: rgba(255, 255, 255, 0.02);
+}
+[data-theme="dark"] .cc-history-item {
+    background: rgba(255, 255, 255, 0.04);
+}
+[data-theme="dark"] .cc-history-toggle {
+    background: rgba(139, 155, 255, 0.04);
+}
+[data-theme="dark"] .cc-history-toggle:hover {
+    background: rgba(139, 155, 255, 0.1);
+}
+[data-theme="dark"] .cc-inv {
+    background: rgba(139, 155, 255, 0.15);
+    color: #8b9bff;
+}
+[data-theme="dark"] .cc-spec-value code {
+    background: rgba(139, 155, 255, 0.12);
+    color: #8b9bff;
+}
+[data-theme="dark"] .cc-hist-val-new { color: #7fd39a; }
+
+/* ============================================================
+   МОБИЛЬНАЯ АДАПТАЦИЯ
+   ============================================================ */
+@media (max-width: 576px) {
+    .cc-header { padding: 12px 14px 10px; }
+    .cc-specs { padding: 10px 14px; }
+    .cc-section { padding: 10px 14px; }
+    .cc-title { font-size: 1rem; }
+    .cc-inv { font-size: 0.68rem; }
+    .cc-spec-label { min-width: 70px; font-size: 0.72rem; }
+    .cc-item-row { padding: 8px 10px; gap: 6px; }
+    .cc-item-actions { width: 100%; justify-content: flex-end; }
+    .cc-btn { padding: 3px 8px; font-size: 0.72rem; }
+    .cc-history-toggle { font-size: 0.72rem; padding: 5px 10px; }
+}

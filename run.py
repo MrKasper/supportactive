@@ -70,7 +70,7 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
 
     log.info('=' * 60)
-    log.info('Support Active System v2.7')
+    log.info('Support Active System v2.9')
     log.info(f'Режим: {"DEBUG" if debug_mode else "PRODUCTION"}')
     log.info(f'Сервер: http://{host}:{port}')
     log.info(f'Сессии: {app.config.get("SESSION_TYPE", "filesystem")}')

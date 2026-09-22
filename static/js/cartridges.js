@@ -27,6 +27,36 @@
     ];
 
     // ============================================================
+    // ХЕЛПЕРЫ
+    // ============================================================
+
+    // Короткое форматирование даты: '21.09.2026 09:37'
+    function formatDateShort(dateStr) {
+        if (!dateStr) return '—';
+        try {
+            var dt = new Date(String(dateStr).replace(' ', 'T'));
+            if (isNaN(dt.getTime())) return String(dateStr);
+            return String(dt.getDate()).padStart(2, '0') + '.' +
+                   String(dt.getMonth() + 1).padStart(2, '0') + '.' +
+                   dt.getFullYear() + ' ' +
+                   String(dt.getHours()).padStart(2, '0') + ':' +
+                   String(dt.getMinutes()).padStart(2, '0');
+        } catch (e) {
+            return String(dateStr);
+        }
+    }
+
+    // Склонение русских слов: pluralizeRu(5, 'замена', 'замены', 'замен')
+    function pluralizeRu(n, one, few, many) {
+        var m10 = n % 10;
+        var m100 = n % 100;
+        if (m100 >= 11 && m100 <= 19) return many;
+        if (m10 === 1) return one;
+        if (m10 >= 2 && m10 <= 4) return few;
+        return many;
+    }
+
+    // ============================================================
     // ГЛАВНАЯ
     // ============================================================
     function loadCartridgesPage() {
@@ -80,6 +110,13 @@
 
                 html += renderTable(cartridges);
                 $contentBlock.html(html);
+
+                // Фокус на поле поиска, если есть ?search= в URL
+                var urlSearch = getSearchFromUrl();
+                if (urlSearch) {
+                    $('#cartridgesSearchInput').val(urlSearch);
+                    filterCartridgesTable();
+                }
             })
             .catch(function(error) {
                 console.error('[cartridges] load error:', error);
@@ -98,6 +135,18 @@
             '<div class="kpi-value">' + (value || 0) + '</div>' +
             '<div class="kpi-label">' + label + '</div>' +
             '</div></div>';
+    }
+
+    // ============================================================
+    // ПОДДЕРЖКА ?search= в URL (для возврата/обновления)
+    // ============================================================
+    function getSearchFromUrl() {
+        try {
+            var params = new URLSearchParams(window.location.search);
+            return params.get('search') || '';
+        } catch (e) {
+            return '';
+        }
     }
 
     // ============================================================
@@ -146,6 +195,9 @@
         return html;
     }
 
+    // ============================================================
+    // МОДАЛКА: ДЕТАЛИ ЗАМЕН ЗА МЕСЯЦ
+    // ============================================================
     function showCartridgeMonthDetails(monthKey) {
         var parts = (monthKey || '').split('-');
         if (parts.length !== 2) return;
@@ -154,27 +206,25 @@
         var month = parseInt(parts[1], 10);
         var monthName = MONTH_FULL_RU[month] || monthKey;
 
+        // ---------- Собираем замены за месяц ----------
         var replacements = [];
 
         cartridgesCache.forEach(function(cart) {
             if (!cart.replacement_dates ||
                 cart.replacement_dates.length === 0) return;
+
             cart.replacement_dates.forEach(function(dateStr) {
                 if (!dateStr) return;
                 var d = String(dateStr).trim();
                 if (d.indexOf(monthKey) === 0) {
                     replacements.push({
                         date: d,
-                        cabinet: cart.cabinet || '-',
+                        cabinet: (cart.cabinet || '— без кабинета —').trim(),
                         printer: cart.printer || '-',
                         cartridge: cart.cartridge || '-',
                     });
                 }
             });
-        });
-
-        replacements.sort(function(a, b) {
-            return a.date < b.date ? 1 : (a.date > b.date ? -1 : 0);
         });
 
         if (replacements.length === 0) {
@@ -186,43 +236,86 @@
             return;
         }
 
-        var byCabinet = {};
+        // ---------- Группировка по кабинетам ----------
+        var grouped = {};
         replacements.forEach(function(r) {
-            byCabinet[r.cabinet] = (byCabinet[r.cabinet] || 0) + 1;
+            var key = r.cabinet || '— без кабинета —';
+            if (!grouped[key]) grouped[key] = [];
+            grouped[key].push(r);
         });
 
+        // Сортировка кабинетов: сначала по числу замен (убыв.),
+        // при равенстве — по имени (русская локаль)
+        var cabinetNames = Object.keys(grouped).sort(function(a, b) {
+            var diff = grouped[b].length - grouped[a].length;
+            if (diff !== 0) return diff;
+            return String(a).localeCompare(String(b), 'ru');
+        });
+
+        // Внутри каждого кабинета — по дате (свежие сверху)
+        cabinetNames.forEach(function(cab) {
+            grouped[cab].sort(function(a, b) {
+                return a.date < b.date ? 1 : (a.date > b.date ? -1 : 0);
+            });
+        });
+
+        // Показывать группировку только если замен реально больше одной
+        var showGrouping = replacements.length > 1;
+
+        // ---------- Формируем строки таблицы ----------
         var rowsHtml = '';
-        replacements.forEach(function(r) {
-            var dateFmt = r.date;
-            try {
-                var dt = new Date(r.date.replace(' ', 'T'));
-                if (!isNaN(dt.getTime())) {
-                    dateFmt = String(dt.getDate()).padStart(2, '0') + '.' +
-                              String(dt.getMonth() + 1).padStart(2, '0') +
-                              '.' + dt.getFullYear() + ' ' +
-                              String(dt.getHours()).padStart(2, '0') + ':' +
-                              String(dt.getMinutes()).padStart(2, '0');
-                }
-            } catch (e) {}
 
-            rowsHtml += '<tr>';
-            rowsHtml += '<td class="cart-date">' +
-                        utils.escapeHtml(dateFmt) + '</td>';
-            rowsHtml += '<td class="cart-cabinet">' +
-                        utils.escapeHtml(r.cabinet) + '</td>';
-            rowsHtml += '<td>' + utils.escapeHtml(r.printer) + '</td>';
-            rowsHtml += '<td>' + utils.escapeHtml(r.cartridge) + '</td>';
-            rowsHtml += '</tr>';
-        });
+        if (showGrouping) {
+            cabinetNames.forEach(function(cab) {
+                var items = grouped[cab];
+                var countWord = pluralizeRu(items.length,
+                    'замена', 'замены', 'замен');
 
-        var cabinetSummary = Object.keys(byCabinet)
-            .sort(function(a, b) { return byCabinet[b] - byCabinet[a]; })
-            .map(function(c) {
-                return '<span class="badge bg-primary me-1 mb-1" ' +
-                    'style="font-size:.75rem">' +
-                    utils.escapeHtml(c) + ': ' + byCabinet[c] + '</span>';
-            }).join('');
+                // Заголовок группы
+                rowsHtml += '<tr class="cart-group-header">' +
+                    '<td colspan="3">' +
+                    '<i class="bi bi-door-closed"></i> ' +
+                    '<strong>' + utils.escapeHtml(cab) + '</strong>' +
+                    '<span class="badge">' +
+                    items.length + ' ' + countWord +
+                    '</span>' +
+                    '</td></tr>';
 
+                // Строки группы
+                items.forEach(function(r) {
+                    rowsHtml += '<tr class="cart-group-row">' +
+                        '<td class="cart-date">' +
+                        utils.escapeHtml(formatDateShort(r.date)) + '</td>' +
+                        '<td>' + utils.escapeHtml(r.printer) + '</td>' +
+                        '<td>' + utils.escapeHtml(r.cartridge) + '</td>' +
+                        '</tr>';
+                });
+            });
+        } else {
+            // Одна замена — плоский вид (как было)
+            replacements.forEach(function(r) {
+                rowsHtml += '<tr>' +
+                    '<td class="cart-date">' +
+                    utils.escapeHtml(formatDateShort(r.date)) + '</td>' +
+                    '<td class="cart-cabinet">' +
+                    utils.escapeHtml(r.cabinet) + '</td>' +
+                    '<td>' + utils.escapeHtml(r.printer) + '</td>' +
+                    '<td>' + utils.escapeHtml(r.cartridge) + '</td>' +
+                    '</tr>';
+            });
+        }
+
+        // ---------- Шапка таблицы ----------
+        var headerHtml = showGrouping
+            ? '<thead><tr>' +
+              '<th>Дата</th><th>Принтер</th><th>Картридж</th>' +
+              '</tr></thead>'
+            : '<thead><tr>' +
+              '<th>Дата</th><th>Кабинет</th>' +
+              '<th>Принтер</th><th>Картридж</th>' +
+              '</tr></thead>';
+
+        // ---------- Финальный HTML ----------
         var html =
             '<div class="text-start">' +
             '<div class="row mb-3 g-2">' +
@@ -236,16 +329,14 @@
             '<div class="col-6"><div class="p-2 rounded" ' +
             'style="background:rgba(40,167,69,.1)">' +
             '<div style="font-size:1.4rem;font-weight:800;color:#28a745">' +
-            Object.keys(byCabinet).length + '</div>' +
+            cabinetNames.length + '</div>' +
             '<div style="font-size:.7rem;color:#888;text-transform:uppercase">' +
             'Кабинетов</div>' +
             '</div></div></div>' +
-            '<div class="mb-3">' + cabinetSummary + '</div>' +
-            '<div style="max-height:350px;overflow-y:auto;border-radius:8px;' +
+            '<div style="max-height:400px;overflow-y:auto;border-radius:8px;' +
             'border:1px solid var(--border-color)">' +
             '<table class="cart-month-table mb-0">' +
-            '<thead><tr><th>Дата</th><th>Кабинет</th>' +
-            '<th>Принтер</th><th>Картридж</th></tr></thead>' +
+            headerHtml +
             '<tbody>' + rowsHtml + '</tbody>' +
             '</table></div></div>';
 
@@ -276,68 +367,174 @@
             'onclick="showAddCartridgeModal()">' +
             '<i class="bi bi-plus-circle"></i> Добавить</button>' +
             '</div></div></div>' +
-            '<div class="card-body"><div class="table-responsive">' +
+            '<div class="card-body">' +
+
+            // ----- Поиск (как в «Управлении кабинетами») -----
+            '<div class="row mb-3"><div class="col-md-6 col-lg-4">' +
+            '<div class="input-group">' +
+            '<span class="input-group-text"><i class="bi bi-search"></i></span>' +
+            '<input type="text" class="form-control" id="cartridgesSearchInput" ' +
+            'placeholder="Поиск по кабинету, ФИО, принтеру, картриджу..." ' +
+            'autocomplete="off">' +
+            '<button class="btn btn-outline-secondary" type="button" ' +
+            'id="cartridgesSearchClear" title="Очистить" style="display:none">' +
+            '<i class="bi bi-x"></i></button>' +
+            '</div>' +
+            '<small class="text-muted">Найдено: ' +
+            '<span id="cartridgesSearchCount">' +
+            (cartridges ? cartridges.length : 0) +
+            '</span></small>' +
+            '</div></div>' +
+
+            '<div class="table-responsive">' +
             '<table class="table table-striped table-hover align-middle">' +
             '<thead><tr>' +
             '<th>Кабинет</th><th>ФИО</th><th>Принтер</th>' +
             '<th>Картридж</th><th>Даты замены</th>' +
             '<th>Примечание</th><th>Действия</th>' +
-            '</tr></thead><tbody>';
+            '</tr></thead>' +
+            '<tbody id="cartridgesTableBody">' +
+            renderRows(cartridges) +
+            '</tbody></table></div></div></div>';
 
-        if (cartridges.length === 0) {
-            html += '<tr><td colspan="7" class="text-center text-muted py-4">' +
-                    'Нет записей</td></tr>';
+        // Навешиваем обработчик после вставки в DOM
+        setTimeout(initSearchHandler, 0);
+
+        return html;
+    }
+
+    // ============================================================
+    // СТРОКИ ТАБЛИЦЫ
+    // ============================================================
+    function renderRows(cartridges) {
+        if (!cartridges || cartridges.length === 0) {
+            return '<tr><td colspan="7" class="text-center text-muted py-4">' +
+                   'Нет записей</td></tr>';
+        }
+
+        var html = '';
+        cartridges.forEach(function(cart) {
+            html += renderCartridgeRow(cart);
+        });
+        return html;
+    }
+
+    function renderCartridgeRow(cart) {
+        var datesHtml = '';
+        if (cart.replacement_dates && cart.replacement_dates.length > 0) {
+            var sortedDates = cart.replacement_dates.slice().sort().reverse();
+            datesHtml = '<ul class="list-unstyled mb-0 small">';
+            sortedDates.forEach(function(date, idx) {
+                var isLatest = idx === 0;
+                datesHtml += '<li class="' +
+                    (isLatest ? 'text-success fw-bold' : '') + '">' +
+                    (isLatest
+                        ? '<i class="bi bi-star-fill"></i> '
+                        : '') +
+                    utils.formatDate(date) + '</li>';
+            });
+            datesHtml += '</ul>';
         } else {
-            cartridges.forEach(function(cart) {
-                var datesHtml = '';
-                if (cart.replacement_dates &&
-                    cart.replacement_dates.length > 0) {
-                    var sortedDates = cart.replacement_dates.slice()
-                        .sort().reverse();
-                    datesHtml = '<ul class="list-unstyled mb-0 small">';
-                    sortedDates.forEach(function(date, idx) {
-                        var isLatest = idx === 0;
-                        datesHtml += '<li class="' +
-                            (isLatest ? 'text-success fw-bold' : '') + '">' +
-                            (isLatest
-                                ? '<i class="bi bi-star-fill"></i> '
-                                : '') +
-                            utils.formatDate(date) + '</li>';
-                    });
-                    datesHtml += '</ul>';
-                } else {
-                    // 🆕 Бейдж для записей без даты
-                    datesHtml = '<span class="badge bg-warning text-dark">' +
-                        '<i class="bi bi-exclamation-circle"></i> ' +
-                        'Дата не указана</span>';
-                }
+            datesHtml = '<span class="badge bg-warning text-dark">' +
+                '<i class="bi bi-exclamation-circle"></i> ' +
+                'Дата не указана</span>';
+        }
 
-                html += '<tr>';
-                html += '<td>' + utils.escapeHtml(cart.cabinet || '-') + '</td>';
-                html += '<td>' + utils.escapeHtml(cart.full_name || '-') + '</td>';
-                html += '<td>' + utils.escapeHtml(cart.printer || '-') + '</td>';
-                html += '<td>' + utils.escapeHtml(cart.cartridge || '-') + '</td>';
-                html += '<td>' + datesHtml + '</td>';
-                html += '<td>' + utils.escapeHtml(cart.notes || '-') + '</td>';
-                html += '<td><div class="btn-group btn-group-sm">';
-                html += '<button class="btn btn-outline-success" ' +
-                    'onclick="editCartridge(' + cart.id + ')" ' +
-                    'title="Редактировать">' +
-                    '<i class="bi bi-pencil"></i></button>';
-                html += '<button class="btn btn-outline-danger" ' +
-                    'onclick="deleteCartridge(' + cart.id + ')" ' +
-                    'title="Удалить">' +
-                    '<i class="bi bi-trash"></i></button>';
-                html += '<button class="btn btn-outline-warning" ' +
-                    'onclick="clearCartridgeDates(' + cart.id + ')" ' +
-                    'title="Очистить даты">' +
-                    '<i class="bi bi-calendar-x"></i></button>';
-                html += '</div></td></tr>';
+        var html = '<tr>';
+        html += '<td>' + utils.escapeHtml(cart.cabinet || '-') + '</td>';
+        html += '<td>' + utils.escapeHtml(cart.full_name || '-') + '</td>';
+        html += '<td>' + utils.escapeHtml(cart.printer || '-') + '</td>';
+        html += '<td>' + utils.escapeHtml(cart.cartridge || '-') + '</td>';
+        html += '<td>' + datesHtml + '</td>';
+        html += '<td>' + utils.escapeHtml(cart.notes || '-') + '</td>';
+        html += '<td><div class="btn-group btn-group-sm">';
+        html += '<button class="btn btn-outline-success" ' +
+            'onclick="editCartridge(' + cart.id + ')" ' +
+            'title="Редактировать">' +
+            '<i class="bi bi-pencil"></i></button>';
+        html += '<button class="btn btn-outline-danger" ' +
+            'onclick="deleteCartridge(' + cart.id + ')" ' +
+            'title="Удалить">' +
+            '<i class="bi bi-trash"></i></button>';
+        html += '<button class="btn btn-outline-warning" ' +
+            'onclick="clearCartridgeDates(' + cart.id + ')" ' +
+            'title="Очистить даты">' +
+            '<i class="bi bi-calendar-x"></i></button>';
+        html += '</div></td></tr>';
+        return html;
+    }
+
+    // ============================================================
+    // ПОИСК
+    // ============================================================
+    function initSearchHandler() {
+        var $input = $('#cartridgesSearchInput');
+        if ($input.length === 0) return;
+
+        $input
+            .off('input.cartSearch')
+            .on('input.cartSearch', function() {
+                filterCartridgesTable();
+            });
+
+        $('#cartridgesSearchClear')
+            .off('click.cartSearch')
+            .on('click.cartSearch', function() {
+                $('#cartridgesSearchInput').val('').trigger('input');
+                $('#cartridgesSearchInput').focus();
+            });
+
+        // Esc — очистить
+        $input
+            .off('keydown.cartSearch')
+            .on('keydown.cartSearch', function(e) {
+                if (e.key === 'Escape') {
+                    $(this).val('').trigger('input');
+                }
+            });
+    }
+
+    function filterCartridgesTable() {
+        var q = ($('#cartridgesSearchInput').val() || '').toLowerCase().trim();
+
+        // Показываем/прячем крестик
+        $('#cartridgesSearchClear').toggle(q.length > 0);
+
+        var filtered;
+        if (!q) {
+            filtered = cartridgesCache;
+        } else {
+            filtered = cartridgesCache.filter(function(c) {
+                if (cartridgeMatches(c, q)) return true;
+
+                // Также ищем по датам замены (по текстовому виду)
+                if (c.replacement_dates && c.replacement_dates.length) {
+                    for (var i = 0; i < c.replacement_dates.length; i++) {
+                        var d = String(c.replacement_dates[i] || '').toLowerCase();
+                        if (d.indexOf(q) !== -1) return true;
+                    }
+                }
+                return false;
             });
         }
 
-        html += '</tbody></table></div></div></div>';
-        return html;
+        $('#cartridgesTableBody').html(renderRows(filtered));
+        $('#cartridgesSearchCount').text(filtered.length);
+    }
+
+    function cartridgeMatches(cart, q) {
+        var fields = [
+            cart.cabinet,
+            cart.full_name,
+            cart.printer,
+            cart.cartridge,
+            cart.notes,
+        ];
+        for (var i = 0; i < fields.length; i++) {
+            var v = fields[i];
+            if (v && String(v).toLowerCase().indexOf(q) !== -1) return true;
+        }
+        return false;
     }
 
     // ============================================================
@@ -530,12 +727,13 @@
             return false;
         }
 
-        // ✅ Даты — опциональные
+        // Даты — опциональные. Ищем только внутри своей формы.
         var dates = [];
-        document.querySelectorAll('.date-input').forEach(function(input) {
-            var v = (input.value || '').trim();
-            if (v) dates.push(v.replace('T', ' ') + ':00');
-        });
+        document.querySelectorAll('#dates-container .date-input')
+            .forEach(function(input) {
+                var v = (input.value || '').trim();
+                if (v) dates.push(v.replace('T', ' ') + ':00');
+            });
 
         return {
             cabinet: cabinet,
@@ -675,6 +873,7 @@
     mod.remove = deleteCartridge;
     mod.clearDates = clearCartridgeDates;
     mod.showMonthDetails = showCartridgeMonthDetails;
+    mod.filter = filterCartridgesTable;
 
     window.loadCartridgesPage = loadCartridgesPage;
     window.showAddCartridgeModal = showAddCartridgeModal;
@@ -682,6 +881,7 @@
     window.deleteCartridge = deleteCartridge;
     window.clearCartridgeDates = clearCartridgeDates;
     window.showCartridgeMonthDetails = showCartridgeMonthDetails;
+    window.filterCartridgesTable = filterCartridgesTable;
 
     console.log('[cartridges] Загружено');
 })();

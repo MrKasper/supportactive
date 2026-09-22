@@ -28,7 +28,15 @@ def get_users():
             SELECT id, full_name, role, avatar, email, phone, department, login, is_active
             FROM users
             WHERE deleted_at IS NULL
-            ORDER BY full_name
+            ORDER BY
+                CASE role
+                    WHEN 'Разработчик'   THEN 1
+                    WHEN 'Администратор' THEN 2
+                    WHEN 'Техник'        THEN 3
+                    WHEN 'Пользователь'  THEN 4
+                    ELSE 5
+                END,
+                full_name
         ''')
         return jsonify([dict(user) for user in users])
     except Exception as e:
@@ -73,10 +81,6 @@ def get_user(user_id):
 @users_bp.route('/api/users/search')
 @login_required
 def search_users():
-    """
-    Лёгкий поиск по full_name / login. Используется в @mentions-автокомплите.
-    Доступен всем авторизованным (нужен для автокомплита).
-    """
     try:
         q = (request.args.get('q') or '').strip()
         if len(q) < 2:
@@ -326,11 +330,6 @@ def delete_user(user_id):
 @users_bp.route('/api/users/<int:user_id>/credentials')
 @role_required('Администратор')
 def get_user_credentials(user_id):
-    """
-    Возвращает логин пользователя.
-    Пароль недоступен — хранится в виде необратимого хеша.
-    Для получения нового пароля используйте /reset-password.
-    """
     try:
         user = db.query(
             'SELECT id, full_name, login FROM users WHERE id = ? AND deleted_at IS NULL',
@@ -358,10 +357,6 @@ def get_user_credentials(user_id):
 @users_bp.route('/api/users/<int:user_id>/reset-password', methods=['POST'])
 @role_required('Администратор')
 def reset_user_password(user_id):
-    """
-    Сброс пароля: генерирует новый, сохраняет только хеш,
-    возвращает новый пароль один раз в открытом виде.
-    """
     try:
         user = db.query(
             'SELECT id, full_name, login FROM users WHERE id = ? AND deleted_at IS NULL',

@@ -1,9 +1,13 @@
 // static/js/notifications_sse.js
+// Real-time уведомления через Server-Sent Events.
 
 (function() {
     'use strict';
 
-    if (!window.App) return;
+    if (!window.App) {
+        console.error('[notifications_sse] App не инициализирован');
+        return;
+    }
 
     var mod = window.App.register('NotificationsSSE');
     var utils = window.App.utils;
@@ -14,10 +18,12 @@
     var lastSyncAt = 0;
     var syncTimer = null;
 
-    // ⚠️ Храним последний ID уведомления в localStorage,
-    // чтобы при reconnect не пересылать старые
     var LAST_ID_KEY = 'support_active_last_notif_id';
+    var SYNC_THROTTLE_MS = 800;
 
+    // ============================================================
+    // last_id в localStorage
+    // ============================================================
     function getLastId() {
         var v = localStorage.getItem(LAST_ID_KEY);
         return v ? parseInt(v, 10) || 0 : 0;
@@ -38,7 +44,10 @@
             sse = null;
         }
 
-        if (!window.EventSource) return;
+        if (!window.EventSource) {
+            console.warn('[SSE] EventSource не поддерживается');
+            return;
+        }
 
         var lastId = getLastId();
         var url = '/api/notifications/stream?last_id=' + lastId;
@@ -75,6 +84,9 @@
         };
     }
 
+    // ============================================================
+    // СИНХРОНИЗАЦИЯ СЧЁТЧИКА
+    // ============================================================
     function syncUnreadCount() {
         if (window.App.Notifications &&
             typeof window.App.Notifications.loadUnreadCount === 'function') {
@@ -86,7 +98,7 @@
         var now = Date.now();
         if (syncTimer) return;
 
-        if (now - lastSyncAt >= 800) {
+        if (now - lastSyncAt >= SYNC_THROTTLE_MS) {
             lastSyncAt = now;
             syncUnreadCount();
             return;
@@ -95,32 +107,35 @@
             syncTimer = null;
             lastSyncAt = Date.now();
             syncUnreadCount();
-        }, 800 - (now - lastSyncAt));
+        }, SYNC_THROTTLE_MS - (now - lastSyncAt));
     }
 
+    // ============================================================
+    // ОБРАБОТКА УВЕДОМЛЕНИЯ
+    // ============================================================
     function handleNewNotification(n) {
+        // Обновляем счётчик с сервера
         scheduleSync();
 
-        // Проверка: не показывали ли мы это уведомление раньше
-        var shownKey = 'shown_notif_' + n.id;
-        if (sessionStorage.getItem(shownKey) === '1') {
-            return;  // уже показывали в этой сессии
-        }
-        sessionStorage.setItem(shownKey, '1');
+        // ⚠️ НЕ используем Swal.fire — он закрывает открытые модалки!
+        // Используем собственный toast из toasts.js
+        if (window.App.Toasts && typeof window.App.Toasts.show === 'function') {
+            var title = n.title || 'Уведомление';
+            var message = n.message || '';
+            var url = n.task_id ? ('/?task=' + n.task_id) : '/';
 
-        if (typeof Swal !== 'undefined') {
-            Swal.fire({
-                toast: true,
-                position: 'top-end',
-                icon: 'info',
-                title: n.title || 'Уведомление',
-                text: n.message || '',
-                timer: 4000,
-                showConfirmButton: false,
-                timerProgressBar: true,
+            window.App.Toasts.show(title, message, 'info', {
+                id: n.id,              // дедупликация
+                url: url,              // клик → переход
+                duration: 5000,
             });
+        } else if (typeof window.showToast === 'function') {
+            // Fallback, если toasts.js ещё не загружен
+            window.showToast(n.title || 'Уведомление', n.message || '', 'info',
+                             { id: n.id });
         }
 
+        // Browser Notification (нативные, не конфликтуют с Swal)
         if (typeof Notification !== 'undefined' &&
             Notification.permission === 'granted') {
             try {
@@ -133,6 +148,9 @@
         }
     }
 
+    // ============================================================
+    // ОТКЛЮЧЕНИЕ
+    // ============================================================
     function disconnect() {
         if (sse) { try { sse.close(); } catch (e) {} sse = null; }
         if (syncTimer) { clearTimeout(syncTimer); syncTimer = null; }

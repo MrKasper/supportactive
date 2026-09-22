@@ -357,8 +357,14 @@
     box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.25), 0 4px 14px rgba(102, 126, 234, 0.5);
 }
 
-/* Таблица месяца */
-.cart-month-table { width: 100%; font-size: 0.85rem; border-collapse: collapse; }
+/* ============================================================
+   ТАБЛИЦА МЕСЯЦА
+   ============================================================ */
+.cart-month-table {
+    width: 100%;
+    font-size: 0.85rem;
+    border-collapse: collapse;
+}
 .cart-month-table th {
     background: #f6f8ff;
     color: #4a5478;
@@ -377,12 +383,110 @@
     color: #333;
 }
 .cart-month-table tr:hover td { background: #f8faff; }
-.cart-month-table .cart-date { font-weight: 600; color: #667eea; white-space: nowrap; font-size: 0.78rem; }
+.cart-month-table .cart-date {
+    font-weight: 600;
+    color: #667eea;
+    white-space: nowrap;
+    font-size: 0.78rem;
+}
 .cart-month-table .cart-cabinet { font-weight: 600; }
 
-[data-theme="dark"] .cart-month-table th { background: #2a2a3a; color: #c0c0d0; border-color: #3a3a4a; }
-[data-theme="dark"] .cart-month-table td { border-color: #2a2a3a; color: #d0d0d8; }
+[data-theme="dark"] .cart-month-table th {
+    background: #2a2a3a;
+    color: #c0c0d0;
+    border-color: #3a3a4a;
+}
+[data-theme="dark"] .cart-month-table td {
+    border-color: #2a2a3a;
+    color: #d0d0d8;
+}
 [data-theme="dark"] .cart-month-table tr:hover td { background: #2f2f3a; }
+
+/* ============================================================
+   ГРУППИРОВКА ПО КАБИНЕТАМ (cart-month-table)
+   Без sticky — избегаем наложения заголовков при скролле.
+   ============================================================ */
+.cart-month-table .cart-group-header td {
+    background: linear-gradient(
+        90deg,
+        rgba(102, 126, 234, 0.12),
+        rgba(102, 126, 234, 0.03)
+    );
+    padding: 10px 12px;
+    font-size: 0.88rem;
+    color: #4a5478;
+    border-top: 2px solid rgba(102, 126, 234, 0.22);
+    border-bottom: 1px solid rgba(102, 126, 234, 0.1);
+}
+.cart-month-table tbody tr.cart-group-header:first-child td {
+    border-top: none;
+}
+.cart-month-table .cart-group-header i {
+    color: #667eea;
+    margin-right: 6px;
+}
+.cart-month-table .cart-group-header strong {
+    color: #333;
+    font-weight: 700;
+}
+.cart-month-table .cart-group-header .badge {
+    display: inline-block;
+    font-size: 0.7rem;
+    margin-left: 8px;
+    background: #667eea !important;
+    color: #fff !important;
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+    vertical-align: middle;
+}
+
+.cart-month-table .cart-group-row td {
+    padding-left: 22px;
+    background: #fff;
+}
+.cart-month-table .cart-group-row td:first-child {
+    border-left: 3px solid rgba(102, 126, 234, 0.25);
+}
+.cart-month-table .cart-group-row:hover td {
+    background: #f8faff;
+}
+.cart-month-table .cart-group-row:hover td:first-child {
+    border-left-color: #667eea;
+}
+
+/* Тёмная тема */
+[data-theme="dark"] .cart-month-table .cart-group-header td {
+    background: linear-gradient(
+        90deg,
+        rgba(139, 155, 255, 0.15),
+        rgba(139, 155, 255, 0.04)
+    );
+    color: #c0c0d0;
+    border-top-color: rgba(139, 155, 255, 0.3);
+    border-bottom-color: rgba(139, 155, 255, 0.12);
+}
+[data-theme="dark"] .cart-month-table .cart-group-header i {
+    color: #8b9bff;
+}
+[data-theme="dark"] .cart-month-table .cart-group-header strong {
+    color: #e0e0e8;
+}
+[data-theme="dark"] .cart-month-table .cart-group-header .badge {
+    background: #4e73df !important;
+}
+[data-theme="dark"] .cart-month-table .cart-group-row td {
+    background: transparent;
+}
+[data-theme="dark"] .cart-month-table .cart-group-row td:first-child {
+    border-left-color: rgba(139, 155, 255, 0.35);
+}
+[data-theme="dark"] .cart-month-table .cart-group-row:hover td {
+    background: #2f2f3a;
+}
+[data-theme="dark"] .cart-month-table .cart-group-row:hover td:first-child {
+    border-left-color: #8b9bff;
+}
 
 /* ============================================================
    АДАПТИВ
@@ -407,7 +511,21 @@
     .task-tabs .nav-link { padding: 6px 8px; font-size: 0.75rem; }
     .comment-item { padding: 8px; gap: 8px; }
     .attachments-grid { grid-template-columns: repeat(2, 1fr); }
+
+    /* Группировка картриджей — компактнее */
+    .cart-month-table .cart-group-header td {
+        padding: 8px 10px;
+        font-size: 0.8rem;
+    }
+    .cart-month-table .cart-group-header .badge {
+        font-size: 0.65rem;
+        padding: 2px 6px;
+    }
+    .cart-month-table .cart-group-row td {
+        padding-left: 14px;
+    }
 }
+
 /* ============================================================
    @MENTIONS
    ============================================================ */
