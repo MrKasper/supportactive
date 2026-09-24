@@ -1,5 +1,6 @@
-// static/js/dev_impersonate.js
+// static/js/admin/dev_impersonate.js
 // Impersonation для роли «Разработчик» — доступно на всех страницах.
+// Плюс функция devLogout() для кнопки «Выйти» в сайдбаре /dev и /audit.
 
 (function() {
     'use strict';
@@ -111,23 +112,60 @@
     }
 
     // ============================================================
+    // ВЫХОД ИЗ СИСТЕМЫ
+    // ============================================================
+    // Кнопка «Выйти» в сайдбаре /dev и /audit.
+    // Если разработчик сейчас под другим пользователем (impersonation) —
+    // предупреждаем, что сессия разработчика тоже будет потеряна.
+    function devLogout() {
+        var isImpersonating = false;
+        try {
+            isImpersonating = !!document.querySelector('.impersonate-banner');
+        } catch (e) {}
+
+        var text = isImpersonating
+            ? 'Вы сейчас под другим пользователем. ' +
+              'Выйти из системы полностью? ' +
+              '(Сессия разработчика тоже будет потеряна.)'
+            : 'Выйти из системы?';
+
+        Swal.fire({
+            title: 'Выход',
+            text: text,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: '<i class="bi bi-box-arrow-right"></i> Выйти',
+            cancelButtonText: 'Отмена',
+            confirmButtonColor: '#dc3545',
+            reverseButtons: true,
+        }).then(function(r) {
+            if (r.isConfirmed) {
+                window.location.href = '/logout';
+            }
+        });
+    }
+
+    // ============================================================
     // ЭКСПОРТ
     // ============================================================
     window.DevImpersonate = {
         openUserSwitch: openUserSwitch,
         impersonateUser: impersonateUser,
         backToDev: backToDev,
+        devLogout: devLogout,
     };
 
     // Дублируем в DevConsole, если он есть
     if (window.DevConsole) {
         window.DevConsole.openUserSwitch = openUserSwitch;
         window.DevConsole.backToDev = backToDev;
+        window.DevConsole.devLogout = devLogout;
     }
 
     // Глобальные алиасы для inline onclick
     window.openUserSwitch = openUserSwitch;
     window.backToDev = backToDev;
+    window.devLogout = devLogout;
 
     console.log('[dev_impersonate] Загружено');
 })();

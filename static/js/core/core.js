@@ -1,77 +1,362 @@
-// static/js/core.js
-// Корневой namespace и глобальное состояние
+// static/js/core/main.js
+// Инициализация приложения, навигация, роли.
 
 (function() {
     'use strict';
 
-    // Единое пространство имён
-    window.App = window.App || {};
-    window.App.version = '2.1';
+    if (!window.App) {
+        console.error('[main] App не инициализирован');
+        return;
+    }
 
-    // ============ ГЛОБАЛЬНОЕ СОСТОЯНИЕ ============
-    window.App.state = {
-        currentUserId: null,
-        currentUserRole: null,
-        currentUserFullName: null,
-        currentTaskId: null,
-        currentPage: 1,
-        currentPerPage: 50,
-        currentTotalPages: 1,
-        selectedTasks: new Set()
+    var mod = window.App.register('Main');
+    var api = window.App.api || {};
+    var utils = window.App.utils;
+    var state = window.App.state;
+
+    if (typeof api.get !== 'function') {
+        console.error(
+            '[main] App.api не загружен. Убедитесь, что api.js ' +
+            'подключён в base.html ПЕРЕД модулями.'
+        );
+        return;
+    }
+
+    // ============================================================
+    // РОЛИ → КОДЫ
+    // ============================================================
+    // Маппинг русских названий ролей в короткие англ. коды,
+    // которые используются в data-role в HTML.
+    var ROLE_ALIASES = {
+        'Администратор': ['admin', 'Администратор'],
+        'Техник':        ['tech', 'Техник'],
+        'Пользователь':  ['user', 'Пользователь'],
+        'Разработчик':   ['dev', 'Разработчик'],
     };
 
-    // ============ ОБРАТНАЯ СОВМЕСТИМОСТЬ ============
-    // Многие модули всё ещё используют глобальные переменные
-    // (currentUserId, currentTaskId, selectedTasks). Сохраняем их через
-    // геттеры/сеттеры, чтобы не ломать существующий код.
-    Object.defineProperty(window, 'currentUserId', {
-        get: function() { return window.App.state.currentUserId; },
-        set: function(v) { window.App.state.currentUserId = v; },
-        configurable: true
-    });
-    Object.defineProperty(window, 'currentTaskId', {
-        get: function() { return window.App.state.currentTaskId; },
-        set: function(v) { window.App.state.currentTaskId = v; },
-        configurable: true
-    });
-    Object.defineProperty(window, 'selectedTasks', {
-        get: function() { return window.App.state.selectedTasks; },
-        configurable: true
-    });
-    Object.defineProperty(window, 'currentPage', {
-        get: function() { return window.App.state.currentPage; },
-        set: function(v) { window.App.state.currentPage = v; },
-        configurable: true
-    });
-    Object.defineProperty(window, 'currentPerPage', {
-        get: function() { return window.App.state.currentPerPage; },
-        configurable: true
-    });
+    function _roleAliases(role) {
+        return ROLE_ALIASES[role] || [role];
+    }
 
-    // ============ РЕГИСТРАЦИЯ МОДУЛЯ ============
-    /**
-     * Регистрирует модуль в App и возвращает объект для экспорта.
-     * @param {string} name — имя модуля ('Tasks', 'Users', ...)
-     * @returns {object} — тот же объект, что и App.<name>
-     */
-    window.App.register = function(name) {
-        window.App[name] = window.App[name] || {};
-        return window.App[name];
-    };
+    // ============================================================
+    // ИНИЦИАЛИЗАЦИЯ
+    // ============================================================
+    function init() {
+        console.log('=== Support Active System v' + window.App.version + ' ===');
 
-    // ============ ЭКСПОРТ ПУБЛИЧНЫХ ФУНКЦИЙ В WINDOW ============
-    /**
-     * Экспортирует функции из App.<module> в window для inline onclick.
-     * @param {object} apiObj — объект с функциями
-     */
-    window.App.exposeGlobals = function(apiObj) {
-        if (!apiObj || typeof apiObj !== 'object') return;
-        Object.keys(apiObj).forEach(function(key) {
-            if (typeof apiObj[key] === 'function') {
-                window[key] = apiObj[key];
+        if (typeof jQuery === 'undefined') {
+            console.error('[main] jQuery не загружен');
+            return;
+        }
+
+        // 1. Тема
+        if (window.App.Theme) window.App.Theme.init();
+
+        // 2. Горячие клавиши
+        if (window.App.Hotkeys) window.App.Hotkeys.init();
+
+        // 3. Мобильный UX
+        if (window.App.MobileUX) window.App.MobileUX.init();
+
+        // 4. Авторизация + данные
+        checkAuthAndInit();
+
+        // 5. Динамическая аватарка
+        $('#editFullName').on('input', function() {
+            var fullName = $(this).val();
+            var editMode = $('#editUserForm').data('edit-mode');
+            if (editMode === 'create' && fullName && fullName.trim().length > 0) {
+                var initials = fullName.trim().charAt(0).toUpperCase();
+                var colorIndex = fullName.trim().length % utils.avatarColors.length;
+                $('#editUserAvatar').css({
+                    'background-image': 'none',
+                    'background-color': utils.avatarColors[colorIndex],
+                    'color': 'white',
+                }).html('<span style="font-size:40px;">' +
+                    utils.escapeHtml(initials) + '</span>');
             }
         });
-    };
+    }
 
-    console.log('[core] App namespace initialized (v' + window.App.version + ')');
+    // ============================================================
+    // ПРОВЕРКА АВТОРИЗАЦИИ
+    // ============================================================
+    function checkAuthAndInit() {
+        api.get('/api/current_user')
+            .then(function(data) {
+                if (!data || data.error) {
+                    window.location.href = '/login';
+                    return;
+                }
+
+                state.currentUserId = data.id;
+                window.currentUserRole = data.role;
+                window.currentUserFullName = data.full_name;
+
+                console.log(
+                    '[main] Пользователь:', data.full_name,
+                    '| Роль:', data.role
+                );
+
+                // Разработчик → редирект в консоль разработчика
+                if (data.role === 'Разработчик') {
+                    window.location.href = '/dev';
+                    return;
+                }
+
+                setupInterfaceByRole(data.role);
+                loadInitialData();
+            })
+            .catch(function(error) {
+                console.error('[main] Auth check failed:', error);
+                if (error && (error.status === 401 || !error.status)) {
+                    window.location.href = '/login';
+                }
+            });
+    }
+
+    // ============================================================
+    // ЗАГРУЗКА НАЧАЛЬНЫХ ДАННЫХ
+    // ============================================================
+    function loadInitialData() {
+        if (window.App.Auth && window.App.Auth.loadUserInfo) {
+            window.App.Auth.loadUserInfo();
+        }
+
+        if (window.App.Tasks) {
+            if (window.App.Tasks.loadStatistics) window.App.Tasks.loadStatistics();
+            if (window.App.Tasks.loadFilters) window.App.Tasks.loadFilters();
+            if (window.App.Tasks.loadTasks) window.App.Tasks.loadTasks(1);
+            if (window.App.Tasks.setupEventHandlers) window.App.Tasks.setupEventHandlers();
+            if (window.App.Tasks.setupContextMenu) window.App.Tasks.setupContextMenu();
+            if (window.App.Tasks.setupCabinetSearch) window.App.Tasks.setupCabinetSearch();
+        }
+
+        if (window.App.Notifications && window.App.Notifications.loadUnreadCount) {
+            window.App.Notifications.loadUnreadCount();
+        }
+
+        if (window.App.NotificationsSSE && window.ENABLE_SSE !== false) {
+            if (window.App.NotificationsSSE.connect) {
+                window.App.NotificationsSSE.connect();
+            }
+        } else if (window.App.Notifications && window.App.Notifications.startPolling) {
+            window.App.Notifications.startPolling();
+        }
+
+        if (window.App.WebPush) {
+            if (window.App.WebPush.initButton) window.App.WebPush.initButton();
+            if (window.App.WebPush.maybeOffer) window.App.WebPush.maybeOffer();
+        }
+
+        if (window.App.MobileUX && window.App.MobileUX.updateFABVisibility) {
+            window.App.MobileUX.updateFABVisibility();
+        }
+
+        console.log('[main] Приложение инициализировано');
+    }
+
+    // ============================================================
+    // ИНТЕРФЕЙС ПО РОЛИ
+    // ============================================================
+
+    /**
+     * Показывает/скрывает элементы с data-role в зависимости от роли.
+     * Работает для:
+     *   • .sidebar .nav-link
+     *   • .mobile-bottom-nav .nav-item
+     *   • любых других [data-role]
+     */
+    function applyRoleVisibility(role) {
+        var aliases = _roleAliases(role);
+
+        function _matchAll(allowedStr) {
+            var allowed = (allowedStr || '')
+                .split(',')
+                .map(function(s) { return s.trim(); })
+                .filter(Boolean);
+            for (var i = 0; i < aliases.length; i++) {
+                if (allowed.indexOf(aliases[i]) !== -1) return true;
+            }
+            return false;
+        }
+
+        // Все элементы с data-role в сайдбаре и мобильной навигации
+        $('.sidebar .nav-link[data-role], ' +
+          '.mobile-bottom-nav .nav-item[data-role]').each(function() {
+            var allowed = $(this).attr('data-role');
+            $(this).toggle(_matchAll(allowed));
+        });
+    }
+
+    function setupInterfaceByRole(role) {
+        console.log('[main] setupInterfaceByRole:', role);
+
+        if (role === 'Техник') {
+            applyRoleVisibility(role);
+
+            $('#tasksBlock .btn-danger').hide();
+            $('#tasksBlock .btn-success').hide();
+            $('#filterUserBlock').hide();
+
+            $('#statMyCompleted').closest('.col-3').hide();
+            $('.user-card .col-md-6 .col-3')
+                .removeClass('col-3').addClass('col-4');
+
+        } else if (role === 'Пользователь') {
+            applyRoleVisibility(role);
+
+            $('.user-card .col-md-6').hide();
+            $('.filters-section').hide();
+
+            if ($('#userCreateTaskBtn').length === 0) {
+                $('.table-container').before(
+                    '<div id="userCreateTaskBtn" class="mb-3">' +
+                    '<button class="btn btn-success" ' +
+                    'onclick="showCreateTaskModal()">' +
+                    '<i class="bi bi-plus-circle"></i> Создать заявку' +
+                    '</button></div>'
+                );
+            }
+            $('#userCreateTaskBtn').show();
+
+        } else if (role === 'Администратор') {
+            // Показываем ВСЕ пункты (включая те, что без data-role)
+            $('.sidebar .nav-link').show();
+            $('.mobile-bottom-nav .nav-item').show();
+            $('#userCreateTaskBtn').hide();
+
+        } else if (role === 'Разработчик') {
+            // Обычно сюда не попадаем — редирект выше.
+            // На случай прямого захода на /:
+            applyRoleVisibility(role);
+
+            $('#tasksBlock .btn-danger').hide();
+            $('#tasksBlock .btn-success').hide();
+            $('.filters-section .btn-success').hide();
+            $('#userCreateTaskBtn').hide();
+            $('.user-card .col-md-6').hide();
+
+        } else {
+            // Неизвестная роль — прячем всё с data-role
+            applyRoleVisibility(role);
+        }
+    }
+
+    // ============================================================
+    // НАВИГАЦИЯ
+    // ============================================================
+    function loadPage(pageName) {
+        console.log('[main] loadPage:', pageName);
+
+        // Дашборд — отдельная страница
+        if (pageName === 'dashboard') {
+            window.location.href = '/dashboard';
+            return;
+        }
+
+        // Консоль разработчика — отдельная страница
+        if (pageName === 'dev-console') {
+            window.location.href = '/dev';
+            return;
+        }
+
+        // Журнал аудита — отдельная страница
+        if (pageName === 'audit') {
+            window.location.href = '/audit';
+            return;
+        }
+
+        $('.sidebar .nav-link').removeClass('active');
+        $('.sidebar .nav-link[data-page="' + pageName + '"]').addClass('active');
+
+        $('.mobile-bottom-nav .nav-item').removeClass('active');
+        var mobileMap = { tasks: 0, users: 1, cartridges: 2, licenses: 3 };
+        if (typeof mobileMap[pageName] === 'number') {
+            $('.mobile-bottom-nav .nav-item')
+                .eq(mobileMap[pageName]).addClass('active');
+        }
+
+        if (window.App.MobileUX && window.App.MobileUX.onPageChange) {
+            setTimeout(function() {
+                window.App.MobileUX.onPageChange(pageName);
+            }, 100);
+        }
+        if (window.App.MobileUX && window.App.MobileUX.closeAllSwipeRows) {
+            window.App.MobileUX.closeAllSwipeRows();
+        }
+
+        if (pageName === 'tasks') {
+            $('#tasksBlock').show();
+            $('#otherPagesBlock').hide();
+            if (window.App.Tasks && window.App.Tasks.loadTasks) {
+                window.App.Tasks.loadTasks(1);
+            }
+            return;
+        }
+
+        $('#tasksBlock').hide();
+        $('#otherPagesBlock').show();
+
+        // Встроенные модули, у которых есть метод .load()
+        var moduleMap = {
+            'users': window.App.Users,
+            'cartridges': window.App.Cartridges,
+            'licenses': window.App.Licenses,
+            'contacts': window.App.Contacts,
+            'directory': window.App.Directory,
+            'cabinets-manage': window.App.CabinetsManage,
+            'report': window.App.Reports,
+        };
+
+        var module = moduleMap[pageName];
+        if (module && typeof module.load === 'function') {
+            module.load();
+        } else {
+            $('#otherPagesBlock').html(
+                '<div class="text-center py-5">' +
+                '<div class="alert alert-warning">Страница не найдена</div>' +
+                '</div>'
+            );
+        }
+    }
+
+    // ============================================================
+    // ОБНОВЛЕНИЕ
+    // ============================================================
+    function refreshData() {
+        if (window.App.Auth && window.App.Auth.loadUserInfo) {
+            window.App.Auth.loadUserInfo();
+        }
+        if (window.App.Tasks) {
+            if (window.App.Tasks.loadStatistics) window.App.Tasks.loadStatistics();
+            if (window.App.Tasks.loadTasks) {
+                window.App.Tasks.loadTasks(state.currentPage || 1);
+            }
+        }
+        if (window.App.Notifications && window.App.Notifications.loadUnreadCount) {
+            window.App.Notifications.loadUnreadCount();
+        }
+    }
+
+    // ============================================================
+    // ЭКСПОРТ
+    // ============================================================
+    mod.init = init;
+    mod.loadPage = loadPage;
+    mod.refreshData = refreshData;
+    mod.setupInterfaceByRole = setupInterfaceByRole;
+    mod.applyRoleVisibility = applyRoleVisibility;
+
+    window.loadPage = loadPage;
+    window.refreshData = refreshData;
+
+    // ============================================================
+    // ЗАПУСК
+    // ============================================================
+    $(document).ready(function() {
+        init();
+    });
+
+    console.log('[main] Загружено');
 })();

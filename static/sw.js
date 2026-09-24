@@ -1,5 +1,5 @@
 // static/sw.js — Service Worker для Support Active PWA
-const CACHE_NAME = 'support-active-v4';
+const CACHE_NAME = 'support-active-v5';
 const STATIC_ASSETS = [
     '/static/logo.png',
     '/static/logo.ico',

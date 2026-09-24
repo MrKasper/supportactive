@@ -144,6 +144,12 @@
                 <i class="bi bi-person-badge"></i>
                 <span>Сменить пользователя</span>
             </a>
+
+            <a class="nav-link" href="#"
+               onclick="if (typeof devLogout === 'function') { devLogout(); } else { if (confirm('Выйти из системы?')) location.href='/logout'; } return false;">
+                <i class="bi bi-box-arrow-right"></i>
+                <span>Выйти</span>
+            </a>
         </nav>
     </div>
 </div>
@@ -287,7 +293,7 @@
 <script src="{{ url_for('static', filename='js/core/utils.js') }}"></script>
 <script src="{{ url_for('static', filename='js/core/api.js') }}"></script>
 
-<!-- 🆕 Impersonation — используется в сайдбаре -->
+<!-- Impersonation — используется в сайдбаре -->
 <script src="{{ url_for('static', filename='js/admin/dev_impersonate.js') }}"></script>
 
 <!-- Страница аудита -->

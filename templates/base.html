@@ -139,7 +139,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/static/sw.js?v=9', { scope: '/' })
+                navigator.serviceWorker.register('/static/sw.js?v=99', { scope: '/' })
                     .then(function(reg) {
                         console.log('[PWA] SW зарегистрирован:', reg.scope);
                     })
