@@ -2,12 +2,11 @@
 {% extends "base.html" %}
 
 {% block head_extra %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/features/tasks.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/features/hotkeys.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/features/mobile-ux.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/features/equipment.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/features/printer_card.css') }}">
-<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tasks.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/kanban.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/hotkeys.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/mobile-ux.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/equipment.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -26,21 +25,18 @@
 
     <div class="sidebar-menu">
         <nav class="nav flex-column">
-            <!-- 1) Дашборд — только админ -->
             <a class="nav-link" href="/dashboard" data-page="dashboard"
                data-role="admin">
                 <i class="bi bi-graph-up"></i>
                 <span>Дашборд</span>
             </a>
 
-            <!-- 2) Заявки — видят все -->
             <a class="nav-link active" href="#" data-page="tasks"
                onclick="loadPage('tasks'); return false;">
                 <i class="bi bi-list-check"></i>
                 <span>Заявки</span>
             </a>
 
-            <!-- 3) Управление кабинетами — админ и техник -->
             <a class="nav-link" href="#" data-page="cabinets-manage"
                data-role="admin,tech"
                onclick="loadPage('cabinets-manage'); return false;">
@@ -48,7 +44,6 @@
                 <span>Управление кабинетами</span>
             </a>
 
-            <!-- 4) Пользователи — только админ -->
             <a class="nav-link" href="#" data-page="users"
                data-role="admin"
                onclick="loadPage('users'); return false;">
@@ -56,7 +51,6 @@
                 <span>Пользователи</span>
             </a>
 
-            <!-- 5) Картриджи — админ и техник -->
             <a class="nav-link" href="#" data-page="cartridges"
                data-role="admin,tech"
                onclick="loadPage('cartridges'); return false;">
@@ -64,7 +58,6 @@
                 <span>Картриджи</span>
             </a>
 
-            <!-- 6) Лицензии — админ и техник -->
             <a class="nav-link" href="#" data-page="licenses"
                data-role="admin,tech"
                onclick="loadPage('licenses'); return false;">
@@ -72,7 +65,6 @@
                 <span>Лицензии</span>
             </a>
 
-            <!-- 7) Внешние контакты — админ и техник -->
             <a class="nav-link" href="#" data-page="contacts"
                data-role="admin,tech"
                onclick="loadPage('contacts'); return false;">
@@ -80,7 +72,6 @@
                 <span>Внешние контакты</span>
             </a>
 
-            <!-- 8) Справочник — только админ -->
             <a class="nav-link" href="#" data-page="directory"
                data-role="admin"
                onclick="loadPage('directory'); return false;">
@@ -88,19 +79,12 @@
                 <span>Справочник</span>
             </a>
 
-            <!-- 9) Отчёт по задачам — только админ -->
             <a class="nav-link" href="#" data-page="report"
                data-role="admin"
                onclick="loadPage('report'); return false;">
                 <i class="bi bi-file-text"></i>
                 <span>Отчет по задачам</span>
             </a>
-
-            <!--
-                Журнал аудита и Консоль разработчика доступны только
-                по прямой ссылке (/audit и /dev) для роли «Разработчик».
-                У Администратора этих пунктов нет.
-            -->
         </nav>
     </div>
 </div>
@@ -125,6 +109,16 @@
             </div>
             <div class="col-lg-3 col-md-4 col-12 mb-3 mb-md-0">
                 <div class="d-flex gap-2 flex-wrap justify-content-center justify-content-md-start">
+                    <!-- 🆕 Кнопка создания заявки (видна Админу и Технику) -->
+                    <button class="btn btn-success btn-sm"
+                            id="headerCreateTaskBtn"
+                            onclick="showCreateTaskModal()"
+                            title="Создать заявку (N)"
+                            style="display: none;">
+                        <i class="bi bi-plus-circle"></i>
+                        <span class="d-none d-md-inline">Создать заявку</span>
+                    </button>
+
                     <button class="btn btn-outline-primary btn-sm" onclick="showUserCard()" title="Карточка">
                         <i class="bi bi-person-badge"></i>
                         <span class="d-none d-md-inline">Карточка</span>
@@ -183,7 +177,7 @@
         </div>
     </div>
 
-    <!-- Блок с заявками -->
+    <!-- Блок с заявками (табличный вид — для админа и пользователя) -->
     <div id="tasksBlock">
         <div class="filters-section">
             <div class="row g-2">
@@ -288,6 +282,9 @@
         </div>
     </div>
 
+    <!-- Блок с Kanban-доской (для Техника) -->
+    <div id="kanbanBlock" style="display: none;"></div>
+
     <div id="otherPagesBlock" style="display: none;"></div>
 </div>
 
@@ -297,15 +294,15 @@
         <i class="bi bi-list-check"></i>
         <span>Заявки</span>
     </div>
-    <div class="nav-item" data-role="admin" onclick="loadPage('users')">
+    <div class="nav-item" onclick="loadPage('users')">
         <i class="bi bi-people"></i>
         <span>Пользователи</span>
     </div>
-    <div class="nav-item" data-role="admin,tech" onclick="loadPage('cartridges')">
+    <div class="nav-item" onclick="loadPage('cartridges')">
         <i class="bi bi-printer"></i>
         <span>Картриджи</span>
     </div>
-    <div class="nav-item" data-role="admin,tech" onclick="loadPage('licenses')">
+    <div class="nav-item" onclick="loadPage('licenses')">
         <i class="bi bi-key"></i>
         <span>Лицензии</span>
     </div>
@@ -410,9 +407,7 @@
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body" id="taskDetails">
-                <!-- Динамическое содержимое -->
-            </div>
+            <div class="modal-body" id="taskDetails"></div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline-danger me-auto"
                         id="btnDeleteTask" onclick="deleteCurrentTask()" style="display: none;">
@@ -609,45 +604,50 @@
 
 {% block scripts %}
 <!-- 🎯 Ядро -->
-<script src="{{ url_for('static', filename='js/core/core.js') }}"></script>
-<script src="{{ url_for('static', filename='js/core/utils.js') }}"></script>
+<script src="{{ url_for('static', filename='js/core.js') }}"></script>
+<script src="{{ url_for('static', filename='js/utils.js') }}"></script>
 
 <!-- Модули -->
-<script src="{{ url_for('static', filename='js/core/theme.js') }}"></script>
-<script src="{{ url_for('static', filename='js/auth/login.js') }}"></script>
-<script src="{{ url_for('static', filename='js/infra/notifications.js') }}"></script>
-<script src="{{ url_for('static', filename='js/infra/notifications_sse.js') }}"></script>
+<script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+<script src="{{ url_for('static', filename='js/login.js') }}"></script>
+<script src="{{ url_for('static', filename='js/notifications.js') }}"></script>
+<script src="{{ url_for('static', filename='js/notifications_sse.js') }}"></script>
 
 <!-- Заявки -->
-<script src="{{ url_for('static', filename='js/tasks/tasks.js') }}"></script>
-<script src="{{ url_for('static', filename='js/tasks/tasks_bulk.js') }}"></script>
-<script src="{{ url_for('static', filename='js/tasks/task_details.js') }}"></script>
-<script src="{{ url_for('static', filename='js/tasks/task_comments.js') }}"></script>
-<script src="{{ url_for('static', filename='js/tasks/task_attachments.js') }}"></script>
+<script src="{{ url_for('static', filename='js/tasks.js') }}"></script>
+<script src="{{ url_for('static', filename='js/tasks_bulk.js') }}"></script>
+<script src="{{ url_for('static', filename='js/tasks_kanban.js') }}"></script>
+<script src="{{ url_for('static', filename='js/task_details.js') }}"></script>
+<script src="{{ url_for('static', filename='js/task_comments.js') }}"></script>
+<script src="{{ url_for('static', filename='js/task_attachments.js') }}"></script>
 
 <!-- Разделы -->
-<script src="{{ url_for('static', filename='js/users/users.js') }}"></script>
-<script src="{{ url_for('static', filename='js/catalog/cartridges.js') }}"></script>
-<script src="{{ url_for('static', filename='js/catalog/licenses.js') }}"></script>
-<script src="{{ url_for('static', filename='js/catalog/contacts.js') }}"></script>
-<script src="{{ url_for('static', filename='js/catalog/directory.js') }}"></script>
-<script src="{{ url_for('static', filename='js/infra/cabinets_manage.js') }}"></script>
-<script src="{{ url_for('static', filename='js/admin/excel.js') }}"></script>
-<script src="{{ url_for('static', filename='js/infra/webpush.js') }}"></script>
+<script src="{{ url_for('static', filename='js/users.js') }}"></script>
+
+<!-- Картриджи -->
+<script src="{{ url_for('static', filename='js/cartridges/cartridges_chart.js') }}"></script>
+<script src="{{ url_for('static', filename='js/cartridges/cartridges_form.js') }}"></script>
+<script src="{{ url_for('static', filename='js/cartridges/cartridges_list.js') }}"></script>
+
+<script src="{{ url_for('static', filename='js/licenses.js') }}"></script>
+<script src="{{ url_for('static', filename='js/contacts.js') }}"></script>
+<script src="{{ url_for('static', filename='js/directory.js') }}"></script>
+<script src="{{ url_for('static', filename='js/cabinets_manage.js') }}"></script>
+<script src="{{ url_for('static', filename='js/excel.js') }}"></script>
+<script src="{{ url_for('static', filename='js/audit.js') }}"></script>
+<script src="{{ url_for('static', filename='js/webpush.js') }}"></script>
 
 <!-- Оборудование кабинета -->
-<script src="{{ url_for('static', filename='js/equipment/cabinet_core.js') }}"></script>
-<script src="{{ url_for('static', filename='js/equipment/cabinet_devices.js') }}"></script>
-<script src="{{ url_for('static', filename='js/equipment/cabinet_device_modals.js') }}"></script>
-<script src="{{ url_for('static', filename='js/equipment/cabinet_device_actions.js') }}"></script>
-<script src="{{ url_for('static', filename='js/equipment/printer_card.js') }}"></script>
-<script src="{{ url_for('static', filename='js/equipment/computer_card.js') }}"></script>
-<script src="{{ url_for('static', filename='js/equipment/cabinet_documents.js') }}"></script>
+<script src="{{ url_for('static', filename='js/cabinet_core.js') }}"></script>
+<script src="{{ url_for('static', filename='js/cabinet_devices.js') }}"></script>
+<script src="{{ url_for('static', filename='js/printer_card.js') }}"></script>
+<script src="{{ url_for('static', filename='js/computer_card.js') }}"></script>
+<script src="{{ url_for('static', filename='js/cabinet_documents.js') }}"></script>
 
 <!-- Горячие клавиши и мобильный UX -->
-<script src="{{ url_for('static', filename='js/core/hotkeys.js') }}"></script>
-<script src="{{ url_for('static', filename='js/core/mobile_ux.js') }}"></script>
+<script src="{{ url_for('static', filename='js/hotkeys.js') }}"></script>
+<script src="{{ url_for('static', filename='js/mobile_ux.js') }}"></script>
 
 <!-- 🎯 Инициализатор — ВСЕГДА ПОСЛЕДНИЙ -->
-<script src="{{ url_for('static', filename='js/core/main.js') }}"></script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
 {% endblock %}

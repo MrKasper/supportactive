@@ -7,10 +7,7 @@
   • Гонка при группировке — теперь всё в одной транзакции.
   • Автор действия не получает уведомление о своём действии.
   • Уведомления «Заявка выполнена» больше не спамят.
-  • Кеш списка администраторов (TTL 60 сек) — уведомления генерируются часто,
-    а админы меняются редко.
 """
-import time
 from datetime import datetime
 
 from database import Database
@@ -111,38 +108,14 @@ def create_notification(user_id, task_id, title, message, notification_type,
 # ХЕЛПЕРЫ
 # ============================================================
 
-# Кеш списка админов — TTL 60 сек. Список меняется редко,
-# а уведомления генерируются часто.
-_admins_cache = {'ids': None, 'ts': 0}
-_ADMINS_CACHE_TTL = 60  # секунд
-
-
 def _get_admins(exclude_user_ids=None):
-    """
-    Возвращает список админов, исключая указанные ID.
-    Кеширует результат на 60 секунд.
-    """
-    now = time.time()
-    if (_admins_cache['ids'] is None
-            or now - _admins_cache['ts'] > _ADMINS_CACHE_TTL):
-        rows = db.query(
-            "SELECT id FROM users WHERE role = ? AND is_active = 1",
-            [ROLE_ADMIN],
-        )
-        _admins_cache['ids'] = [r['id'] for r in rows]
-        _admins_cache['ts'] = now
-
+    """Возвращает список админов, исключая указанные ID."""
     exclude = set(exclude_user_ids or [])
-    return [{'id': uid} for uid in _admins_cache['ids'] if uid not in exclude]
-
-
-def invalidate_admins_cache():
-    """
-    Сброс кеша админов. Вызывать при добавлении/удалении/блокировке
-    пользователей-админов. Иначе кеш сам обновится через ≤60 сек.
-    """
-    _admins_cache['ids'] = None
-    _admins_cache['ts'] = 0
+    rows = db.query(
+        "SELECT id FROM users WHERE role = ? AND is_active = 1",
+        [ROLE_ADMIN],
+    )
+    return [r for r in rows if r['id'] not in exclude]
 
 
 def _find_user_by_name(full_name):

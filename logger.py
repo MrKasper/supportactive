@@ -1,7 +1,12 @@
 # logger.py
 """
 Централизованная настройка логирования.
-Пишет в консоль и в файл с ротацией по дням.
+Пишет в консоль и в файлы с ротацией по дням.
+
+Отдельные файлы:
+  • app.log            — общий поток
+  • errors.log         — только ERROR и выше
+  • slow_requests.log  — запросы дольше SLOW_REQUEST_MS (изолированный logger)
 """
 import os
 import logging
@@ -15,7 +20,6 @@ def setup_logging(app=None, log_level=logging.INFO):
     """Настраивает логирование для всего приложения."""
     os.makedirs(LOG_DIR, exist_ok=True)
 
-    # Формат
     formatter = logging.Formatter(
         '%(asctime)s [%(levelname)s] %(name)s: %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S'
@@ -25,7 +29,6 @@ def setup_logging(app=None, log_level=logging.INFO):
     root = logging.getLogger()
     root.setLevel(log_level)
 
-    # Убираем дефолтные хендлеры, если они есть
     for h in list(root.handlers):
         root.removeHandler(h)
 
@@ -35,10 +38,10 @@ def setup_logging(app=None, log_level=logging.INFO):
     console.setLevel(log_level)
     root.addHandler(console)
 
-    # ---- Файл (общий) ----
+    # ---- app.log ----
     app_handler = RotatingFileHandler(
         os.path.join(LOG_DIR, 'app.log'),
-        maxBytes=5 * 1024 * 1024,   # 5 МБ
+        maxBytes=5 * 1024 * 1024,
         backupCount=10,
         encoding='utf-8'
     )
@@ -46,7 +49,7 @@ def setup_logging(app=None, log_level=logging.INFO):
     app_handler.setLevel(log_level)
     root.addHandler(app_handler)
 
-    # ---- Файл (ошибки отдельно) ----
+    # ---- errors.log ----
     error_handler = RotatingFileHandler(
         os.path.join(LOG_DIR, 'errors.log'),
         maxBytes=5 * 1024 * 1024,
@@ -56,6 +59,25 @@ def setup_logging(app=None, log_level=logging.INFO):
     error_handler.setFormatter(formatter)
     error_handler.setLevel(logging.ERROR)
     root.addHandler(error_handler)
+
+    # ---- slow_requests.log (изолированный logger) ----
+    # propagate=False — чтобы запись НЕ дублировалась в app.log
+    slow_logger = logging.getLogger('slow_requests')
+    slow_logger.setLevel(logging.WARNING)
+    slow_logger.propagate = False
+
+    # Убираем старые хендлеры (на случай повторного setup)
+    for h in list(slow_logger.handlers):
+        slow_logger.removeHandler(h)
+
+    slow_handler = RotatingFileHandler(
+        os.path.join(LOG_DIR, 'slow_requests.log'),
+        maxBytes=5 * 1024 * 1024,
+        backupCount=10,
+        encoding='utf-8'
+    )
+    slow_handler.setFormatter(formatter)
+    slow_logger.addHandler(slow_handler)
 
     # ---- Тише от сторонних библиотек ----
     logging.getLogger('werkzeug').setLevel(logging.WARNING)

@@ -1,6 +1,9 @@
 # database.py
-import sqlite3
+"""
+Обёртка SQLite: запросы, транзакции, инициализация.
+"""
 import os
+import sqlite3
 from contextlib import contextmanager
 
 
@@ -12,6 +15,10 @@ class Database:
                 'database.db'
             )
         self.db_name = db_name
+
+    # ============================================================
+    # ИНИЦИАЛИЗАЦИЯ / ТЕСТОВЫЕ ДАННЫЕ
+    # ============================================================
 
     def init_db(self):
         from migrations import run_migrations
@@ -91,7 +98,12 @@ class Database:
         conn.commit()
         conn.close()
 
+    # ============================================================
+    # ПРОСТЫЕ ЗАПРОСЫ
+    # ============================================================
+
     def query(self, query, args=(), one=False):
+        """SELECT-запрос. Возвращает Row-объекты или один Row."""
         conn = sqlite3.connect(self.db_name)
         conn.row_factory = sqlite3.Row
         cur = conn.cursor()
@@ -101,6 +113,7 @@ class Database:
         return (rv[0] if rv else None) if one else rv
 
     def execute(self, query, args=()):
+        """INSERT/UPDATE/DELETE. Возвращает lastrowid."""
         conn = sqlite3.connect(self.db_name)
         cur = conn.cursor()
         cur.execute(query, args)
@@ -110,7 +123,7 @@ class Database:
         return last_id
 
     # ============================================================
-    # 🆕 ТРАНЗАКЦИИ
+    # ТРАНЗАКЦИИ
     # ============================================================
 
     @contextmanager
@@ -135,19 +148,34 @@ class Database:
             cur.execute('BEGIN IMMEDIATE' if immediate else 'BEGIN')
 
             class TransactionWrapper:
+                """
+                Обёртка над курсором SQLite.
+                Даёт удобные методы execute/query/query_all/execute_rowcount.
+                """
                 def __init__(self, cursor):
                     self._cur = cursor
 
                 def execute(self, sql, params=()):
+                    """INSERT/UPDATE/DELETE — возвращает lastrowid."""
                     self._cur.execute(sql, params)
                     return self._cur.lastrowid
 
+                def execute_rowcount(self, sql, params=()):
+                    """
+                    UPDATE/DELETE — возвращает количество
+                    затронутых строк (rowcount).
+                    """
+                    self._cur.execute(sql, params)
+                    return self._cur.rowcount
+
                 def query(self, sql, params=(), one=False):
+                    """SELECT — возвращает Row или список Row."""
                     self._cur.execute(sql, params)
                     rows = self._cur.fetchall()
                     return (rows[0] if rows else None) if one else rows
 
                 def query_all(self, sql, params=()):
+                    """SELECT — всегда возвращает список Row."""
                     self._cur.execute(sql, params)
                     return self._cur.fetchall()
 
@@ -160,6 +188,9 @@ class Database:
             conn.close()
 
 
+# ============================================================
+# ТОЧКА ВХОДА (для локальной проверки)
+# ============================================================
 if __name__ == '__main__':
     db = Database()
     db.init_db()

@@ -85,6 +85,9 @@ class Config:
     DRIVERS_FOLDER = os.path.join(PRIVATE_UPLOADS, 'drivers')   # ← добавить
     LOG_DIR = os.path.join(BASE_DIR, 'logs')
 
+    # --- Медленные запросы ---
+    SLOW_REQUEST_MS = _env_int('SLOW_REQUEST_MS', 1000)
+
 
 class DevelopmentConfig(Config):
     DEBUG = True
