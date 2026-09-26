@@ -1,6 +1,11 @@
 # tasks_list.py
 """
 Список заявок: статистика, фильтры, пагинация, Kanban для Техника.
+
+Особенности видимости для Техника:
+  • get_tasks() с параметром for_technician=<ФИО>
+    → возвращает только «мои» + «Новое без исполнителя»
+  • get_tasks_kanban() возвращает то же самое для доски
 """
 from datetime import datetime
 
@@ -132,6 +137,7 @@ def get_tasks():
         date_to = request.args.get('date_to', '').strip()
         search = request.args.get('search', '').strip()
         created_by = request.args.get('created_by', '').strip()
+        for_technician = request.args.get('for_technician', '').strip()
         sort_by = request.args.get('sort_by', 'created_date').strip()
         sort_order = request.args.get('sort_order', 'DESC').strip().upper()
 
@@ -173,6 +179,17 @@ def get_tasks():
         if created_by:
             where += ' AND created_by = ?'
             params.append(created_by)
+
+        # ---------- Специальный фильтр для Техника ----------
+        # Техник видит:
+        #   • свои заявки (executor = он)
+        #   • «Новое» без назначенного исполнителя (чтобы мог взять)
+        if for_technician:
+            where += (
+                " AND (executor = ?"
+                " OR (status = ? AND (executor IS NULL OR executor = '')))"
+            )
+            params.extend([for_technician, STATUS_NEW])
 
         total = db.query(
             f'SELECT COUNT(*) AS c FROM tasks {where}',
@@ -229,11 +246,11 @@ def get_tasks():
 def get_tasks_kanban():
     """
     Kanban-доска для Техника:
-      • Все «Новое» — любой техник может взять
-      • «В работе» — назначенные на меня
-      • «Выполнено» — мои за последние 30 дней
+      • «Новое» — только те, где нет исполнителя, ИЛИ назначено на меня
+      • «В работе» — только мои
+      • «Выполнено» — только мои за последние 30 дней
 
-    Возвращает объединённый список. Фронт сам группирует по статусам.
+    Другие техники не видны.
     """
     try:
         if session.get('user_role') not in EDITOR_ROLES:
@@ -241,10 +258,11 @@ def get_tasks_kanban():
 
         user_name = session.get('user_name')
 
-        # ---------- Все новые заявки (для взятия в работу) ----------
+        # ---------- Новые заявки: без исполнителя ИЛИ назначенные на меня ----------
         new_tasks = db.query('''
             SELECT * FROM tasks
             WHERE status = ? AND deleted_at IS NULL
+              AND (executor IS NULL OR executor = '' OR executor = ?)
             ORDER BY
                 CASE priority
                     WHEN 'Высокий' THEN 1
@@ -253,7 +271,7 @@ def get_tasks_kanban():
                 END,
                 created_date DESC
             LIMIT 200
-        ''', [STATUS_NEW])
+        ''', [STATUS_NEW, user_name])
 
         # ---------- Мои: в работе + выполненные за 30 дней ----------
         my_tasks = db.query('''
@@ -292,7 +310,6 @@ def get_tasks_kanban():
 
             d = dict(t)
 
-            # Флаг просрочки
             if (
                 d['status'] not in (STATUS_COMPLETED, STATUS_CANCELLED)
                 and d['deadline']

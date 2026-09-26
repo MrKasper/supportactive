@@ -4,6 +4,7 @@
 {% block head_extra %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/tasks.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/kanban.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/modal-redesign.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/hotkeys.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/mobile-ux.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/equipment.css') }}">
@@ -109,16 +110,6 @@
             </div>
             <div class="col-lg-3 col-md-4 col-12 mb-3 mb-md-0">
                 <div class="d-flex gap-2 flex-wrap justify-content-center justify-content-md-start">
-                    <!-- 🆕 Кнопка создания заявки (видна Админу и Технику) -->
-                    <button class="btn btn-success btn-sm"
-                            id="headerCreateTaskBtn"
-                            onclick="showCreateTaskModal()"
-                            title="Создать заявку (N)"
-                            style="display: none;">
-                        <i class="bi bi-plus-circle"></i>
-                        <span class="d-none d-md-inline">Создать заявку</span>
-                    </button>
-
                     <button class="btn btn-outline-primary btn-sm" onclick="showUserCard()" title="Карточка">
                         <i class="bi bi-person-badge"></i>
                         <span class="d-none d-md-inline">Карточка</span>
@@ -177,7 +168,7 @@
         </div>
     </div>
 
-    <!-- Блок с заявками (табличный вид — для админа и пользователя) -->
+    <!-- Блок с заявками (табличный вид) -->
     <div id="tasksBlock">
         <div class="filters-section">
             <div class="row g-2">
@@ -314,24 +305,24 @@
 
 <!-- ========== Модальное окно создания заявки ========== -->
 <div class="modal fade" id="createTaskModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-dialog-centered">   <!-- createTaskModal -->
         <div class="modal-content">
-            <div class="modal-header bg-success text-white">
+            <div class="modal-header">
                 <h5 class="modal-title">
-                    <i class="bi bi-plus-circle"></i> Создание новой заявки
+                    <i class="bi bi-plus-circle"></i> Новая заявка
                 </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
             </div>
             <div class="modal-body">
                 <form id="createTaskForm">
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
+                    <div class="m-form-row">
+                        <div class="m-field">
                             <label class="form-label">Тип работы *</label>
                             <select class="form-select" name="work_type" required>
                                 <option value="">Выберите тип работы</option>
                             </select>
                         </div>
-                        <div class="col-md-6 mb-3">
+                        <div class="m-field">
                             <label class="form-label">Приоритет</label>
                             <select class="form-select" name="priority">
                                 <option value="Средний" selected>Средний</option>
@@ -339,11 +330,15 @@
                                 <option value="Низкий">Низкий</option>
                             </select>
                         </div>
-                        <div class="col-md-6 mb-3">
+                    </div>
+
+                    <div class="m-form-row">
+                        <div class="m-field">
                             <label class="form-label">Срок выполнения *</label>
-                            <input type="datetime-local" class="form-control" name="deadline" required>
+                            <input type="datetime-local" class="form-control"
+                                   name="deadline" required>
                         </div>
-                        <div class="col-md-6 mb-3">
+                        <div class="m-field">
                             <label class="form-label">Длительность</label>
                             <select class="form-select" name="duration_minutes">
                                 <option value="15">15 минут</option>
@@ -354,42 +349,55 @@
                                 <option value="480">Рабочий день (8ч)</option>
                             </select>
                         </div>
-                        <div class="col-md-6 mb-3">
+                    </div>
+
+                    <div class="m-form-row">
+                        <div class="m-field">
                             <label class="form-label">От кого (ФИО) *</label>
                             <input type="text" class="form-control" name="from_user"
                                    placeholder="Например: Иванов И.И." required>
                         </div>
-                        <div class="col-md-6 mb-3">
+                        <div class="m-field">
                             <label class="form-label">Кабинет *</label>
-                            <select class="form-select" name="cabinet" id="cabinetSelect" required>
+                            <select class="form-select" name="cabinet"
+                                    id="cabinetSelect" required>
                                 <option value="">Выберите кабинет</option>
                             </select>
                         </div>
-                        <div class="col-md-6 mb-3">
+                    </div>
+
+                    <div class="m-form-row">
+                        <div class="m-field">
                             <label class="form-label">Исполнитель</label>
-                            <select class="form-select" name="executor" id="executorSelect">
+                            <select class="form-select" name="executor"
+                                    id="executorSelect">
                                 <option value="">Выберите исполнителя</option>
                             </select>
                         </div>
-                        <div class="col-md-6 mb-3">
+                        <div class="m-field">
                             <label class="form-label">Помощник</label>
-                            <select class="form-select" name="assistant" id="assistantSelect">
+                            <select class="form-select" name="assistant"
+                                    id="assistantSelect">
                                 <option value="">Выберите помощника</option>
                             </select>
                         </div>
-                        <div class="col-12 mb-3">
+                    </div>
+
+                    <div class="m-form-row m-full">
+                        <div class="m-field">
                             <label class="form-label">Описание работы *</label>
                             <textarea class="form-control" name="description" rows="4"
-                                      placeholder="Подробно опишите проблему или задачу..." required></textarea>
+                                      placeholder="Подробно опишите проблему или задачу..."
+                                      required></textarea>
                         </div>
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <i class="bi bi-x-circle"></i> Отмена
+                <button type="button" class="m-btn" data-bs-dismiss="modal">
+                    Отмена
                 </button>
-                <button type="button" class="btn btn-success" onclick="createTask()">
+                <button type="button" class="m-btn m-btn-primary" onclick="createTask()">
                     <i class="bi bi-check-circle"></i> Создать заявку
                 </button>
             </div>
@@ -399,31 +407,42 @@
 
 <!-- ========== Модальное окно просмотра заявки ========== -->
 <div class="modal fade" id="viewTaskModal" tabindex="-1">
-    <div class="modal-dialog modal-xl">
+    <div class="modal-dialog modal-dialog-centered">   <!-- viewTaskModal -->
         <div class="modal-content">
-            <div class="modal-header bg-info text-white">
-                <h5 class="modal-title">
-                    <i class="bi bi-file-text"></i> Описание заявки №<span id="taskNumber"></span>
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            <div class="modal-header">
+                <div class="task-modal-head-inner">
+                    <div class="task-num" id="taskModalNumber">#0</div>
+                    <div style="flex: 1; min-width: 0;">
+                        <h5 class="task-modal-title" id="taskModalTitle">Заявка</h5>
+                        <div class="task-modal-meta" id="taskModalMeta">
+                            <span id="taskModalMetaDate">—</span>
+                            <span class="status-badge status-new" id="taskModalMetaStatus">—</span>
+                        </div>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
             </div>
             <div class="modal-body" id="taskDetails"></div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-outline-danger me-auto"
-                        id="btnDeleteTask" onclick="deleteCurrentTask()" style="display: none;">
+                <button type="button" class="m-btn m-btn-danger"
+                        id="btnDeleteTask" onclick="deleteCurrentTask()"
+                        style="display: none;">
                     <i class="bi bi-trash"></i> Удалить заявку
                 </button>
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <i class="bi bi-x-circle"></i> Закрыть
-                </button>
-                <button type="button" class="btn btn-primary" id="btnTakeTask"
-                        onclick="takeTask()" style="display: none;">
-                    <i class="bi bi-play-circle"></i> Взять в работу
-                </button>
-                <button type="button" class="btn btn-danger" id="btnCloseTask"
-                        onclick="closeCurrentTask()">
-                    <i class="bi bi-check-circle"></i> Закрыть заявку
-                </button>
+                <div class="ms-auto d-flex gap-2 flex-wrap">
+                    <button type="button" class="m-btn" data-bs-dismiss="modal">
+                        Отмена
+                    </button>
+                    <button type="button" class="m-btn m-btn-take"
+                            id="btnTakeTask" onclick="takeTask()"
+                            style="display: none;">
+                        <i class="bi bi-play-circle"></i> Взять в работу
+                    </button>
+                    <button type="button" class="m-btn m-btn-primary"
+                            id="btnCloseTask" onclick="closeCurrentTask()">
+                        <i class="bi bi-check-circle"></i> Закрыть заявку
+                    </button>
+                </div>
             </div>
         </div>
     </div>

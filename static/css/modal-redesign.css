@@ -1,0 +1,923 @@
+/* static/css/modal-redesign.css */
+/* Стили модалок заявки и создания заявки — редизайн.
+   Использует id-специфичные селекторы, чтобы не конфликтовать
+   с Bootstrap и остальным проектом. */
+
+/* ============================================================
+   ОБЩИЕ ПЕРЕМЕННЫЕ
+   ============================================================ */
+   #viewTaskModal, #createTaskModal {
+    --m-bg: var(--card-bg);
+    --m-surface: #f4f4f5;
+    --m-border: var(--border-color);
+    --m-text: var(--text-color);
+    --m-muted: #71717a;
+    --m-subtle: #a1a1aa;
+    --m-accent: #6366f1;
+    --m-accent-2: #8b5cf6;
+    --m-accent-soft: #eef2ff;
+    --m-success: #10b981;
+    --m-success-soft: #ecfdf5;
+    --m-warning: #f59e0b;
+    --m-warning-soft: #fffbeb;
+    --m-danger: #ef4444;
+    --m-danger-soft: #fef2f2;
+    --m-shadow-xl: 0 24px 64px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="dark"] #viewTaskModal,
+[data-theme="dark"] #createTaskModal {
+    --m-surface: #1c1c24;
+    --m-accent-soft: rgba(99, 102, 241, 0.15);
+    --m-success-soft: rgba(16, 185, 129, 0.15);
+    --m-warning-soft: rgba(245, 158, 11, 0.15);
+    --m-danger-soft: rgba(239, 68, 68, 0.15);
+}
+
+/* ============================================================
+   ЦЕНТРИРОВАНИЕ И ОГРАНИЧЕНИЕ ШИРИНЫ МОДАЛОК
+   ============================================================ */
+#viewTaskModal .modal-dialog,
+#createTaskModal .modal-dialog {
+    display: flex;
+    align-items: center;
+    min-height: calc(100% - 3.5rem);
+    margin: 1.75rem auto;
+}
+
+/* Ключевой фикс: своя ширина вместо modal-xl / modal-lg */
+#viewTaskModal .modal-dialog {
+    max-width: 880px !important;
+    width: 100%;
+}
+
+#createTaskModal .modal-dialog {
+    max-width: 720px !important;
+    width: 100%;
+}
+
+@media (max-width: 920px) {
+    #viewTaskModal .modal-dialog,
+    #createTaskModal .modal-dialog {
+        max-width: calc(100% - 32px) !important;
+    }
+}
+
+#viewTaskModal .modal-content,
+#createTaskModal .modal-content {
+    width: 100%;
+    max-height: calc(100vh - 3.5rem);
+    display: flex;
+    flex-direction: column;
+    border: none;
+    border-radius: 20px;
+    box-shadow: var(--m-shadow-xl);
+    overflow: hidden;
+    background: var(--m-bg);
+    color: var(--m-text);
+}
+
+#viewTaskModal .modal-header,
+#createTaskModal .modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--m-border);
+    background: transparent;
+    flex-shrink: 0;
+}
+
+#viewTaskModal .modal-body,
+#createTaskModal .modal-body {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    max-height: none;
+    padding: 24px;
+}
+
+#viewTaskModal .modal-footer,
+#createTaskModal .modal-footer {
+    padding: 16px 24px;
+    background: var(--m-surface);
+    border-top: 1px solid var(--m-border);
+    flex-shrink: 0;
+}
+
+/* ============================================================
+   ШАПКА ЗАЯВКИ (#viewTaskModal)
+   ============================================================ */
+#viewTaskModal .task-modal-head-inner {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    flex: 1;
+    min-width: 0;
+}
+
+#viewTaskModal .task-num {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, var(--m-accent), var(--m-accent-2));
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 800;
+    font-family: 'SF Mono', Consolas, monospace;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    flex-shrink: 0;
+}
+
+#viewTaskModal .task-modal-title {
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1.35;
+    margin: 0 0 6px;
+    color: var(--m-text);
+}
+
+#viewTaskModal .task-modal-meta {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    font-size: 12px;
+    color: var(--m-muted);
+    align-items: center;
+}
+
+#viewTaskModal .modal-header .btn-close {
+    background: transparent;
+    opacity: 0.6;
+    align-self: flex-start;
+    margin-top: 4px;
+}
+
+/* ============================================================
+   ТАБЫ (#viewTaskModal)
+   ============================================================ */
+#viewTaskModal .task-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 0 24px;
+    border-bottom: 1px solid var(--m-border);
+    background: var(--m-bg);
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    margin: 0;
+    list-style: none;
+    flex-shrink: 0;
+}
+
+#viewTaskModal .task-tabs::-webkit-scrollbar { display: none; }
+
+#viewTaskModal .task-tabs .nav-item { flex-shrink: 0; }
+
+#viewTaskModal .task-tabs .nav-link {
+    padding: 14px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--m-muted);
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+    transition: color 0.15s;
+    border-radius: 0;
+}
+
+#viewTaskModal .task-tabs .nav-link i { font-size: 15px; }
+
+#viewTaskModal .task-tabs .nav-link:hover {
+    color: var(--m-text);
+    border-bottom-color: transparent;
+}
+
+#viewTaskModal .task-tabs .nav-link.active {
+    color: var(--m-accent);
+    font-weight: 600;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+}
+
+#viewTaskModal .task-tabs .nav-link.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--m-accent);
+    border-radius: 2px 2px 0 0;
+}
+
+#viewTaskModal .task-tabs .badge {
+    background: var(--m-accent-soft);
+    color: var(--m-accent);
+    padding: 1px 8px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.4;
+    margin-left: 4px;
+}
+
+/* ============================================================
+   ПАНЕЛИ ТАБОВ
+   ============================================================ */
+#viewTaskModal .task-tab-pane { display: none; }
+#viewTaskModal .task-tab-pane.active { display: block; animation: mFadeIn 0.2s; }
+
+@keyframes mFadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ============================================================
+   ДЕТАЛИ — компактная сетка
+   ============================================================ */
+#viewTaskModal .m-detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px 32px;
+    margin-bottom: 20px;
+}
+
+#viewTaskModal .m-detail-item .label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--m-subtle);
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+#viewTaskModal .m-detail-item .value {
+    font-size: 13.5px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--m-text);
+    word-break: break-word;
+}
+
+#viewTaskModal .m-desc-block {
+    background: var(--m-surface);
+    border: 1px solid var(--m-border);
+    border-radius: 12px;
+    padding: 14px 18px;
+    margin-bottom: 16px;
+}
+
+#viewTaskModal .m-desc-block h3 {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--m-muted);
+    margin: 0 0 8px;
+}
+
+#viewTaskModal .m-desc-block p {
+    font-size: 13.5px;
+    line-height: 1.55;
+    margin: 0;
+    color: var(--m-text);
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* Статусные бейджи */
+#viewTaskModal .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 600;
+}
+#viewTaskModal .status-new { background: var(--m-accent-soft); color: var(--m-accent); }
+#viewTaskModal .status-progress { background: var(--m-warning-soft); color: #b45309; }
+#viewTaskModal .status-completed { background: var(--m-success-soft); color: #047857; }
+#viewTaskModal .status-cancelled { background: var(--m-surface); color: var(--m-muted); }
+
+[data-theme="dark"] #viewTaskModal .status-progress { color: #fcd34d; }
+[data-theme="dark"] #viewTaskModal .status-completed { color: #6ee7b7; }
+
+/* ============================================================
+   КОММЕНТАРИИ
+   ============================================================ */
+#viewTaskModal .comment,
+#viewTaskModal .comment-item {
+    display: flex;
+    gap: 12px;
+    padding: 14px;
+    border-radius: 12px;
+    background: var(--m-surface);
+    margin-bottom: 10px;
+    position: relative;
+    border: none;
+    transition: background 0.15s;
+}
+
+#viewTaskModal .comment:hover,
+#viewTaskModal .comment-item:hover {
+    background: var(--m-surface);
+    filter: brightness(0.98);
+}
+
+#viewTaskModal .comment.comment-internal,
+#viewTaskModal .comment-item.comment-internal {
+    background: var(--m-warning-soft);
+    border-left: 3px solid var(--m-warning);
+}
+
+[data-theme="dark"] #viewTaskModal .comment,
+[data-theme="dark"] #viewTaskModal .comment-item {
+    background: rgba(255, 255, 255, 0.03);
+}
+[data-theme="dark"] #viewTaskModal .comment.comment-internal,
+[data-theme="dark"] #viewTaskModal .comment-item.comment-internal {
+    background: rgba(245, 158, 11, 0.08);
+}
+
+#viewTaskModal .comment-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--m-accent), var(--m-accent-2));
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+#viewTaskModal .comment-body { flex: 1; min-width: 0; }
+
+#viewTaskModal .comment-header,
+#viewTaskModal .comment-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 4px;
+    flex-wrap: wrap;
+}
+
+#viewTaskModal .comment-author {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--m-text);
+}
+
+#viewTaskModal .comment-time {
+    font-size: 11px;
+    color: var(--m-subtle);
+}
+
+#viewTaskModal .comment-text {
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--m-text);
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+#viewTaskModal .comment-internal-badge {
+    display: inline-block;
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 8px;
+    background: var(--m-warning);
+    color: #333;
+    font-weight: 600;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+
+#viewTaskModal .comment-actions {
+    opacity: 0;
+    transition: opacity 0.2s;
+    display: flex;
+    gap: 4px;
+}
+#viewTaskModal .comment:hover .comment-actions,
+#viewTaskModal .comment-item:hover .comment-actions { opacity: 1; }
+
+#viewTaskModal .comment-actions .btn {
+    padding: 2px 6px;
+    font-size: 0.75rem;
+    border-radius: 6px;
+}
+
+#viewTaskModal .mention {
+    color: var(--m-accent);
+    font-weight: 600;
+    background: var(--m-accent-soft);
+    padding: 0 4px;
+    border-radius: 4px;
+}
+
+/* Форма комментария */
+#viewTaskModal .m-comment-form {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--m-border);
+}
+
+#viewTaskModal .m-comment-form label.form-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--m-muted);
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+#viewTaskModal .m-comment-form textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--m-border);
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 13px;
+    resize: vertical;
+    min-height: 72px;
+    outline: none;
+    background: var(--m-bg);
+    color: var(--m-text);
+}
+
+#viewTaskModal .m-comment-form textarea:focus {
+    border-color: var(--m-accent);
+    box-shadow: 0 0 0 3px var(--m-accent-soft);
+}
+
+#viewTaskModal .m-comment-form .m-form-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 10px;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+#viewTaskModal .m-switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--m-muted);
+    cursor: pointer;
+}
+#viewTaskModal .m-switch input {
+    width: 14px;
+    height: 14px;
+    accent-color: var(--m-accent);
+}
+
+/* ============================================================
+   ВЛОЖЕНИЯ
+   ============================================================ */
+#viewTaskModal .m-attachments-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+#viewTaskModal .m-attachment-card {
+    background: var(--m-bg);
+    border: 1px solid var(--m-border);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: all 0.15s;
+    cursor: pointer;
+    position: relative;
+}
+
+#viewTaskModal .m-attachment-card:hover {
+    border-color: var(--m-accent);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+#viewTaskModal .m-attachment-preview {
+    height: 100px;
+    background: var(--m-surface);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.4rem;
+    overflow: hidden;
+}
+#viewTaskModal .m-attachment-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+#viewTaskModal .m-attachment-info { padding: 10px 12px; }
+
+#viewTaskModal .m-attachment-name {
+    font-size: 12px;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-bottom: 2px;
+    color: var(--m-text);
+    display: block;
+}
+
+#viewTaskModal .m-attachment-meta {
+    font-size: 11px;
+    color: var(--m-muted);
+    display: block;
+}
+
+#viewTaskModal .m-attachment-actions {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    opacity: 0;
+    transition: opacity 0.2s;
+    display: flex;
+    gap: 4px;
+    z-index: 2;
+}
+#viewTaskModal .m-attachment-card:hover .m-attachment-actions { opacity: 1; }
+
+#viewTaskModal .m-attachment-actions .btn {
+    padding: 2px 6px;
+    font-size: 0.75rem;
+    border-radius: 6px;
+    min-width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#viewTaskModal .m-attachment-missing {
+    border-color: var(--m-warning);
+    background: rgba(245, 158, 11, 0.05);
+}
+
+#viewTaskModal .m-drop-zone {
+    border: 2px dashed var(--m-border);
+    border-radius: 12px;
+    padding: 24px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s;
+    color: var(--m-muted);
+}
+
+#viewTaskModal .m-drop-zone:hover,
+#viewTaskModal .m-drop-zone.drag-over {
+    border-color: var(--m-accent);
+    background: var(--m-accent-soft);
+    color: var(--m-accent);
+}
+
+#viewTaskModal .m-drop-zone i {
+    display: block;
+    font-size: 2rem;
+    margin-bottom: 8px;
+    color: inherit;
+}
+
+#viewTaskModal .m-drop-zone p { margin: 0 0 4px; font-size: 13px; font-weight: 600; }
+#viewTaskModal .m-drop-zone small { font-size: 11px; }
+
+#viewTaskModal .m-upload-progress {
+    height: 6px;
+    background: var(--m-surface);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-top: 10px;
+    display: none;
+}
+#viewTaskModal .m-upload-progress.active { display: block; }
+
+#viewTaskModal .m-upload-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--m-accent), var(--m-accent-2));
+    transition: width 0.3s;
+    width: 0;
+}
+
+/* ============================================================
+   ИСТОРИЯ (таймлайн)
+   ============================================================ */
+#viewTaskModal .m-history-filters {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+#viewTaskModal .m-history-filter {
+    padding: 5px 12px;
+    border-radius: 100px;
+    border: 1px solid var(--m-border);
+    background: var(--m-bg);
+    color: var(--m-muted);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+#viewTaskModal .m-history-filter:hover { background: var(--m-surface); color: var(--m-text); }
+#viewTaskModal .m-history-filter.active {
+    background: var(--m-accent-soft);
+    border-color: transparent;
+    color: var(--m-accent);
+    font-weight: 600;
+}
+
+#viewTaskModal .m-timeline {
+    padding-left: 20px;
+    position: relative;
+}
+
+#viewTaskModal .m-timeline::before {
+    content: '';
+    position: absolute;
+    left: 6px;
+    top: 6px;
+    bottom: 6px;
+    width: 2px;
+    background: var(--m-border);
+}
+
+#viewTaskModal .m-tl-item {
+    position: relative;
+    padding-bottom: 14px;
+}
+#viewTaskModal .m-tl-item:last-child { padding-bottom: 0; }
+
+#viewTaskModal .m-tl-dot {
+    position: absolute;
+    left: -20px;
+    top: 4px;
+    width: 14px;
+    height: 14px;
+    background: var(--m-bg);
+    border: 2px solid var(--m-accent);
+    border-radius: 50%;
+}
+#viewTaskModal .m-tl-item.success .m-tl-dot { border-color: var(--m-success); }
+
+#viewTaskModal .m-tl-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 2px;
+}
+#viewTaskModal .m-tl-author { font-size: 13px; font-weight: 600; color: var(--m-text); }
+#viewTaskModal .m-tl-time { font-size: 11px; color: var(--m-subtle); }
+#viewTaskModal .m-tl-text { font-size: 13px; color: var(--m-muted); }
+
+/* ============================================================
+   EMPTY STATE
+   ============================================================ */
+#viewTaskModal .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--m-muted);
+}
+#viewTaskModal .empty-state i {
+    font-size: 3rem;
+    display: block;
+    margin-bottom: 10px;
+    opacity: 0.4;
+}
+#viewTaskModal .empty-state p { margin: 0; font-size: 0.9rem; }
+
+/* ============================================================
+   ФУТЕР МОДАЛКИ (#viewTaskModal)
+   ============================================================ */
+#viewTaskModal .modal-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+#viewTaskModal .m-btn {
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid var(--m-border);
+    background: var(--m-bg);
+    color: var(--m-text);
+    transition: all 0.15s;
+}
+#viewTaskModal .m-btn:hover {
+    background: var(--m-surface);
+    border-color: #d4d4d8;
+}
+#viewTaskModal .m-btn i { font-size: 14px; }
+
+#viewTaskModal .m-btn-danger {
+    border-color: rgba(239, 68, 68, 0.4);
+    color: var(--m-danger);
+    background: transparent;
+}
+#viewTaskModal .m-btn-danger:hover {
+    background: var(--m-danger-soft);
+    border-color: var(--m-danger);
+}
+
+#viewTaskModal .m-btn-primary {
+    background: linear-gradient(135deg, var(--m-accent), var(--m-accent-2));
+    color: white;
+    border: none;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+}
+#viewTaskModal .m-btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 20px rgba(99, 102, 241, 0.35);
+    background: linear-gradient(135deg, var(--m-accent), var(--m-accent-2));
+    color: white;
+}
+
+#viewTaskModal .m-btn-take {
+    color: var(--m-accent);
+    border-color: rgba(99, 102, 241, 0.4);
+    background: transparent;
+}
+#viewTaskModal .m-btn-take:hover {
+    background: var(--m-accent-soft);
+    border-color: var(--m-accent);
+}
+
+/* ============================================================
+   МОДАЛКА СОЗДАНИЯ ЗАЯВКИ (#createTaskModal)
+   ============================================================ */
+#createTaskModal .modal-header {
+    background: transparent;
+}
+
+#createTaskModal .modal-title {
+    color: var(--m-text);
+    font-size: 17px !important;
+    font-weight: 700 !important;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+#createTaskModal .modal-title i {
+    color: var(--m-accent);
+}
+
+#createTaskModal .modal-header .btn-close {
+    opacity: 0.6;
+}
+
+#createTaskModal .m-form-row {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 14px !important;
+    margin-bottom: 16px !important;
+}
+
+#createTaskModal .m-form-row.m-full {
+    grid-template-columns: 1fr !important;
+}
+
+#createTaskModal .m-field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+}
+
+#createTaskModal .m-field label,
+#createTaskModal .m-field .form-label {
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.06em !important;
+    color: var(--m-muted) !important;
+    margin-bottom: 4px !important;
+}
+
+#createTaskModal .m-field .form-control,
+#createTaskModal .m-field .form-select {
+    height: auto !important;
+    min-height: 0 !important;
+    line-height: 1.4 !important;
+    padding: 9px 12px !important;
+    border: 1px solid var(--m-border) !important;
+    border-radius: 9px !important;
+    background: var(--m-bg) !important;
+    color: var(--m-text) !important;
+    font-family: inherit !important;
+    font-size: 13px !important;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+#createTaskModal .m-field .form-control:focus,
+#createTaskModal .m-field .form-select:focus {
+    border-color: var(--m-accent) !important;
+    box-shadow: 0 0 0 3px var(--m-accent-soft) !important;
+}
+
+#createTaskModal .m-field textarea.form-control {
+    resize: vertical;
+    min-height: 88px;
+}
+
+#createTaskModal .m-field .form-control::placeholder {
+    color: var(--m-subtle);
+    opacity: 0.7;
+}
+
+#createTaskModal .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+#createTaskModal .m-btn {
+    padding: 9px 18px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid var(--m-border);
+    background: var(--m-bg);
+    color: var(--m-text);
+    transition: all 0.15s;
+}
+#createTaskModal .m-btn:hover {
+    background: var(--m-surface);
+    border-color: #d4d4d8;
+}
+
+#createTaskModal .m-btn-primary {
+    background: linear-gradient(135deg, var(--m-accent), var(--m-accent-2));
+    color: white;
+    border: none;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+}
+#createTaskModal .m-btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 20px rgba(99, 102, 241, 0.35);
+    background: linear-gradient(135deg, var(--m-accent), var(--m-accent-2));
+    color: white;
+}
+
+/* ============================================================
+   АДАПТИВ
+   ============================================================ */
+@media (max-width: 920px) {
+    #viewTaskModal .modal-dialog,
+    #createTaskModal .modal-dialog {
+        max-width: calc(100% - 24px) !important;
+        margin: 12px auto;
+    }
+}
+
+@media (max-width: 640px) {
+    #viewTaskModal .m-detail-grid { grid-template-columns: 1fr; gap: 14px; }
+    #createTaskModal .m-form-row { grid-template-columns: 1fr !important; }
+    #viewTaskModal .task-tabs { padding: 0 12px; }
+    #viewTaskModal .task-tabs .nav-link { padding: 12px 10px; font-size: 12px; }
+    #viewTaskModal .modal-body { padding: 16px; }
+    #createTaskModal .modal-body { padding: 16px; }
+    #viewTaskModal .m-attachments-grid {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    }
+    #viewTaskModal .task-modal-title { font-size: 15px; }
+    #viewTaskModal .task-num {
+        width: 44px;
+        height: 44px;
+        font-size: 11px;
+    }
+}

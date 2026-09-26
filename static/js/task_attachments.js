@@ -13,10 +13,9 @@
     var state = window.App.state;
 
     // ============================================================
-    // 🔧 ИНИЦИАЛИЗАЦИЯ ОБРАБОТЧИКОВ — ОДИН РАЗ ЧЕРЕЗ ДЕЛЕГИРОВАНИЕ
+    // ИНИЦИАЛИЗАЦИЯ ОБРАБОТЧИКОВ — ОДИН РАЗ ЧЕРЕЗ ДЕЛЕГИРОВАНИЕ
     // ============================================================
     function initDropZoneHandlers() {
-        // --- Клик по dropZone — открыть диалог файла ---
         $(document)
             .off('click.attachDropZone', '#dropZone')
             .on('click.attachDropZone', '#dropZone', function(e) {
@@ -25,7 +24,6 @@
                 $('#attachFileInput').trigger('click');
             });
 
-        // --- Изменение input (выбор файлов) ---
         $(document)
             .off('change.attachInput', '#attachFileInput')
             .on('change.attachInput', '#attachFileInput', function() {
@@ -36,22 +34,23 @@
                 }
             });
 
-        // --- Drag-and-drop ---
         $(document)
             .off('dragover.attachDropZone dragenter.attachDropZone', '#dropZone')
-            .on('dragover.attachDropZone dragenter.attachDropZone', '#dropZone', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                $(this).addClass('drag-over');
-            });
+            .on('dragover.attachDropZone dragenter.attachDropZone', '#dropZone',
+                function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    $(this).addClass('drag-over');
+                });
 
         $(document)
             .off('dragleave.attachDropZone drop.attachDropZone', '#dropZone')
-            .on('dragleave.attachDropZone drop.attachDropZone', '#dropZone', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                $(this).removeClass('drag-over');
-            });
+            .on('dragleave.attachDropZone drop.attachDropZone', '#dropZone',
+                function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    $(this).removeClass('drag-over');
+                });
 
         $(document)
             .off('drop.attachDropZoneData', '#dropZone')
@@ -66,7 +65,6 @@
             });
     }
 
-    // Инициализация один раз при загрузке
     $(document).ready(function() {
         initDropZoneHandlers();
     });
@@ -77,13 +75,17 @@
     // ============================================================
     function load(taskId) {
         if (!taskId || taskId === 'undefined' || taskId === 0) {
-            $('#attachmentsList').html('<div class="alert alert-warning">Не удалось определить ID заявки</div>');
+            $('#attachmentsList').html(
+                '<div class="alert alert-warning">' +
+                'Не удалось определить ID заявки</div>'
+            );
             return;
         }
 
         $('#attachmentsList').html(
             '<div class="text-center py-4">' +
-            '<div class="spinner-border spinner-border-sm text-primary"></div>' +
+            '<div class="spinner-border spinner-border-sm" ' +
+            'style="color:var(--m-accent)"></div>' +
             '</div>'
         );
 
@@ -96,7 +98,8 @@
                 if (list && list.error) {
                     utils.showErrorMessage(list.error);
                     $('#attachmentsList').html(
-                        '<div class="alert alert-danger">' + utils.escapeHtml(list.error) + '</div>'
+                        '<div class="alert alert-danger">' +
+                        utils.escapeHtml(list.error) + '</div>'
                     );
                     return;
                 }
@@ -106,7 +109,8 @@
             .catch(function(err) {
                 console.error('[attachments] load error:', err);
                 $('#attachmentsList').html(
-                    '<div class="alert alert-danger">Не удалось загрузить вложения</div>'
+                    '<div class="alert alert-danger">' +
+                    'Не удалось загрузить вложения</div>'
                 );
             });
     }
@@ -128,7 +132,7 @@
             return;
         }
 
-        var grid = $('<div class="attachments-grid"></div>');
+        var grid = $('<div class="m-attachments-grid"></div>');
         var isAdmin = window.currentUserRole === 'Администратор';
         var currentUser = window.currentUserFullName || '';
 
@@ -141,30 +145,33 @@
             var previewHtml;
             if (!exists) {
                 previewHtml =
-                    '<div class="attachment-preview" title="Файл отсутствует на диске">' +
-                    '<i class="bi bi-exclamation-triangle text-warning"></i>' +
+                    '<div class="m-attachment-preview" ' +
+                    'title="Файл отсутствует на диске">' +
+                    '<i class="bi bi-exclamation-triangle" ' +
+                    'style="color:#f59e0b"></i>' +
                     '</div>';
             } else if (isImage) {
-                var safeName = utils.escapeHtml(a.original_name).replace(/'/g, '&#39;');
+                var safeName = utils.escapeHtml(a.original_name)
+                    .replace(/'/g, '&#39;');
                 previewHtml =
-                    '<div class="attachment-preview" onclick="previewImage(' +
-                    a.id + ', \'' + safeName + '\')">' +
+                    '<div class="m-attachment-preview" ' +
+                    'onclick="previewImage(' + a.id + ', \'' +
+                    safeName + '\')">' +
                     '<img src="/api/attachments/' + a.id + '/preview" ' +
                     'alt="' + utils.escapeHtml(a.original_name) + '" ' +
-                    'onerror="this.parentNode.innerHTML=\'<i class=&quot;bi bi-file-earmark-image&quot;></i>\'">' +
+                    'onerror="this.parentNode.innerHTML=\'<i class=&quot;' +
+                    'bi bi-file-earmark-image&quot;></i>\'">' +
                     '</div>';
             } else {
                 previewHtml =
-                    '<div class="attachment-preview">' +
+                    '<div class="m-attachment-preview">' +
                     '<i class="bi ' + fileIcon(a.original_name) + '"></i>' +
                     '</div>';
             }
 
             // ---------- Действия ----------
-            var actions = '<div class="attachment-actions">';
+            var actions = '<div class="m-attachment-actions">';
             if (exists) {
-                // Скачивание: Content-Disposition формирует бэкенд.
-                // Не используем атрибут download= (кириллица в имени может ломать клик).
                 actions +=
                     '<a class="btn btn-sm btn-primary" ' +
                     'href="/api/attachments/' + a.id + '/download" ' +
@@ -183,13 +190,15 @@
             actions += '</div>';
 
             // ---------- Карточка ----------
-            var card = '<div class="attachment-card' + (exists ? '' : ' attachment-missing') + '">' +
+            var card = '<div class="m-attachment-card' +
+                (exists ? '' : ' m-attachment-missing') + '">' +
                 actions + previewHtml +
-                '<div class="attachment-info">' +
-                '<span class="attachment-name" title="' + utils.escapeHtml(a.original_name) + '">' +
+                '<div class="m-attachment-info">' +
+                '<span class="m-attachment-name" title="' +
+                utils.escapeHtml(a.original_name) + '">' +
                 utils.escapeHtml(a.original_name) +
                 '</span>' +
-                '<span class="attachment-meta">' +
+                '<span class="m-attachment-meta">' +
                 utils.formatSize(a.file_size) +
                 ' • ' + utils.escapeHtml(a.user_name || '') +
                 '</span>' +
@@ -211,10 +220,14 @@
         if (['doc', 'docx'].includes(ext)) return 'bi-file-earmark-word';
         if (['xls', 'xlsx', 'csv'].includes(ext)) return 'bi-file-earmark-excel';
         if (['ppt', 'pptx'].includes(ext)) return 'bi-file-earmark-ppt';
-        if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) return 'bi-file-earmark-zip';
+        if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) {
+            return 'bi-file-earmark-zip';
+        }
         if (['txt', 'log', 'md'].includes(ext)) return 'bi-file-earmark-text';
         if (['json', 'xml'].includes(ext)) return 'bi-file-earmark-code';
-        if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg'].includes(ext)) return 'bi-file-earmark-image';
+        if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg'].includes(ext)) {
+            return 'bi-file-earmark-image';
+        }
         return 'bi-file-earmark';
     }
 
@@ -234,7 +247,9 @@
         Array.from(files).forEach(function(file) {
             chain = chain.then(function() {
                 return uploadOneFile(file, taskId)
-                    .then(function(ok) { if (!ok) failed.push(file.name); })
+                    .then(function(ok) {
+                        if (!ok) failed.push(file.name);
+                    })
                     .then(function() {
                         done++;
                         var pct = Math.round((done / total) * 100);
@@ -281,7 +296,8 @@
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 if (!data.success) {
-                    console.warn('[attachments] Ошибка загрузки', file.name, data.error);
+                    console.warn('[attachments] Ошибка загрузки',
+                                 file.name, data.error);
                     return false;
                 }
                 return true;
@@ -341,7 +357,8 @@
             customClass: { popup: 'swal-wide' }
         }).then(function(r) {
             if (r.dismiss === Swal.DismissReason.cancel) {
-                window.location.href = '/api/attachments/' + attachmentId + '/download';
+                window.location.href =
+                    '/api/attachments/' + attachmentId + '/download';
             }
         });
     }
@@ -355,11 +372,10 @@
     api.previewImage = previewImage;
     api.fileIcon = fileIcon;
 
-    // Совместимость с inline onclick
     window.loadAttachments = load;
     window.deleteAttachment = remove;
     window.updateAttachmentsBadge = updateBadge;
     window.previewImage = previewImage;
 
-    console.log('[task_attachments] Загружено');
+    console.log('[task_attachments] Загружено (редизайн)');
 })();

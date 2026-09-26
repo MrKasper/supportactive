@@ -2,9 +2,9 @@
 // Kanban-доска для Техника + переключатель вида + фильтры.
 // ComboBox «Вид» сохраняется в localStorage.
 //
-// ⚠️ Техник НЕ создаёт заявки — кнопки создания нет ни в тулбаре,
-//     ни в шапке. Заявки создаёт Админ или Пользователь.
-//     init() вызывается из main.js при setupInterfaceByRole('Техник').
+// ⚠️ init() вызывается из main.js при setupInterfaceByRole('Техник').
+//     $(document).ready НЕ вызывает init — только биндит глобальные
+//     обработчики (клики, кнопки открытия, refresh после модалки).
 
 (function() {
     'use strict';
@@ -95,7 +95,7 @@
     var currentMode = 'kanban';
 
     // ============================================================
-    // ИНИЦИАЛИЗАЦИЯ
+    // ИНИЦИАЛИЗАЦИЯ (вызывается из main.js)
     // ============================================================
     function init() {
         ensureToolbar();
@@ -110,6 +110,19 @@
 
         if (saved === 'kanban') {
             load();
+        } else {
+            // 🆕 Пользователь выбрал таблицу — грузим фильтры и задачи
+            if (window.App.Tasks) {
+                if (window.App.Tasks.loadFilters) {
+                    window.App.Tasks.loadFilters();
+                }
+                if (window.App.Tasks.setupEventHandlers) {
+                    window.App.Tasks.setupEventHandlers();
+                }
+                if (window.App.Tasks.loadTasks) {
+                    window.App.Tasks.loadTasks(1);
+                }
+            }
         }
     }
 
@@ -234,6 +247,7 @@
 
             if (!silent) load();
         } else {
+            // ===== ТАБЛИЦА =====
             $('#tasksToolbarTitle').text('Список заявок');
             $('#tasksToolbarIcon')
                 .removeClass('bi-kanban-fill').addClass('bi-table');
@@ -243,9 +257,19 @@
             $('#kanbanBlock').hide();
             $('#tasksBlock').show();
 
-            if (!silent && window.App.Tasks &&
-                window.App.Tasks.loadTasks) {
-                window.App.Tasks.loadTasks(1);
+            if (!silent) {
+                // 🆕 Загружаем фильтры И задачи
+                if (window.App.Tasks) {
+                    if (window.App.Tasks.loadFilters) {
+                        window.App.Tasks.loadFilters();
+                    }
+                    if (window.App.Tasks.setupEventHandlers) {
+                        window.App.Tasks.setupEventHandlers();
+                    }
+                    if (window.App.Tasks.loadTasks) {
+                        window.App.Tasks.loadTasks(1);
+                    }
+                }
             }
         }
     }
@@ -385,8 +409,6 @@
                 $btn.prop('disabled', false).html(old);
             }, 600);
         });
-
-        // ❌ Убрано: обработчик #kanbanCreateBtn — кнопки больше нет.
     }
 
     // ============================================================
@@ -601,7 +623,7 @@
     }
 
     // ============================================================
-    // ФИЛЬТРАЦИЯ
+    // ФИЛЬТРАЦИЯ (клиентская — для поиска и Kanban-фильтров)
     // ============================================================
     function filterTasks(list) {
         var q = searchQuery.toLowerCase();
@@ -804,6 +826,9 @@
         });
     }
 
+    // ============================================================
+    // ПУСТЫЕ СОСТОЯНИЯ
+    // ============================================================
     function refreshEmptyStates() {
         COLUMNS.forEach(function(col) {
             var $col = $('.kanban-column[data-status="' +
@@ -828,6 +853,9 @@
         });
     }
 
+    // ============================================================
+    // ПЕРЕМЕЩЕНИЕ
+    // ============================================================
     function moveTask(taskId, newStatus, oldStatus, evt) {
         refreshEmptyStates();
 
@@ -889,6 +917,9 @@
         }, 900);
     }
 
+    // ============================================================
+    // ТОСТ: ПЕРЕХОД ЗАПРЕЩЁН
+    // ============================================================
     function showRejectionToast(from, to) {
         var text = describeTransition(from, to);
 
@@ -913,12 +944,18 @@
         }
     }
 
+    // ============================================================
+    // СТАТИСТИКА
+    // ============================================================
     function updateStats() {
         if (window.App.Tasks && window.App.Tasks.loadStatistics) {
             window.App.Tasks.loadStatistics();
         }
     }
 
+    // ============================================================
+    // КНОПКА «ОТКРЫТЬ»
+    // ============================================================
     function bindOpenButtons() {
         $(document)
             .off('click.kfOpen', '.kanban-card-open')
@@ -932,6 +969,9 @@
             });
     }
 
+    // ============================================================
+    // ПОСЛЕ МОДАЛКИ — ОБНОВИТЬ
+    // ============================================================
     function bindModalRefresh() {
         $(document)
             .off('hidden.bs.modal.kf', '#viewTaskModal')
@@ -963,5 +1003,5 @@
         bindModalRefresh();
     });
 
-    console.log('[tasks_kanban] Загружено (v3: без кнопки создания)');
+    console.log('[tasks_kanban] Загружено (v4: init вызывает фильтры)');
 })();

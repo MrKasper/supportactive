@@ -1,0 +1,3348 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Support Active</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+    :root {
+        --bg: #f7f7f9; --surface: #ffffff; --surface-2: #f4f4f5; --surface-3: #e9e9ec;
+        --border: #e8e8ec; --border-strong: #d4d4d8;
+        --text: #18181b; --text-muted: #71717a; --text-subtle: #a1a1aa;
+        --accent: #6366f1; --accent-2: #8b5cf6; --accent-soft: #eef2ff;
+        --success: #10b981; --success-soft: #ecfdf5;
+        --warning: #f59e0b; --warning-soft: #fffbeb;
+        --danger: #ef4444; --danger-soft: #fef2f2;
+        --shadow-xs: 0 1px 2px rgba(0,0,0,0.03);
+        --shadow-sm: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.03);
+        --shadow-md: 0 4px 12px rgba(0,0,0,0.06);
+        --shadow-lg: 0 12px 32px rgba(0,0,0,0.08);
+        --shadow-xl: 0 24px 64px rgba(0,0,0,0.15);
+        --sidebar-w: 260px;
+    }
+    [data-theme="dark"] {
+        --bg: #0a0a0f; --surface: #14141a; --surface-2: #1c1c24; --surface-3: #26262f;
+        --border: #27272f; --border-strong: #3f3f46;
+        --text: #fafafa; --text-muted: #a1a1aa; --text-subtle: #71717a;
+        --accent-soft: rgba(99,102,241,0.15);
+        --success-soft: rgba(16,185,129,0.15);
+        --warning-soft: rgba(245,158,11,0.15);
+        --danger-soft: rgba(239,68,68,0.15);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+        font-family: 'Inter', sans-serif;
+        background: var(--bg); color: var(--text);
+        font-size: 14px; line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+        min-height: 100vh;
+    }
+    button { font-family: inherit; }
+    .hidden { display: none !important; }
+
+    /* ============ SIDEBAR ============ */
+    .sidebar {
+        position: fixed; top: 0; left: 0; bottom: 0;
+        width: var(--sidebar-w);
+        background: linear-gradient(180deg, #1e1b4b 0%, #18163a 100%);
+        color: white; display: flex; flex-direction: column; z-index: 100;
+    }
+    .sidebar-brand {
+        padding: 20px 22px; display: flex; align-items: center; gap: 12px;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .brand-mark {
+        width: 40px; height: 40px; background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        border-radius: 11px; display: flex; align-items: center; justify-content: center;
+        font-size: 20px; box-shadow: 0 4px 12px rgba(99,102,241,0.4); flex-shrink: 0;
+    }
+    .brand-text h3 { font-size: 15px; font-weight: 700; }
+    .brand-text small { font-size: 11px; color: rgba(255,255,255,0.5); }
+    .sidebar-nav { flex: 1; padding: 16px 12px; overflow-y: auto; }
+    .nav-section-title {
+        font-size: 10px; font-weight: 700; text-transform: uppercase;
+        letter-spacing: 0.08em; color: rgba(255,255,255,0.35);
+        padding: 12px 12px 6px;
+    }
+    .nav-item {
+        display: flex; align-items: center; gap: 12px;
+        padding: 10px 14px; border-radius: 10px;
+        color: rgba(255,255,255,0.72); font-size: 13px; font-weight: 500;
+        text-decoration: none; cursor: pointer;
+        transition: all 0.15s; margin-bottom: 2px; position: relative;
+    }
+    .nav-item svg { width: 18px; height: 18px; flex-shrink: 0; stroke-width: 2; }
+    .nav-item:hover { background: rgba(255,255,255,0.06); color: white; }
+    .nav-item.active {
+        background: linear-gradient(135deg, rgba(99,102,241,0.25), rgba(139,92,246,0.15));
+        color: white; font-weight: 600;
+    }
+    .nav-item.active::before {
+        content: ''; position: absolute; left: -12px; top: 8px; bottom: 8px; width: 3px;
+        background: linear-gradient(180deg, var(--accent), var(--accent-2));
+        border-radius: 0 2px 2px 0;
+    }
+    .nav-item-badge {
+        margin-left: auto; background: rgba(255,255,255,0.15); color: white;
+        padding: 1px 8px; border-radius: 100px; font-size: 10px; font-weight: 700;
+    }
+    .sidebar-footer { padding: 12px; border-top: 1px solid rgba(255,255,255,0.08); }
+    .sidebar-user {
+        display: flex; align-items: center; gap: 10px;
+        padding: 8px 10px; border-radius: 10px; cursor: pointer; transition: background 0.15s;
+    }
+    .sidebar-user:hover { background: rgba(255,255,255,0.06); }
+    .sidebar-user-avatar {
+        width: 34px; height: 34px; border-radius: 50%;
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        display: flex; align-items: center; justify-content: center;
+        font-size: 13px; font-weight: 700; flex-shrink: 0;
+    }
+    .sidebar-user-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sidebar-user-role { font-size: 11px; color: rgba(255,255,255,0.5); }
+
+    /* ============ MAIN ============ */
+    .main { margin-left: var(--sidebar-w); padding: 20px 24px 40px; min-height: 100vh; }
+    .page { animation: fadeIn 0.2s; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* TOPBAR */
+    .topbar {
+        display: flex; justify-content: space-between; align-items: center;
+        gap: 16px; margin-bottom: 20px; flex-wrap: wrap;
+    }
+    .topbar-title {
+        font-size: 22px; font-weight: 700; letter-spacing: -0.02em;
+        display: flex; align-items: center; gap: 10px;
+    }
+    .topbar-title svg { color: var(--accent); }
+    .topbar-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .icon-btn {
+        width: 40px; height: 40px; border-radius: 10px;
+        border: 1px solid var(--border); background: var(--surface);
+        color: var(--text-muted); cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        transition: all 0.15s; position: relative;
+    }
+    .icon-btn:hover { background: var(--surface-2); color: var(--text); border-color: var(--border-strong); }
+    .icon-btn-badge {
+        position: absolute; top: -4px; right: -4px;
+        min-width: 18px; height: 18px; border-radius: 9px;
+        background: var(--danger); color: white;
+        font-size: 10px; font-weight: 700;
+        display: flex; align-items: center; justify-content: center;
+        padding: 0 5px; border: 2px solid var(--bg);
+    }
+    .btn-primary {
+        padding: 10px 18px;
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        color: white; border: none; border-radius: 10px;
+        font-size: 13px; font-weight: 600; cursor: pointer;
+        display: inline-flex; align-items: center; gap: 7px;
+        box-shadow: 0 4px 12px rgba(99,102,241,0.25);
+        transition: all 0.15s;
+    }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(99,102,241,0.35); }
+    .btn-ghost {
+        padding: 8px 14px; background: transparent;
+        border: 1px solid var(--border); border-radius: 10px;
+        color: var(--text-muted); font-size: 12px; font-weight: 500;
+        cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+        transition: all 0.15s;
+    }
+    .btn-ghost:hover { background: var(--surface-2); color: var(--text); border-color: var(--border-strong); }
+    .btn-ghost svg { width: 13px; height: 13px; }
+
+    /* USER CARD */
+    .user-card {
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: 16px; padding: 20px 24px; margin-bottom: 20px;
+        display: grid; grid-template-columns: 1.2fr 1.2fr 2fr;
+        gap: 24px; align-items: center; box-shadow: var(--shadow-sm);
+    }
+    .user-info { display: flex; align-items: center; gap: 16px; min-width: 0; }
+    .user-avatar {
+        width: 56px; height: 56px; border-radius: 50%;
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        display: flex; align-items: center; justify-content: center;
+        color: white; font-size: 22px; font-weight: 800;
+        box-shadow: 0 4px 12px rgba(99,102,241,0.35); flex-shrink: 0;
+    }
+    .user-info-name { font-size: 16px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .user-info-role { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .role-pill {
+        display: inline-flex; align-items: center; gap: 4px;
+        padding: 2px 8px; border-radius: 100px; font-size: 11px; font-weight: 600;
+        background: var(--accent-soft); color: var(--accent);
+    }
+    .user-info-dept { font-size: 11px; color: var(--text-subtle); margin-top: 2px; }
+    .user-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .stat-box {
+        background: var(--surface-2); border-radius: 10px;
+        padding: 10px 8px; text-align: center; transition: all 0.15s; cursor: pointer;
+    }
+    .stat-box:hover { background: var(--accent-soft); }
+    .stat-box-value { font-size: 20px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; }
+    .stat-box-label {
+        font-size: 10px; color: var(--text-muted); text-transform: uppercase;
+        letter-spacing: 0.05em; font-weight: 600; margin-top: 3px;
+    }
+    .stat-box.accent .stat-box-value { color: var(--accent); }
+    .stat-box.success .stat-box-value { color: var(--success); }
+    .stat-box.warning .stat-box-value { color: var(--warning); }
+
+    /* TOOLBAR */
+    .toolbar {
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: 16px; padding: 16px 20px; margin-bottom: 16px;
+        display: flex; justify-content: space-between; align-items: center;
+        gap: 16px; flex-wrap: wrap; box-shadow: var(--shadow-sm);
+    }
+    .toolbar-left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; flex: 1; min-width: 0; }
+    .search-input { position: relative; flex: 0 1 280px; min-width: 200px; }
+    .search-input input {
+        width: 100%; padding: 9px 14px 9px 38px;
+        background: var(--surface-2); border: 1px solid transparent;
+        border-radius: 10px; font-family: inherit; font-size: 13px;
+        color: var(--text); outline: none; transition: all 0.15s;
+    }
+    .search-input input:focus {
+        background: var(--surface); border-color: var(--accent);
+        box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+    .search-input svg {
+        position: absolute; left: 12px; top: 50%;
+        transform: translateY(-50%); color: var(--text-subtle); pointer-events: none;
+    }
+    .segmented { display: inline-flex; background: var(--surface-2); border-radius: 10px; padding: 3px; }
+    .segmented button {
+        padding: 6px 14px; border: none; background: transparent;
+        color: var(--text-muted); font-size: 12px; font-weight: 600;
+        cursor: pointer; border-radius: 7px;
+        display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s;
+    }
+    .segmented button.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow-xs); }
+    .segmented button svg { width: 13px; height: 13px; }
+    .toolbar-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+    /* FILTERS */
+    .filters-panel {
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: 16px; padding: 16px 20px; margin-bottom: 16px;
+        box-shadow: var(--shadow-sm);
+    }
+    .filters-grid {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px; align-items: end;
+    }
+    .field { display: flex; flex-direction: column; gap: 5px; }
+    .field label {
+        font-size: 11px; font-weight: 600; text-transform: uppercase;
+        letter-spacing: 0.05em; color: var(--text-muted);
+    }
+    .field select, .field input, .field textarea {
+        padding: 8px 12px; border: 1px solid var(--border);
+        border-radius: 9px; background: var(--surface); color: var(--text);
+        font-family: inherit; font-size: 13px; outline: none;
+        transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .field select:focus, .field input:focus, .field textarea:focus {
+        border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+    .field textarea { resize: vertical; min-height: 88px; width: 100%; }
+    .filters-footer {
+        display: flex; justify-content: space-between; align-items: center;
+        margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border);
+    }
+    .filter-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+    .filter-chip {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 4px 10px; background: var(--accent-soft); color: var(--accent);
+        border-radius: 100px; font-size: 12px; font-weight: 500;
+    }
+    .filter-chip button { background: transparent; border: none; color: inherit; cursor: pointer; padding: 0; display: flex; opacity: 0.7; }
+
+    /* BULK BAR */
+    .bulk-bar {
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        color: white; border-radius: 12px; padding: 12px 18px;
+        margin-bottom: 16px; display: none; align-items: center; gap: 14px;
+        box-shadow: 0 4px 12px rgba(99,102,241,0.3);
+    }
+    .bulk-bar.active { display: flex; }
+    .bulk-count { font-weight: 700; font-size: 14px; }
+    .bulk-actions { display: flex; gap: 8px; margin-left: auto; flex-wrap: wrap; }
+    .bulk-btn {
+        padding: 6px 12px; background: rgba(255,255,255,0.15);
+        border: 1px solid rgba(255,255,255,0.2); color: white;
+        border-radius: 8px; font-size: 12px; font-weight: 500;
+        cursor: pointer; display: inline-flex; align-items: center; gap: 5px;
+        transition: all 0.15s;
+    }
+    .bulk-btn:hover { background: rgba(255,255,255,0.25); }
+    .bulk-btn.danger { background: rgba(239,68,68,0.3); border-color: rgba(239,68,68,0.4); }
+
+    /* TABLE */
+    .table-wrap {
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: 16px; overflow: hidden; box-shadow: var(--shadow-sm);
+    }
+    .table-head {
+        padding: 14px 20px; border-bottom: 1px solid var(--border);
+        display: flex; justify-content: space-between; align-items: center;
+        gap: 12px; flex-wrap: wrap;
+    }
+    .table-head-title { font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .table-head-count {
+        background: var(--surface-2); color: var(--text-muted);
+        padding: 2px 9px; border-radius: 100px; font-size: 11px; font-weight: 700;
+    }
+    .table-scroll { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 1000px; }
+    thead th {
+        padding: 12px 16px; text-align: left; font-size: 11px; font-weight: 700;
+        text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);
+        background: var(--surface-2); border-bottom: 1px solid var(--border);
+        white-space: nowrap; position: sticky; top: 0;
+    }
+    tbody td { padding: 14px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    tbody tr { transition: background 0.1s; cursor: pointer; }
+    tbody tr:hover { background: var(--surface-2); }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr.row-high td:first-child { box-shadow: inset 3px 0 0 var(--danger); }
+    tbody tr.row-medium td:first-child { box-shadow: inset 3px 0 0 var(--warning); }
+    tbody tr.row-low td:first-child { box-shadow: inset 3px 0 0 var(--success); }
+
+    .cell-id { font-family: 'SF Mono', Consolas, monospace; font-size: 12px; font-weight: 700; color: var(--accent); }
+    .cell-date { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+    .cell-desc { font-size: 13px; font-weight: 500; max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cell-user { display: flex; align-items: center; gap: 8px; }
+    .cell-user-avatar {
+        width: 26px; height: 26px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        color: white; font-size: 11px; font-weight: 700; flex-shrink: 0;
+    }
+    .cell-cabinet { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-muted); }
+
+    .badge {
+        display: inline-flex; align-items: center; gap: 4px;
+        padding: 4px 10px; border-radius: 100px;
+        font-size: 11px; font-weight: 600; white-space: nowrap;
+    }
+    .badge-new { background: var(--accent-soft); color: var(--accent); }
+    .badge-progress { background: var(--warning-soft); color: #b45309; }
+    .badge-completed { background: var(--success-soft); color: #047857; }
+    .badge-cancelled { background: var(--surface-3); color: var(--text-muted); }
+    [data-theme="dark"] .badge-progress { color: #fcd34d; }
+    [data-theme="dark"] .badge-completed { color: #6ee7b7; }
+
+    .badge-priority { padding: 3px 9px; border-radius: 6px; font-size: 11px; font-weight: 600; background: var(--surface-2); color: var(--text-muted); }
+    .badge-priority.high { background: var(--danger-soft); color: #b91c1c; }
+    .badge-priority.medium { background: var(--warning-soft); color: #b45309; }
+    .badge-priority.low { background: var(--success-soft); color: #047857; }
+    [data-theme="dark"] .badge-priority.high { color: #fca5a5; }
+    [data-theme="dark"] .badge-priority.medium { color: #fcd34d; }
+    [data-theme="dark"] .badge-priority.low { color: #6ee7b7; }
+
+    .checkbox { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+
+    .pagination {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 14px 20px; border-top: 1px solid var(--border);
+        background: var(--surface-2); gap: 12px; flex-wrap: wrap;
+    }
+    .pagination-info { font-size: 12px; color: var(--text-muted); }
+    .pagination-controls { display: flex; gap: 4px; }
+    .page-btn {
+        min-width: 34px; height: 34px; padding: 0 10px;
+        border: 1px solid var(--border); background: var(--surface);
+        color: var(--text-muted); border-radius: 8px;
+        font-size: 13px; font-weight: 500; cursor: pointer;
+        display: inline-flex; align-items: center; justify-content: center;
+        transition: all 0.15s;
+    }
+    .page-btn:hover:not(:disabled):not(.active) { background: var(--surface-2); color: var(--text); }
+    .page-btn.active {
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        border-color: transparent; color: white; font-weight: 700;
+        box-shadow: 0 2px 8px rgba(99,102,241,0.3);
+    }
+    .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* KANBAN */
+    .kanban { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; align-items: start; }
+    .kb-column {
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: 16px; padding: 16px; min-height: 400px;
+        display: flex; flex-direction: column; transition: all 0.15s;
+    }
+    .kb-column-head {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 0 4px 14px; margin-bottom: 14px; border-bottom: 1px solid var(--border);
+    }
+    .kb-column-title { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; }
+    .kb-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .kb-count {
+        background: var(--surface-2); color: var(--text-muted);
+        padding: 3px 9px; border-radius: 100px; font-size: 12px; font-weight: 600;
+    }
+    .kb-card {
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: 12px; padding: 14px; margin-bottom: 10px;
+        cursor: pointer; transition: all 0.15s;
+        border-left: 3px solid var(--border-strong); box-shadow: var(--shadow-xs);
+    }
+    .kb-card:hover { border-color: var(--border-strong); box-shadow: var(--shadow-md); transform: translateY(-2px); }
+    .kb-card.p-high { border-left-color: var(--danger); }
+    .kb-card.p-medium { border-left-color: var(--warning); }
+    .kb-card.p-low { border-left-color: var(--success); }
+    .kb-card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .kb-card-id {
+        font-size: 11px; font-weight: 700; font-family: 'SF Mono', Consolas, monospace;
+        color: var(--accent); background: var(--accent-soft); padding: 2px 8px; border-radius: 6px;
+    }
+    .kb-card-title { font-size: 13px; font-weight: 600; line-height: 1.4; margin-bottom: 10px; }
+    .kb-card-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+    .kb-chip {
+        display: inline-flex; align-items: center; gap: 4px;
+        font-size: 11px; font-weight: 500; color: var(--text-muted);
+        background: var(--surface-2); padding: 3px 8px; border-radius: 6px;
+    }
+    .kb-card-foot {
+        display: flex; justify-content: space-between; align-items: center;
+        padding-top: 10px; border-top: 1px solid var(--border);
+        font-size: 11px; color: var(--text-muted);
+    }
+    .kb-avatar {
+        width: 24px; height: 24px; border-radius: 50%;
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        color: white; display: flex; align-items: center; justify-content: center;
+        font-size: 11px; font-weight: 700;
+    }
+
+    /* DASHBOARD */
+    .kpi-grid {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px; margin-bottom: 24px;
+    }
+    .kpi {
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: 16px; padding: 20px; position: relative; overflow: hidden;
+        transition: all 0.15s;
+    }
+    .kpi:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+    .kpi::after {
+        content: ''; position: absolute; top: 0; left: 0; right: 0;
+        height: 3px; background: var(--kpi-accent, var(--accent));
+    }
+    .kpi-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+    .kpi-icon {
+        width: 38px; height: 38px; border-radius: 10px;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .kpi-trend {
+        display: inline-flex; align-items: center; gap: 3px;
+        font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 100px;
+    }
+    .kpi-trend.up { background: var(--success-soft); color: #047857; }
+    .kpi-trend.down { background: var(--danger-soft); color: #b91c1c; }
+    [data-theme="dark"] .kpi-trend.up { color: #6ee7b7; }
+    [data-theme="dark"] .kpi-trend.down { color: #fca5a5; }
+    .kpi-value { font-size: 30px; font-weight: 800; letter-spacing: -0.03em; line-height: 1; margin-bottom: 4px; }
+    .kpi-label { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+
+    .grid-2 { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 20px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+    .card-head {
+        padding: 18px 20px; border-bottom: 1px solid var(--border);
+        display: flex; justify-content: space-between; align-items: center;
+    }
+    .card-head h2 { font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .card-head h2 svg { color: var(--accent); }
+    .card-body { padding: 20px; }
+    .badge-soft { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 100px; background: var(--accent-soft); color: var(--accent); }
+
+    .chart { height: 220px; display: flex; align-items: flex-end; gap: 8px; padding: 20px 0 0; }
+    .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 6px; }
+    .bar-group { display: flex; gap: 3px; align-items: flex-end; height: 100%; width: 100%; justify-content: center; }
+    .bar { width: 14px; border-radius: 6px 6px 0 0; min-height: 4px; }
+    .bar-1 { background: linear-gradient(180deg, var(--accent), #4f46e5); }
+    .bar-2 { background: linear-gradient(180deg, var(--success), #059669); }
+    .bar-label { font-size: 11px; color: var(--text-muted); font-weight: 500; }
+
+    .top-item { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+    .top-item:last-child { border-bottom: none; padding-bottom: 0; }
+    .top-rank {
+        width: 24px; height: 24px; border-radius: 8px;
+        background: var(--surface-2); color: var(--text-muted);
+        font-size: 11px; font-weight: 700;
+        display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .top-rank.gold { background: #fef3c7; color: #b45309; }
+    .top-rank.silver { background: #f3f4f6; color: #4b5563; }
+    .top-rank.bronze { background: #fed7aa; color: #9a3412; }
+    [data-theme="dark"] .top-rank.gold { background: rgba(245,158,11,0.2); color: #fcd34d; }
+    [data-theme="dark"] .top-rank.silver { background: rgba(148,163,184,0.2); color: #cbd5e1; }
+    [data-theme="dark"] .top-rank.bronze { background: rgba(249,115,22,0.2); color: #fdba74; }
+    .top-info { flex: 1; min-width: 0; }
+    .top-name { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .top-sub { font-size: 11px; color: var(--text-muted); }
+    .top-value { font-size: 14px; font-weight: 700; color: var(--accent); flex-shrink: 0; }
+
+    .progress-item { margin-bottom: 16px; }
+    .progress-item:last-child { margin-bottom: 0; }
+    .progress-head { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 12px; }
+    .progress-name { font-weight: 500; }
+    .progress-value { color: var(--text-muted); font-weight: 600; }
+    .progress-track { height: 6px; background: var(--surface-2); border-radius: 100px; overflow: hidden; }
+    .progress-fill { height: 100%; border-radius: 100px; }
+
+    /* CABINETS */
+    .cabinets-grid {
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 16px;
+    }
+    .cabinet-card {
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: 16px; padding: 18px; cursor: pointer;
+        transition: all 0.15s; box-shadow: var(--shadow-sm);
+    }
+    .cabinet-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); border-color: var(--accent); }
+    .cabinet-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+    .cabinet-num { font-size: 16px; font-weight: 700; }
+    .cabinet-desc { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .cabinet-stats {
+        display: flex; gap: 12px; margin-top: 14px; padding-top: 12px;
+        border-top: 1px solid var(--border);
+    }
+    .cabinet-stat { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); }
+    .cabinet-stat strong { color: var(--text); font-weight: 700; }
+
+    /* MODALS */
+    .modal-backdrop {
+        position: fixed; inset: 0; background: rgba(15,15,20,0.5);
+        backdrop-filter: blur(4px); z-index: 1000; display: none;
+        align-items: flex-start; justify-content: center;
+        padding: 40px 20px; overflow-y: auto;
+        animation: fadeIn 0.15s;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal {
+        width: 100%; max-width: 640px; background: var(--surface);
+        border-radius: 20px; box-shadow: var(--shadow-xl); overflow: hidden;
+        animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        margin: auto;
+    }
+    .modal.large { max-width: 880px; }
+    .modal.small { max-width: 480px; }
+    @keyframes slideUp {
+        from { opacity: 0; transform: translateY(20px) scale(0.98); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .modal-head {
+        padding: 20px 24px; border-bottom: 1px solid var(--border);
+        display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    }
+    .modal-head h2 { font-size: 17px; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+    .modal-head h2 svg { color: var(--accent); }
+    .modal-close {
+        width: 34px; height: 34px; border-radius: 9px;
+        border: 1px solid var(--border); background: var(--surface);
+        color: var(--text-muted); cursor: pointer;
+        display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        font-size: 18px; line-height: 1;
+    }
+    .modal-close:hover { background: var(--surface-2); color: var(--text); }
+    .modal-body { padding: 24px; max-height: 65vh; overflow-y: auto; }
+    .modal-foot {
+        padding: 16px 24px; border-top: 1px solid var(--border);
+        background: var(--surface-2); display: flex; justify-content: flex-end; gap: 8px;
+    }
+    .modal-foot .btn-ghost { padding: 10px 18px; }
+    .modal-foot .btn-primary { padding: 10px 20px; }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+    .form-row.full { grid-template-columns: 1fr; }
+
+    /* PROFILE */
+    .profile-header {
+        text-align: center; padding: 12px 0 24px;
+        border-bottom: 1px solid var(--border); margin-bottom: 20px;
+    }
+    .profile-avatar {
+        width: 88px; height: 88px; border-radius: 50%;
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        display: flex; align-items: center; justify-content: center;
+        color: white; font-size: 36px; font-weight: 800;
+        margin: 0 auto 16px;
+        box-shadow: 0 8px 24px rgba(99,102,241,0.35);
+    }
+    .profile-name { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+    .profile-role { font-size: 13px; color: var(--text-muted); margin-bottom: 8px; }
+    .profile-info-grid {
+        display: grid; grid-template-columns: 1fr 1fr;
+        gap: 16px; padding: 16px 0;
+    }
+    .profile-info-item .label {
+        font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;
+        color: var(--text-muted); font-weight: 600; margin-bottom: 4px;
+    }
+    .profile-info-item .value { font-size: 14px; font-weight: 500; }
+
+    /* NOTIFICATIONS */
+    .notification-item {
+        display: flex; gap: 12px; padding: 14px;
+        border-radius: 12px; cursor: pointer;
+        transition: background 0.15s; position: relative;
+        border-bottom: 1px solid var(--border);
+    }
+    .notification-item:last-child { border-bottom: none; }
+    .notification-item:hover { background: var(--surface-2); }
+    .notification-item.unread { background: var(--accent-soft); }
+    .notification-item.unread:hover { background: var(--accent-soft); filter: brightness(0.97); }
+    .notif-icon {
+        width: 40px; height: 40px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0; font-size: 16px;
+    }
+    .notif-body { flex: 1; min-width: 0; }
+    .notif-title { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+    .notif-text { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+    .notif-time { font-size: 11px; color: var(--text-subtle); }
+    .notif-dot {
+        width: 8px; height: 8px; border-radius: 50%;
+        background: var(--accent); flex-shrink: 0; align-self: flex-start; margin-top: 6px;
+    }
+
+    /* EXPORT */
+    .export-options { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+    .export-option {
+        background: var(--surface-2); border: 2px solid transparent;
+        border-radius: 14px; padding: 20px 16px; text-align: center;
+        cursor: pointer; transition: all 0.15s;
+    }
+    .export-option:hover { border-color: var(--accent); background: var(--accent-soft); }
+    .export-option.active { border-color: var(--accent); background: var(--accent-soft); }
+    .export-icon {
+        width: 48px; height: 48px; border-radius: 12px;
+        background: var(--surface); display: flex; align-items: center; justify-content: center;
+        margin: 0 auto 10px; font-size: 22px;
+    }
+    .export-name { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+    .export-desc { font-size: 11px; color: var(--text-muted); }
+
+    /* TASK MODAL HEAD */
+    .task-num {
+        width: 52px; height: 52px; border-radius: 14px;
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        color: white; display: flex; align-items: center; justify-content: center;
+        font-size: 15px; font-weight: 800; font-family: 'SF Mono', Consolas, monospace;
+        box-shadow: 0 4px 12px rgba(99,102,241,0.3); flex-shrink: 0;
+    }
+    .task-modal-head-inner { display: flex; gap: 14px; align-items: flex-start; flex: 1; min-width: 0; }
+    .task-modal-title { font-size: 18px; font-weight: 700; line-height: 1.3; margin-bottom: 6px; }
+    .task-modal-meta { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--text-muted); }
+    .task-modal-meta span { display: inline-flex; align-items: center; gap: 5px; }
+
+    /* TASK TABS */
+    .task-tabs {
+        display: flex; gap: 4px;
+        padding: 0 24px;
+        border-bottom: 1px solid var(--border);
+        background: var(--surface);
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+    .task-tabs::-webkit-scrollbar { display: none; }
+    .task-tab {
+        padding: 14px 16px;
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--text-muted);
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        white-space: nowrap;
+        transition: color 0.15s;
+    }
+    .task-tab svg { width: 15px; height: 15px; }
+    .task-tab:hover { color: var(--text); }
+    .task-tab.active { color: var(--accent); font-weight: 600; }
+    .task-tab.active::after {
+        content: ''; position: absolute; bottom: -1px; left: 0; right: 0;
+        height: 2px; background: var(--accent); border-radius: 2px 2px 0 0;
+    }
+    .task-tab-badge {
+        background: var(--accent-soft); color: var(--accent);
+        padding: 1px 8px; border-radius: 100px;
+        font-size: 11px; font-weight: 700; line-height: 1.4;
+    }
+    .task-tab-panel { display: none; }
+    .task-tab-panel.active { display: block; animation: fadeIn 0.2s; }
+
+    /* COMMENTS */
+    .comment {
+        display: flex; gap: 12px; padding: 14px;
+        border-radius: 12px; background: var(--surface-2);
+        margin-bottom: 10px; position: relative;
+    }
+    .comment.internal { background: var(--warning-soft); border-left: 3px solid var(--warning); }
+    .comment-avatar {
+        width: 36px; height: 36px; border-radius: 50%;
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        color: white; display: flex; align-items: center; justify-content: center;
+        font-size: 14px; font-weight: 700; flex-shrink: 0;
+    }
+    .comment-body { flex: 1; min-width: 0; }
+    .comment-head {
+        display: flex; justify-content: space-between; align-items: baseline;
+        gap: 8px; margin-bottom: 4px; flex-wrap: wrap;
+    }
+    .comment-author { font-size: 13px; font-weight: 600; }
+    .comment-time { font-size: 11px; color: var(--text-subtle); }
+    .comment-text {
+        font-size: 13px; line-height: 1.55; color: var(--text);
+        white-space: pre-wrap; word-break: break-word;
+    }
+    .comment-badge {
+        display: inline-block; font-size: 10px; padding: 1px 6px;
+        border-radius: 8px; background: var(--warning); color: #333;
+        font-weight: 600; margin-left: 6px; vertical-align: middle;
+    }
+    .mention {
+        color: var(--accent); font-weight: 600;
+        background: var(--accent-soft); padding: 0 4px; border-radius: 4px;
+    }
+    .comment-form {
+        margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border);
+    }
+    .comment-form textarea {
+        width: 100%; padding: 10px 12px;
+        border: 1px solid var(--border); border-radius: 10px;
+        font-family: inherit; font-size: 13px; resize: vertical;
+        min-height: 72px; outline: none; background: var(--surface); color: var(--text);
+    }
+    .comment-form textarea:focus {
+        border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+    .comment-form-footer {
+        display: flex; justify-content: space-between; align-items: center;
+        margin-top: 10px; gap: 10px; flex-wrap: wrap;
+    }
+
+    /* ATTACHMENTS */
+    .attachments-grid {
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 12px; margin-bottom: 20px;
+    }
+    .attachment-card {
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: 12px; overflow: hidden;
+        transition: all 0.15s; cursor: pointer;
+    }
+    .attachment-card:hover {
+        border-color: var(--accent); transform: translateY(-2px); box-shadow: var(--shadow-md);
+    }
+    .attachment-preview {
+        height: 110px; background: var(--surface-2);
+        display: flex; align-items: center; justify-content: center; font-size: 2.6rem;
+    }
+    .attachment-info { padding: 10px 12px; }
+    .attachment-name {
+        font-size: 12px; font-weight: 600;
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 2px;
+    }
+    .attachment-meta { font-size: 11px; color: var(--text-muted); }
+    .drop-zone {
+        border: 2px dashed var(--border-strong); border-radius: 12px;
+        padding: 28px 16px; text-align: center; cursor: pointer;
+        transition: all 0.15s; color: var(--text-muted);
+    }
+    .drop-zone:hover { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+    .drop-zone svg { display: block; margin: 0 auto 8px; }
+    .drop-zone-text { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+    .drop-zone-hint { font-size: 11px; }
+
+    /* DETAIL GRID */
+    .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+    .detail-item .label {
+        font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;
+        color: var(--text-subtle); font-weight: 600; margin-bottom: 4px;
+    }
+    .detail-item .value { font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 8px; }
+
+    .desc-block {
+        background: var(--surface-2); border: 1px solid var(--border);
+        border-radius: 12px; padding: 16px 18px; margin-bottom: 20px;
+    }
+    .desc-block h3 {
+        font-size: 11px; font-weight: 600; text-transform: uppercase;
+        letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 10px;
+    }
+    .desc-block p { font-size: 14px; line-height: 1.6; }
+
+    /* TIMELINE */
+    .timeline { padding-left: 20px; position: relative; }
+    .timeline::before {
+        content: ''; position: absolute; left: 6px; top: 6px; bottom: 6px;
+        width: 2px; background: var(--border);
+    }
+    .tl-item { position: relative; padding-bottom: 14px; }
+    .tl-item:last-child { padding-bottom: 0; }
+    .tl-dot {
+        position: absolute; left: -20px; top: 4px;
+        width: 14px; height: 14px; background: var(--surface);
+        border: 2px solid var(--accent); border-radius: 50%;
+    }
+    .tl-item.success .tl-dot { border-color: var(--success); }
+    .tl-head { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 2px; }
+    .tl-author { font-size: 13px; font-weight: 600; }
+    .tl-time { font-size: 11px; color: var(--text-subtle); }
+    .tl-text { font-size: 13px; color: var(--text-muted); }
+
+    .history-filters { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+    .history-filter {
+        padding: 5px 12px; border-radius: 100px;
+        border: 1px solid var(--border); background: var(--surface);
+        color: var(--text-muted); font-size: 12px; font-weight: 500;
+        cursor: pointer; transition: all 0.15s;
+    }
+    .history-filter:hover { background: var(--surface-2); color: var(--text); }
+    .history-filter.active { background: var(--accent-soft); border-color: transparent; color: var(--accent); font-weight: 600; }
+
+    /* REPORTS */
+    .report-card {
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: 16px; padding: 20px; margin-bottom: 16px;
+    }
+    .report-card h3 { font-size: 15px; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+    .report-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    /* MOBILE NAV */
+    .mobile-nav {
+        display: none; position: fixed; bottom: 0; left: 0; right: 0;
+        height: 64px; background: var(--surface); border-top: 1px solid var(--border);
+        z-index: 100; box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+    }
+    .mobile-nav-inner { display: flex; height: 100%; }
+    .mobile-nav-item {
+        flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+        gap: 2px; color: var(--text-subtle); font-size: 10px; font-weight: 600;
+        cursor: pointer; position: relative;
+    }
+    .mobile-nav-item svg { width: 20px; height: 20px; }
+    .mobile-nav-item.active { color: var(--accent); }
+    .mobile-nav-item.active::before {
+        content: ''; position: absolute; top: 0; left: 25%; right: 25%;
+        height: 3px; background: linear-gradient(90deg, var(--accent), var(--accent-2));
+        border-radius: 0 0 3px 3px;
+    }
+
+    /* ============ DROPDOWN ============ */
+    .dropdown { position: relative; display: inline-block; }
+    .dropdown-menu {
+        position: absolute; top: calc(100% + 6px); right: 0;
+        min-width: 220px; background: var(--surface);
+        border: 1px solid var(--border); border-radius: 12px;
+        box-shadow: var(--shadow-lg); padding: 6px;
+        z-index: 500; animation: fadeIn 0.15s;
+    }
+    .dropdown-menu.left { right: auto; left: 0; }
+    .dropdown-menu.hidden { display: none; }
+    .dropdown-item {
+        display: flex; align-items: center; gap: 10px;
+        padding: 8px 12px; border-radius: 8px;
+        font-size: 13px; color: var(--text);
+        cursor: pointer; transition: background 0.1s;
+    }
+    .dropdown-item:hover { background: var(--surface-2); }
+    .dropdown-item.danger { color: var(--danger); }
+    .dropdown-item.danger:hover { background: var(--danger-soft); }
+    .dropdown-item svg { width: 14px; height: 14px; opacity: 0.7; }
+    .dropdown-divider { height: 1px; background: var(--border); margin: 4px 0; }
+
+    /* ============ TOASTS ============ */
+    .toast-container {
+        position: fixed; top: 20px; right: 20px;
+        z-index: 2000; display: flex; flex-direction: column;
+        gap: 10px; max-width: 360px; pointer-events: none;
+    }
+    .toast {
+        display: flex; align-items: flex-start; gap: 12px;
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: 12px; padding: 14px 16px;
+        box-shadow: var(--shadow-lg); pointer-events: auto;
+        animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        border-left: 4px solid var(--accent);
+    }
+    .toast.success { border-left-color: var(--success); }
+    .toast.warning { border-left-color: var(--warning); }
+    .toast.error { border-left-color: var(--danger); }
+    .toast-icon {
+        width: 32px; height: 32px; border-radius: 8px;
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0; font-size: 16px; font-weight: 700;
+    }
+    .toast.success .toast-icon { background: var(--success-soft); color: var(--success); }
+    .toast.warning .toast-icon { background: var(--warning-soft); color: var(--warning); }
+    .toast.error .toast-icon { background: var(--danger-soft); color: var(--danger); }
+    .toast.info .toast-icon { background: var(--accent-soft); color: var(--accent); }
+    .toast-body { flex: 1; min-width: 0; }
+    .toast-title { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+    .toast-text { font-size: 12px; color: var(--text-muted); }
+    .toast-close {
+        background: transparent; border: none; cursor: pointer;
+        color: var(--text-muted); padding: 0; line-height: 1; font-size: 16px;
+    }
+    @keyframes slideInRight {
+        from { transform: translateX(120%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+    .toast.hiding { animation: slideOutRight 0.2s forwards; }
+    @keyframes slideOutRight {
+        to { transform: translateX(120%); opacity: 0; }
+    }
+
+    /* ============ FAB ============ */
+    .fab {
+        position: fixed; bottom: 84px; right: 16px;
+        width: 56px; height: 56px; border-radius: 16px;
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        color: white; border: none; cursor: pointer;
+        font-size: 24px; display: none;
+        align-items: center; justify-content: center;
+        box-shadow: 0 8px 24px rgba(99,102,241,0.4);
+        z-index: 99; transition: transform 0.15s;
+    }
+    .fab:hover { transform: scale(1.05); }
+    @media (max-width: 900px) { .fab { display: flex; } }
+
+    /* ============ DRAG ============ */
+    .kb-card[draggable="true"] { cursor: grab; }
+    .kb-card.dragging { opacity: 0.4; transform: rotate(2deg); }
+    .kb-column.drop-valid {
+        border-color: var(--success);
+        background: var(--success-soft);
+        box-shadow: 0 0 0 3px rgba(16,185,129,0.15);
+    }
+    .kb-column.drop-invalid {
+        border-color: var(--danger);
+        background: var(--danger-soft);
+        box-shadow: 0 0 0 3px rgba(239,68,68,0.15);
+    }
+
+    /* ============ CONTEXT MENU ============ */
+    .context-menu {
+        position: fixed;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        box-shadow: var(--shadow-lg);
+        padding: 6px;
+        min-width: 200px;
+        z-index: 3000;
+        animation: fadeIn 0.1s;
+    }
+    .context-menu.hidden { display: none; }
+
+    /* ============ KBD ============ */
+    .kbd {
+        display: inline-block; padding: 1px 6px;
+        font-size: 11px; font-family: 'SF Mono', Consolas, monospace;
+        background: var(--surface-2); border: 1px solid var(--border);
+        border-radius: 5px; color: var(--text); box-shadow: 0 1px 0 var(--border);
+        min-width: 20px; text-align: center;
+    }
+
+    /* ============ COMMAND PALETTE ============ */
+    .palette-overlay {
+        position: fixed; inset: 0;
+        background: rgba(15,15,20,0.4);
+        backdrop-filter: blur(4px);
+        z-index: 2500;
+        display: none; align-items: flex-start; justify-content: center;
+        padding-top: 12vh;
+    }
+    .palette-overlay.open { display: flex; }
+    .palette {
+        width: 100%; max-width: 600px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        box-shadow: var(--shadow-xl);
+        overflow: hidden;
+    }
+    .palette input {
+        width: 100%; border: none;
+        padding: 18px 22px;
+        font-size: 15px;
+        background: transparent;
+        color: var(--text);
+        outline: none;
+        border-bottom: 1px solid var(--border);
+        font-family: inherit;
+    }
+    .palette-results {
+        max-height: 50vh; overflow-y: auto;
+    }
+    .palette-item {
+        display: flex; align-items: center; gap: 12px;
+        padding: 12px 20px; cursor: pointer;
+        font-size: 13px; color: var(--text);
+    }
+    .palette-item:hover { background: var(--surface-2); }
+
+    /* ============ RESPONSIVE ============ */
+    @media (max-width: 1100px) {
+        .user-card { grid-template-columns: 1fr 1fr; }
+        .user-card .user-stats { grid-column: 1 / -1; }
+        .grid-2 { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 900px) {
+        :root { --sidebar-w: 72px; }
+        .sidebar-brand { padding: 16px 12px; justify-content: center; }
+        .brand-text { display: none; }
+        .sidebar-nav { padding: 12px 8px; }
+        .nav-section-title { display: none; }
+        .nav-item { justify-content: center; padding: 12px 8px; }
+        .nav-item span:not(.nav-item-badge) { display: none; }
+        .nav-item-badge { display: none; }
+        .nav-item.active::before { display: none; }
+        .sidebar-user { justify-content: center; padding: 8px; }
+        .sidebar-user-info { display: none; }
+        .main { margin-left: var(--sidebar-w); padding: 16px 16px 88px; }
+        .user-card { grid-template-columns: 1fr; padding: 16px; }
+        .kanban { grid-template-columns: 1fr; }
+        .mobile-nav { display: block; }
+        .export-options { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 640px) {
+        .main { padding: 12px 12px 88px; }
+        .topbar { flex-direction: column; align-items: stretch; }
+        .topbar-actions { justify-content: flex-end; }
+        .toolbar { padding: 12px; flex-direction: column; align-items: stretch; }
+        .toolbar-left, .toolbar-right { width: 100%; }
+        .user-stats { grid-template-columns: repeat(2, 1fr); }
+        .form-row { grid-template-columns: 1fr; }
+        .modal-backdrop { padding: 16px 8px; }
+        .modal { border-radius: 16px; }
+        .detail-grid, .profile-info-grid { grid-template-columns: 1fr; }
+        .task-tabs { padding: 0 12px; }
+        .task-tab { padding: 12px 10px; font-size: 12px; }
+    }
+</style>
+</head>
+<body>
+
+<!-- ============ SIDEBAR ============ -->
+<aside class="sidebar">
+    <div class="sidebar-brand">
+        <div class="brand-mark">🎧</div>
+        <div class="brand-text">
+            <h3>Support Active</h3>
+            <small>v3.0</small>
+        </div>
+    </div>
+
+    <nav class="sidebar-nav">
+        <div class="nav-section-title">Основное</div>
+        <a class="nav-item active" data-page="tasks">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            <span>Заявки</span>
+            <span class="nav-item-badge">147</span>
+        </a>
+        <a class="nav-item" data-page="dashboard">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+            <span>Дашборд</span>
+        </a>
+        <a class="nav-item" data-page="cabinets">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l7-4 7 4v14"/></svg>
+            <span>Кабинеты</span>
+        </a>
+
+        <div class="nav-section-title">Учёт</div>
+        <a class="nav-item" data-page="cartridges">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>
+            <span>Картриджи</span>
+        </a>
+        <a class="nav-item" data-page="licenses">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7a2 2 0 0 1 2 2m4 0a6 6 0 0 1-7.743 5.743L11 17H9v2H7v2H4a1 1 0 0 1-1-1v-2.586a1 1 0 0 1 .293-.707l5.964-5.964A6 6 0 1 1 21 9z"/></svg>
+            <span>Лицензии</span>
+        </a>
+        <a class="nav-item" data-page="users">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <span>Пользователи</span>
+        </a>
+
+        <div class="nav-section-title">Инструменты</div>
+        <a class="nav-item" data-page="contacts">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></svg>
+            <span>Внешние контакты</span>
+        </a>
+        <a class="nav-item" data-page="directory">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+            <span>Справочник</span>
+        </a>
+        <a class="nav-item" data-page="reports">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+            <span>Отчёты</span>
+        </a>
+    </nav>
+
+    <div class="sidebar-footer">
+        <div class="sidebar-user" onclick="openModal('modalProfile')">
+            <div class="sidebar-user-avatar">И</div>
+            <div class="sidebar-user-info">
+                <div class="sidebar-user-name">Иванов И.И.</div>
+                <div class="sidebar-user-role">Администратор</div>
+            </div>
+        </div>
+    </div>
+</aside>
+
+<!-- ============ MAIN ============ -->
+<main class="main">
+    <div class="topbar">
+        <h1 class="topbar-title">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            <span id="topbarTitleText">Заявки</span>
+        </h1>
+        <div class="topbar-actions">
+            <button class="icon-btn" title="Обновить" onclick="refreshData()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>
+            </button>
+            <button class="icon-btn" title="Сменить пользователя" onclick="openModal('modalImpersonate')">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M16 3.13a4 4 0 0 1 0 7.75"/><path d="M21 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/></svg>
+            </button>
+            <button class="icon-btn" title="Уведомления" onclick="openModal('modalNotifications')">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+                <span class="icon-btn-badge">3</span>
+            </button>
+            <button class="icon-btn" title="Push-уведомления" onclick="togglePush(this)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/><line x1="3" y1="3" x2="21" y2="21"/></svg>
+            </button>
+            <button class="icon-btn" onclick="toggleTheme()" title="Тема">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+            </button>
+            <button class="icon-btn" onclick="openPalette()" title="Командная палитра (Ctrl+K)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3H6a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3z"/></svg>
+            </button>
+            <button class="btn-primary" onclick="openModal('modalCreateTask')">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                Создать заявку
+            </button>
+        </div>
+    </div>
+
+    <!-- ========== PAGE: TASKS ========== -->
+    <section class="page" id="page-tasks">
+        <div class="user-card">
+            <div class="user-info">
+                <div class="user-avatar">И</div>
+                <div class="user-info-text">
+                    <div class="user-info-name">Иванов Иван Иванович</div>
+                    <div class="user-info-role">
+                        <span class="role-pill">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2 4 6v6c0 5 3.5 9 8 10 4.5-1 8-5 8-10V6z"/></svg>
+                            Администратор
+                        </span>
+                    </div>
+                    <div class="user-info-dept">IT отдел · ivanov@company.ru</div>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 6px; flex-wrap: wrap; align-items: flex-start;">
+                <button class="btn-ghost" onclick="openModal('modalProfile')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    Профиль
+                </button>
+                <button class="btn-ghost" onclick="openModal('modalImpersonate')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M16 3.13a4 4 0 0 1 0 7.75"/><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/></svg>
+                    Сменить
+                </button>
+                <button class="btn-ghost">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5M21 12H9"/></svg>
+                    Выйти
+                </button>
+            </div>
+
+            <div class="user-stats">
+                <div class="stat-box success">
+                    <div class="stat-box-value">128</div>
+                    <div class="stat-box-label">Выполнено</div>
+                </div>
+                <div class="stat-box warning">
+                    <div class="stat-box-value">59</div>
+                    <div class="stat-box-label">В работе</div>
+                </div>
+                <div class="stat-box accent">
+                    <div class="stat-box-value">147</div>
+                    <div class="stat-box-label">Всего</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-box-value">42</div>
+                    <div class="stat-box-label">Мои</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="toolbar">
+            <div class="toolbar-left">
+                <div class="search-input">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                    <input type="text" placeholder="Поиск по описанию, ФИО, кабинету…">
+                </div>
+
+                <div class="segmented" id="viewSwitcher">
+                    <button class="active" data-view="table" onclick="switchView('table')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>
+                        Таблица
+                    </button>
+                    <button data-view="kanban" onclick="switchView('kanban')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="11" rx="1"/></svg>
+                        Канбан
+                    </button>
+                </div>
+            </div>
+
+            <div class="toolbar-right">
+                <div class="dropdown">
+                    <button class="btn-ghost" onclick="toggleDropdown('ddBulk', event)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 11l3 3 8-8"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                        Массовые
+                    </button>
+                    <div class="dropdown-menu hidden" id="ddBulk">
+                        <div class="dropdown-item" onclick="toast('Успешно', 'Заявки закрыты', 'success'); closeDropdown('ddBulk')">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>
+                            Закрыть выбранные
+                        </div>
+                        <div class="dropdown-item" onclick="toast('Успешно', 'Исполнитель назначен', 'success'); closeDropdown('ddBulk')">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="7" r="4"/><path d="M5.5 21v-2a4 4 0 0 1 4-4h5a4 4 0 0 1 4 4v2"/></svg>
+                            Назначить исполнителя
+                        </div>
+                        <div class="dropdown-item" onclick="toast('Успешно', 'Приоритет изменён', 'success'); closeDropdown('ddBulk')">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/></svg>
+                            Изменить приоритет
+                        </div>
+                        <div class="dropdown-divider"></div>
+                        <div class="dropdown-item danger" onclick="toast('Удалено', 'Заявки удалены', 'error'); closeDropdown('ddBulk')">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                            Удалить (админ)
+                        </div>
+                    </div>
+                </div>
+                <button class="btn-ghost" onclick="toggleFilters()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                    Фильтры
+                    <span style="background: var(--accent); color: white; padding: 1px 7px; border-radius: 100px; font-size: 10px; font-weight: 700; margin-left: 2px;">2</span>
+                </button>
+                <button class="btn-ghost" onclick="openModal('modalExport')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                    Экспорт
+                </button>
+                <button class="btn-ghost" onclick="showHotkeysHelp()" title="Горячие клавиши">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="filters-panel" id="filtersPanel" style="display: none;">
+            <div class="filters-grid">
+                <div class="field">
+                    <label>Тип работы</label>
+                    <select>
+                        <option>Все типы</option>
+                        <option>Ремонт оборудования</option>
+                        <option>Установка ПО</option>
+                        <option>Настройка сети</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label>Кабинет</label>
+                    <select>
+                        <option>Все кабинеты</option>
+                        <option>Каб. 101</option>
+                        <option>Каб. 102</option>
+                        <option>Каб. 204</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label>Статус</label>
+                    <select>
+                        <option>Все статусы</option>
+                        <option>Новое</option>
+                        <option>В работе</option>
+                        <option>Выполнено</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label>Срок с</label>
+                    <input type="date" value="2026-09-01">
+                </div>
+                <div class="field">
+                    <label>Срок по</label>
+                    <input type="date" value="2026-09-30">
+                </div>
+            </div>
+            <div class="filters-footer">
+                <div class="filter-chips">
+                    <span class="filter-chip">
+                        Срок: сентябрь 2026
+                        <button>×</button>
+                    </span>
+                </div>
+                <button class="btn-ghost" style="font-size: 12px;">Сбросить</button>
+            </div>
+        </div>
+
+        <div class="bulk-bar active">
+            <span class="bulk-count">3 заявки выбрано</span>
+            <div class="bulk-actions">
+                <button class="bulk-btn">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>
+                    Закрыть
+                </button>
+                <button class="bulk-btn">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="7" r="4"/><path d="M5.5 21v-2a4 4 0 0 1 4-4h5a4 4 0 0 1 4 4v2"/></svg>
+                    Назначить
+                </button>
+                <button class="bulk-btn danger">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                    Удалить
+                </button>
+            </div>
+        </div>
+
+        <!-- TABLE VIEW -->
+        <div class="table-wrap" id="tableView">
+            <div class="table-head">
+                <div class="table-head-title">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--accent);"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                    Список заявок
+                    <span class="table-head-count">147</span>
+                </div>
+            </div>
+
+            <div class="table-scroll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 40px;"><input type="checkbox" class="checkbox"></th>
+                            <th style="width: 60px;">ID</th>
+                            <th style="width: 120px;">Дата</th>
+                            <th style="width: 120px;">Срок</th>
+                            <th>Описание</th>
+                            <th style="width: 140px;">От кого</th>
+                            <th style="width: 100px;">Кабинет</th>
+                            <th style="width: 110px;">Статус</th>
+                            <th style="width: 100px;">Приоритет</th>
+                            <th style="width: 160px;">Исполнитель</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="row-high" onclick="openTask(1247)">
+                            <td onclick="event.stopPropagation()"><input type="checkbox" class="checkbox" checked></td>
+                            <td><span class="cell-id">#1247</span></td>
+                            <td><span class="cell-date">22.09 · 09:15</span></td>
+                            <td><span class="cell-date" style="color: var(--danger); font-weight: 600;">22.09 · 12:00</span></td>
+                            <td><div class="cell-desc">Не включается компьютер в бухгалтерии — чёрный экран</div></td>
+                            <td><div class="cell-user"><div class="cell-user-avatar" style="background: linear-gradient(135deg,#10b981,#059669);">К</div><span style="font-size:12px;">Козлова А.С.</span></div></td>
+                            <td><span class="cell-cabinet">Каб. 204</span></td>
+                            <td><span class="badge badge-new">Новое</span></td>
+                            <td><span class="badge-priority high">Высокий</span></td>
+                            <td><span style="color: var(--text-muted); font-size: 12px; font-style: italic;">Не назначен</span></td>
+                        </tr>
+                        <tr class="row-high" onclick="openTask(1243)">
+                            <td onclick="event.stopPropagation()"><input type="checkbox" class="checkbox" checked></td>
+                            <td><span class="cell-id">#1243</span></td>
+                            <td><span class="cell-date">22.09 · 09:15</span></td>
+                            <td><span class="cell-date">24.09 · 15:30</span></td>
+                            <td><div class="cell-desc">Пропал интернет в отделе продаж — не грузятся сайты</div></td>
+                            <td><div class="cell-user"><div class="cell-user-avatar" style="background: linear-gradient(135deg,#10b981,#059669);">К</div><span style="font-size:12px;">Козлова А.С.</span></div></td>
+                            <td><span class="cell-cabinet">Каб. 102</span></td>
+                            <td><span class="badge badge-progress">В работе</span></td>
+                            <td><span class="badge-priority high">Высокий</span></td>
+                            <td><div class="cell-user"><div class="cell-user-avatar" style="background: linear-gradient(135deg,#6366f1,#8b5cf6);">П</div><span style="font-size:12px;">Петров П.П.</span></div></td>
+                        </tr>
+                        <tr class="row-medium" onclick="openTask(1242)">
+                            <td onclick="event.stopPropagation()"><input type="checkbox" class="checkbox" checked></td>
+                            <td><span class="cell-id">#1242</span></td>
+                            <td><span class="cell-date">22.09 · 08:40</span></td>
+                            <td><span class="cell-date">26.09 · 12:00</span></td>
+                            <td><div class="cell-desc">Зависает 1С при формировании отчёта</div></td>
+                            <td><div class="cell-user"><div class="cell-user-avatar" style="background: linear-gradient(135deg,#ef4444,#f97316);">И</div><span style="font-size:12px;">Иванов И.И.</span></div></td>
+                            <td><span class="cell-cabinet">Каб. 204</span></td>
+                            <td><span class="badge badge-progress">В работе</span></td>
+                            <td><span class="badge-priority medium">Средний</span></td>
+                            <td><div class="cell-user"><div class="cell-user-avatar" style="background: linear-gradient(135deg,#6366f1,#8b5cf6);">П</div><span style="font-size:12px;">Петров П.П.</span></div></td>
+                        </tr>
+                        <tr onclick="openTask(1241)">
+                            <td onclick="event.stopPropagation()"><input type="checkbox" class="checkbox"></td>
+                            <td><span class="cell-id">#1241</span></td>
+                            <td><span class="cell-date">21.09 · 16:20</span></td>
+                            <td><span class="cell-date">25.09 · 10:00</span></td>
+                            <td><div class="cell-desc">Установить Excel на новый ноутбук директора</div></td>
+                            <td><div class="cell-user"><div class="cell-user-avatar" style="background: linear-gradient(135deg,#8b5cf6,#a855f7);">В</div><span style="font-size:12px;">Волков А.Н.</span></div></td>
+                            <td><span class="cell-cabinet">Каб. 401</span></td>
+                            <td><span class="badge badge-new">Новое</span></td>
+                            <td><span class="badge-priority low">Низкий</span></td>
+                            <td><span style="color: var(--text-muted); font-size: 12px; font-style: italic;">Не назначен</span></td>
+                        </tr>
+                        <tr class="row-medium" onclick="openTask(1240)">
+                            <td onclick="event.stopPropagation()"><input type="checkbox" class="checkbox"></td>
+                            <td><span class="cell-id">#1240</span></td>
+                            <td><span class="cell-date">21.09 · 14:00</span></td>
+                            <td><span class="cell-date">22.09 · 18:00</span></td>
+                            <td><div class="cell-desc">Не работает принтер HP LaserJet — мигает лампочка</div></td>
+                            <td><div class="cell-user"><div class="cell-user-avatar" style="background: linear-gradient(135deg,#10b981,#059669);">К</div><span style="font-size:12px;">Козлова А.С.</span></div></td>
+                            <td><span class="cell-cabinet">Каб. 301</span></td>
+                            <td><span class="badge badge-completed">Выполнено</span></td>
+                            <td><span class="badge-priority medium">Средний</span></td>
+                            <td><div class="cell-user"><div class="cell-user-avatar" style="background: linear-gradient(135deg,#6366f1,#8b5cf6);">М</div><span style="font-size:12px;">Морозов Д.А.</span></div></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="pagination">
+                <div class="pagination-info">Показано 1–5 из 147</div>
+                <div class="pagination-controls">
+                    <button class="page-btn" disabled>‹</button>
+                    <button class="page-btn active">1</button>
+                    <button class="page-btn">2</button>
+                    <button class="page-btn">3</button>
+                    <button class="page-btn">…</button>
+                    <button class="page-btn">30</button>
+                    <button class="page-btn">›</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- KANBAN VIEW -->
+        <div class="kanban hidden" id="kanbanView">
+            <div class="kb-column" data-status="Новое">
+                <div class="kb-column-head">
+                    <div class="kb-column-title">
+                        <span class="kb-dot" style="background: var(--accent);"></span>
+                        Новое
+                    </div>
+                    <span class="kb-count">3</span>
+                </div>
+                <div class="kb-card p-high" data-task-id="1247" onclick="openTask(1247)">
+                    <div class="kb-card-head">
+                        <span class="kb-card-id">#1247</span>
+                        <span class="badge-priority high">Высокий</span>
+                    </div>
+                    <div class="kb-card-title">Не включается компьютер в бухгалтерии</div>
+                    <div class="kb-card-chips">
+                        <span class="kb-chip">📁 Каб. 204</span>
+                        <span class="kb-chip">🏷️ Ремонт</span>
+                    </div>
+                    <div class="kb-card-foot">
+                        <span>Козлова А.С.</span>
+                        <span style="font-style: italic;">Не назначен</span>
+                    </div>
+                </div>
+                <div class="kb-card p-medium" data-task-id="1246" onclick="openTask(1246)">
+                    <div class="kb-card-head">
+                        <span class="kb-card-id">#1246</span>
+                        <span class="badge-priority medium">Средний</span>
+                    </div>
+                    <div class="kb-card-title">Не работает принтер HP LaserJet</div>
+                    <div class="kb-card-chips">
+                        <span class="kb-chip">📁 Каб. 301</span>
+                    </div>
+                    <div class="kb-card-foot">
+                        <span>Морозов Д.А.</span>
+                        <span style="font-style: italic;">Не назначен</span>
+                    </div>
+                </div>
+                <div class="kb-card p-low" data-task-id="1241" onclick="openTask(1241)">
+                    <div class="kb-card-head">
+                        <span class="kb-card-id">#1241</span>
+                        <span class="badge-priority low">Низкий</span>
+                    </div>
+                    <div class="kb-card-title">Установить Excel на ноутбук директора</div>
+                    <div class="kb-card-chips">
+                        <span class="kb-chip">📁 Каб. 401</span>
+                    </div>
+                    <div class="kb-card-foot">
+                        <span>Волков А.Н.</span>
+                        <span style="font-style: italic;">Не назначен</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="kb-column" data-status="В работе">
+                <div class="kb-column-head">
+                    <div class="kb-column-title">
+                        <span class="kb-dot" style="background: var(--warning);"></span>
+                        В работе
+                    </div>
+                    <span class="kb-count">2</span>
+                </div>
+                <div class="kb-card p-high" data-task-id="1243" onclick="openTask(1243)">
+                    <div class="kb-card-head">
+                        <span class="kb-card-id">#1243</span>
+                        <span class="badge-priority high">Высокий</span>
+                    </div>
+                    <div class="kb-card-title">Пропал интернет в отделе продаж</div>
+                    <div class="kb-card-chips">
+                        <span class="kb-chip">📁 Каб. 102</span>
+                    </div>
+                    <div class="kb-card-foot">
+                        <span>Козлова А.С.</span>
+                        <div class="kb-avatar" title="Петров П.П.">П</div>
+                    </div>
+                </div>
+                <div class="kb-card p-medium" data-task-id="1242" onclick="openTask(1242)">
+                    <div class="kb-card-head">
+                        <span class="kb-card-id">#1242</span>
+                        <span class="badge-priority medium">Средний</span>
+                    </div>
+                    <div class="kb-card-title">Зависает 1С при формировании отчёта</div>
+                    <div class="kb-card-chips">
+                        <span class="kb-chip">📁 Каб. 204</span>
+                    </div>
+                    <div class="kb-card-foot">
+                        <span>Иванов И.И.</span>
+                        <div class="kb-avatar" title="Петров П.П.">П</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="kb-column" data-status="Выполнено">
+                <div class="kb-column-head">
+                    <div class="kb-column-title">
+                        <span class="kb-dot" style="background: var(--success);"></span>
+                        Выполнено
+                    </div>
+                    <span class="kb-count">1</span>
+                </div>
+                <div class="kb-card p-medium" data-task-id="1240" onclick="openTask(1240)">
+                    <div class="kb-card-head">
+                        <span class="kb-card-id">#1240</span>
+                        <span class="badge-priority medium">Средний</span>
+                    </div>
+                    <div class="kb-card-title">Не работает принтер HP LaserJet</div>
+                    <div class="kb-card-chips">
+                        <span class="kb-chip">📁 Каб. 301</span>
+                    </div>
+                    <div class="kb-card-foot">
+                        <span>Козлова А.С.</span>
+                        <div class="kb-avatar" style="background: linear-gradient(135deg,#10b981,#059669);">М</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========== PAGE: DASHBOARD ========== -->
+    <section class="page hidden" id="page-dashboard">
+        <div class="kpi-grid">
+            <div class="kpi" style="--kpi-accent: var(--accent);">
+                <div class="kpi-head">
+                    <div class="kpi-icon" style="background: var(--accent-soft); color: var(--accent);">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+                    </div>
+                    <span class="kpi-trend up">+12%</span>
+                </div>
+                <div class="kpi-value">147</div>
+                <div class="kpi-label">Всего заявок</div>
+            </div>
+            <div class="kpi" style="--kpi-accent: var(--success);">
+                <div class="kpi-head">
+                    <div class="kpi-icon" style="background: var(--success-soft); color: var(--success);">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
+                    </div>
+                    <span class="kpi-trend up">+8%</span>
+                </div>
+                <div class="kpi-value">128</div>
+                <div class="kpi-label">Выполнено</div>
+            </div>
+            <div class="kpi" style="--kpi-accent: var(--warning);">
+                <div class="kpi-head">
+                    <div class="kpi-icon" style="background: var(--warning-soft); color: var(--warning);">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                    </div>
+                    <span class="kpi-trend down">−5%</span>
+                </div>
+                <div class="kpi-value">4.2<span style="font-size:18px;">ч</span></div>
+                <div class="kpi-label">Среднее время закрытия</div>
+            </div>
+            <div class="kpi" style="--kpi-accent: var(--danger);">
+                <div class="kpi-head">
+                    <div class="kpi-icon" style="background: var(--danger-soft); color: var(--danger);">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+                    </div>
+                    <span class="kpi-trend down">+3</span>
+                </div>
+                <div class="kpi-value">7</div>
+                <div class="kpi-label">Просрочено</div>
+            </div>
+        </div>
+
+        <div class="grid-2">
+            <div class="card">
+                <div class="card-head">
+                    <h2><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg> Динамика по месяцам</h2>
+                    <span class="badge-soft">6 месяцев</span>
+                </div>
+                <div class="card-body">
+                    <div class="chart">
+                        <div class="bar-col"><div class="bar-group"><div class="bar bar-1" style="height:60%;"></div><div class="bar bar-2" style="height:48%;"></div></div><span class="bar-label">Апр</span></div>
+                        <div class="bar-col"><div class="bar-group"><div class="bar bar-1" style="height:72%;"></div><div class="bar bar-2" style="height:60%;"></div></div><span class="bar-label">Май</span></div>
+                        <div class="bar-col"><div class="bar-group"><div class="bar bar-1" style="height:55%;"></div><div class="bar bar-2" style="height:45%;"></div></div><span class="bar-label">Июн</span></div>
+                        <div class="bar-col"><div class="bar-group"><div class="bar bar-1" style="height:80%;"></div><div class="bar bar-2" style="height:70%;"></div></div><span class="bar-label">Июл</span></div>
+                        <div class="bar-col"><div class="bar-group"><div class="bar bar-1" style="height:68%;"></div><div class="bar bar-2" style="height:58%;"></div></div><span class="bar-label">Авг</span></div>
+                        <div class="bar-col"><div class="bar-group"><div class="bar bar-1" style="height:92%;"></div><div class="bar bar-2" style="height:82%;"></div></div><span class="bar-label">Сен</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-head">
+                    <h2><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg> Топ исполнителей</h2>
+                </div>
+                <div class="card-body">
+                    <div class="top-item"><div class="top-rank gold">1</div><div class="top-info"><div class="top-name">Петров Пётр Петрович</div><div class="top-sub">Техник · среднее 2.1 ч</div></div><div class="top-value">42</div></div>
+                    <div class="top-item"><div class="top-rank silver">2</div><div class="top-info"><div class="top-name">Морозов Дмитрий Александрович</div><div class="top-sub">Техник · среднее 3.4 ч</div></div><div class="top-value">34</div></div>
+                    <div class="top-item"><div class="top-rank bronze">3</div><div class="top-info"><div class="top-name">Соколова Мария Игоревна</div><div class="top-sub">Техник · среднее 2.8 ч</div></div><div class="top-value">28</div></div>
+                    <div class="top-item"><div class="top-rank">4</div><div class="top-info"><div class="top-name">Сидоров Сидор Сидорович</div><div class="top-sub">Техник · среднее 3.9 ч</div></div><div class="top-value">19</div></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-head">
+                <h2><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l7-4 7 4v14"/></svg> Топ кабинетов</h2>
+            </div>
+            <div class="card-body">
+                <div class="progress-item">
+                    <div class="progress-head"><span class="progress-name">Каб. 204 — IT отдел</span><span class="progress-value">28</span></div>
+                    <div class="progress-track"><div class="progress-fill" style="width:100%; background: linear-gradient(90deg, var(--accent), var(--accent-2));"></div></div>
+                </div>
+                <div class="progress-item">
+                    <div class="progress-head"><span class="progress-name">Каб. 102 — Отдел продаж</span><span class="progress-value">22</span></div>
+                    <div class="progress-track"><div class="progress-fill" style="width:78%; background: linear-gradient(90deg, #4f46e5, #6366f1);"></div></div>
+                </div>
+                <div class="progress-item">
+                    <div class="progress-head"><span class="progress-name">Каб. 301 — Директор</span><span class="progress-value">15</span></div>
+                    <div class="progress-track"><div class="progress-fill" style="width:54%; background: linear-gradient(90deg, #6366f1, #8b5cf6);"></div></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========== PAGE: CABINETS ========== -->
+    <section class="page hidden" id="page-cabinets">
+        <div class="toolbar">
+            <div class="toolbar-left">
+                <div class="search-input">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                    <input type="text" placeholder="Поиск по номеру, этажу, отделу…">
+                </div>
+            </div>
+            <div class="toolbar-right">
+                <button class="btn-primary" onclick="openModal('modalCabinet')">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+                    Добавить кабинет
+                </button>
+            </div>
+        </div>
+
+        <div class="cabinets-grid">
+            <div class="cabinet-card" onclick="openModal('modalCabinet')">
+                <div class="cabinet-head">
+                    <div>
+                        <div class="cabinet-num">Кабинет 204</div>
+                        <div class="cabinet-desc">IT отдел · 2 этаж · Корпус А</div>
+                    </div>
+                    <span class="badge badge-completed">Активен</span>
+                </div>
+                <div class="cabinet-stats">
+                    <div class="cabinet-stat">💻 <strong>8</strong> ПК</div>
+                    <div class="cabinet-stat">🖨️ <strong>2</strong> принтера</div>
+                    <div class="cabinet-stat">🌐 <strong>3</strong> сети</div>
+                </div>
+            </div>
+            <div class="cabinet-card" onclick="openModal('modalCabinet')">
+                <div class="cabinet-head">
+                    <div>
+                        <div class="cabinet-num">Кабинет 102</div>
+                        <div class="cabinet-desc">Отдел продаж · 1 этаж · Корпус А</div>
+                    </div>
+                    <span class="badge badge-completed">Активен</span>
+                </div>
+                <div class="cabinet-stats">
+                    <div class="cabinet-stat">💻 <strong>6</strong> ПК</div>
+                    <div class="cabinet-stat">🖨️ <strong>1</strong> принтер</div>
+                    <div class="cabinet-stat">🌐 <strong>2</strong> сети</div>
+                </div>
+            </div>
+            <div class="cabinet-card" onclick="openModal('modalCabinet')">
+                <div class="cabinet-head">
+                    <div>
+                        <div class="cabinet-num">Кабинет 301</div>
+                        <div class="cabinet-desc">Кабинет директора · 3 этаж · Корпус А</div>
+                    </div>
+                    <span class="badge badge-completed">Активен</span>
+                </div>
+                <div class="cabinet-stats">
+                    <div class="cabinet-stat">💻 <strong>3</strong> ПК</div>
+                    <div class="cabinet-stat">🖨️ <strong>1</strong> принтер</div>
+                </div>
+            </div>
+            <div class="cabinet-card" onclick="openModal('modalCabinet')">
+                <div class="cabinet-head">
+                    <div>
+                        <div class="cabinet-num">Кабинет 401</div>
+                        <div class="cabinet-desc">Склад · 4 этаж · Корпус Б</div>
+                    </div>
+                    <span class="badge badge-cancelled">Неактивен</span>
+                </div>
+                <div class="cabinet-stats">
+                    <div class="cabinet-stat">💻 <strong>2</strong> ПК</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========== PAGE: CARTRIDGES ========== -->
+    <section class="page hidden" id="page-cartridges">
+        <div class="kpi-grid">
+            <div class="kpi" style="--kpi-accent: var(--accent);">
+                <div class="kpi-value">34</div>
+                <div class="kpi-label">Всего записей</div>
+            </div>
+            <div class="kpi" style="--kpi-accent: var(--success);">
+                <div class="kpi-value">128</div>
+                <div class="kpi-label">Всего замен</div>
+            </div>
+            <div class="kpi" style="--kpi-accent: var(--warning);">
+                <div class="kpi-value">6</div>
+                <div class="kpi-label">Замен за месяц</div>
+            </div>
+            <div class="kpi" style="--kpi-accent: var(--accent-2);">
+                <div class="kpi-value">87</div>
+                <div class="kpi-label">Замен за год</div>
+            </div>
+        </div>
+
+        <div class="table-wrap">
+            <div class="table-head">
+                <div class="table-head-title">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--accent);"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>
+                    Замена картриджей
+                </div>
+                <button class="btn-primary" style="padding: 8px 14px; font-size: 12px;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+                    Добавить
+                </button>
+            </div>
+            <div class="table-scroll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Кабинет</th>
+                            <th>ФИО</th>
+                            <th>Принтер</th>
+                            <th>Картридж</th>
+                            <th>Даты замены</th>
+                            <th>Примечание</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Каб. 204</strong></td>
+                            <td>Иванов И.И.</td>
+                            <td>HP LaserJet Pro M404dn</td>
+                            <td>HP 26X (CF226X)</td>
+                            <td><span class="badge badge-completed">15.09.2026</span></td>
+                            <td>—</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Каб. 301</strong></td>
+                            <td>Волков А.Н.</td>
+                            <td>Canon i-SENSYS MF3010</td>
+                            <td>Canon 057 Black</td>
+                            <td><span class="badge badge-completed">12.09.2026</span></td>
+                            <td>Оригинал</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Каб. 102</strong></td>
+                            <td>Козлова А.С.</td>
+                            <td>Brother HL-L2340DWR</td>
+                            <td>Brother TN-1095</td>
+                            <td><span class="badge badge-completed">03.09.2026</span></td>
+                            <td>—</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========== PAGE: LICENSES ========== -->
+    <section class="page hidden" id="page-licenses">
+        <div class="table-wrap">
+            <div class="table-head">
+                <div class="table-head-title">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--accent);"><path d="M15 7a2 2 0 0 1 2 2m4 0a6 6 0 0 1-7.743 5.743L11 17H9v2H7v2H4a1 1 0 0 1-1-1v-2.586a1 1 0 0 1 .293-.707l5.964-5.964A6 6 0 1 1 21 9z"/></svg>
+                    Лицензии на ПО
+                </div>
+                <button class="btn-primary" style="padding: 8px 14px; font-size: 12px;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+                    Добавить
+                </button>
+            </div>
+            <div class="table-scroll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Кабинет</th>
+                            <th>ПО</th>
+                            <th>Тип лицензии</th>
+                            <th>Примечание</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Каб. 204</strong></td>
+                            <td>Microsoft Office 2021</td>
+                            <td><span class="badge badge-new">Корпоративная</span></td>
+                            <td>25 мест</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Каб. 204</strong></td>
+                            <td>1С: Бухгалтерия</td>
+                            <td><span class="badge badge-new">Корпоративная</span></td>
+                            <td>PROF версия</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Каб. 102</strong></td>
+                            <td>Kaspersky Endpoint</td>
+                            <td><span class="badge badge-progress">Подписка</span></td>
+                            <td>до 01.2027</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========== PAGE: USERS ========== -->
+    <section class="page hidden" id="page-users">
+        <div class="table-wrap">
+            <div class="table-head">
+                <div class="table-head-title">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--accent);"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>
+                    Пользователи системы
+                    <span class="table-head-count">12</span>
+                </div>
+                <button class="btn-primary" style="padding: 8px 14px; font-size: 12px;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+                    Добавить
+                </button>
+            </div>
+            <div class="table-scroll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ФИО</th>
+                            <th>Логин</th>
+                            <th>Роль</th>
+                            <th>Email</th>
+                            <th>Отдел</th>
+                            <th>Статус</th>
+                            <th style="width: 100px;">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><div class="cell-user"><div class="cell-user-avatar" style="background: linear-gradient(135deg,#ef4444,#f97316);">И</div><strong>Иванов Иван Иванович</strong></div></td>
+                            <td><code>admin</code></td>
+                            <td><span class="badge badge-new">Администратор</span></td>
+                            <td>ivanov@company.ru</td>
+                            <td>IT отдел</td>
+                            <td><span class="badge badge-completed">Активен</span></td>
+                            <td>
+                                <button class="btn-ghost" style="padding: 4px 8px;" onclick="event.stopPropagation(); openModal('modalEditUser')">✏️</button>
+                                <button class="btn-ghost" style="padding: 4px 8px; color: var(--danger);">🗑️</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><div class="cell-user"><div class="cell-user-avatar" style="background: linear-gradient(135deg,#6366f1,#8b5cf6);">П</div><strong>Петров Пётр Петрович</strong></div></td>
+                            <td><code>petrov</code></td>
+                            <td><span class="badge badge-progress">Техник</span></td>
+                            <td>petrov@company.ru</td>
+                            <td>IT отдел</td>
+                            <td><span class="badge badge-completed">Активен</span></td>
+                            <td>
+                                <button class="btn-ghost" style="padding: 4px 8px;" onclick="event.stopPropagation(); openModal('modalEditUser')">✏️</button>
+                                <button class="btn-ghost" style="padding: 4px 8px; color: var(--danger);">🗑️</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><div class="cell-user"><div class="cell-user-avatar" style="background: linear-gradient(135deg,#10b981,#059669);">К</div><strong>Козлова Анна Сергеевна</strong></div></td>
+                            <td><code>kozlova</code></td>
+                            <td><span class="badge badge-cancelled">Пользователь</span></td>
+                            <td>kozlova@company.ru</td>
+                            <td>Отдел продаж</td>
+                            <td><span class="badge badge-completed">Активен</span></td>
+                            <td>
+                                <button class="btn-ghost" style="padding: 4px 8px;" onclick="event.stopPropagation(); openModal('modalEditUser')">✏️</button>
+                                <button class="btn-ghost" style="padding: 4px 8px; color: var(--danger);">🗑️</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========== PAGE: CONTACTS ========== -->
+    <section class="page hidden" id="page-contacts">
+        <div class="toolbar">
+            <div class="toolbar-left">
+                <div class="search-input">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                    <input type="text" placeholder="Поиск по организации, ФИО, телефону…">
+                </div>
+            </div>
+            <div class="toolbar-right">
+                <button class="btn-primary" onclick="toast('Форма', 'Открытие формы контакта', 'info')">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+                    Добавить контакт
+                </button>
+            </div>
+        </div>
+
+        <div class="table-wrap">
+            <div class="table-head">
+                <div class="table-head-title">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--accent);"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                    Внешние контакты
+                    <span class="table-head-count">24</span>
+                </div>
+            </div>
+            <div class="table-scroll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Категория</th>
+                            <th>Организация</th>
+                            <th>Сотрудник</th>
+                            <th>Должность</th>
+                            <th>Телефон</th>
+                            <th>Email</th>
+                            <th style="width: 100px;">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="badge badge-new">Поставщик</span></td>
+                            <td><strong>ООО «КомпьютерМаркет»</strong></td>
+                            <td>Смирнов А.В.</td>
+                            <td>Менеджер</td>
+                            <td>+7 (495) 123-45-67</td>
+                            <td>sales@compmarket.ru</td>
+                            <td>
+                                <button class="btn-ghost" style="padding: 4px 8px;">✏️</button>
+                                <button class="btn-ghost" style="padding: 4px 8px; color: var(--danger);">🗑️</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-progress">Сервис</span></td>
+                            <td><strong>СЦ «Ноутбук-Сервис»</strong></td>
+                            <td>Петрова Е.И.</td>
+                            <td>Приёмщик</td>
+                            <td>+7 (495) 234-56-78</td>
+                            <td>service@nbservice.ru</td>
+                            <td>
+                                <button class="btn-ghost" style="padding: 4px 8px;">✏️</button>
+                                <button class="btn-ghost" style="padding: 4px 8px; color: var(--danger);">🗑️</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-completed">Партнёр</span></td>
+                            <td><strong>АО «ТехноСофт»</strong></td>
+                            <td>Козлов Д.С.</td>
+                            <td>Директор</td>
+                            <td>+7 (495) 345-67-89</td>
+                            <td>info@technosoft.ru</td>
+                            <td>
+                                <button class="btn-ghost" style="padding: 4px 8px;">✏️</button>
+                                <button class="btn-ghost" style="padding: 4px 8px; color: var(--danger);">🗑️</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========== PAGE: DIRECTORY ========== -->
+    <section class="page hidden" id="page-directory">
+        <div class="grid-2">
+            <div class="card">
+                <div class="card-head">
+                    <h2>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l7-4 7 4v14"/></svg>
+                        Кабинеты
+                    </h2>
+                    <button class="btn-primary" style="padding: 6px 12px; font-size: 12px;">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+                        Добавить
+                    </button>
+                </div>
+                <div class="card-body p-0" style="padding:0;">
+                    <div class="table-scroll">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Номер</th>
+                                    <th>Этаж</th>
+                                    <th>Корпус</th>
+                                    <th>Статус</th>
+                                    <th style="width: 100px;">Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>Кабинет 101</strong></td>
+                                    <td>1 этаж</td>
+                                    <td>Корпус А</td>
+                                    <td><span class="badge badge-completed">Активен</span></td>
+                                    <td>
+                                        <button class="btn-ghost" style="padding: 4px 8px;" onclick="openModal('modalCabinet')">✏️</button>
+                                        <button class="btn-ghost" style="padding: 4px 8px; color: var(--danger);">🗑️</button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Кабинет 102</strong></td>
+                                    <td>1 этаж</td>
+                                    <td>Корпус А</td>
+                                    <td><span class="badge badge-completed">Активен</span></td>
+                                    <td>
+                                        <button class="btn-ghost" style="padding: 4px 8px;" onclick="openModal('modalCabinet')">✏️</button>
+                                        <button class="btn-ghost" style="padding: 4px 8px; color: var(--danger);">🗑️</button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Кабинет 204</strong></td>
+                                    <td>2 этаж</td>
+                                    <td>Корпус А</td>
+                                    <td><span class="badge badge-completed">Активен</span></td>
+                                    <td>
+                                        <button class="btn-ghost" style="padding: 4px 8px;" onclick="openModal('modalCabinet')">✏️</button>
+                                        <button class="btn-ghost" style="padding: 4px 8px; color: var(--danger);">🗑️</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-head">
+                    <h2>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 9v4M12 17h.01"/></svg>
+                        Типы проблем
+                    </h2>
+                    <button class="btn-primary" style="padding: 6px 12px; font-size: 12px;">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+                        Добавить
+                    </button>
+                </div>
+                <div class="card-body p-0" style="padding:0;">
+                    <div class="table-scroll">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Название</th>
+                                    <th>Описание</th>
+                                    <th style="width: 100px;">Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>Не включается компьютер</strong></td>
+                                    <td>Не реагирует на кнопку</td>
+                                    <td>
+                                        <button class="btn-ghost" style="padding: 4px 8px;">✏️</button>
+                                        <button class="btn-ghost" style="padding: 4px 8px; color: var(--danger);">🗑️</button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Нет интернета</strong></td>
+                                    <td>Отсутствует подключение</td>
+                                    <td>
+                                        <button class="btn-ghost" style="padding: 4px 8px;">✏️</button>
+                                        <button class="btn-ghost" style="padding: 4px 8px; color: var(--danger);">🗑️</button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Не работает принтер</strong></td>
+                                    <td>Ошибка печати</td>
+                                    <td>
+                                        <button class="btn-ghost" style="padding: 4px 8px;">✏️</button>
+                                        <button class="btn-ghost" style="padding: 4px 8px; color: var(--danger);">🗑️</button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Замена картриджа</strong></td>
+                                    <td>Заправка или замена</td>
+                                    <td>
+                                        <button class="btn-ghost" style="padding: 4px 8px;">✏️</button>
+                                        <button class="btn-ghost" style="padding: 4px 8px; color: var(--danger);">🗑️</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========== PAGE: REPORTS ========== -->
+    <section class="page hidden" id="page-reports">
+        <div class="report-card">
+            <h3>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--accent);"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+                Отчёт по заявкам
+            </h3>
+            <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 16px;">
+                Полный список заявок с фильтрами по кабинету, статусу, исполнителю и дате.
+            </p>
+            <div class="report-actions">
+                <button class="btn-ghost" onclick="openModal('modalExport')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                    Excel
+                </button>
+                <button class="btn-ghost">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>
+                    Печать
+                </button>
+            </div>
+        </div>
+
+        <div class="report-card">
+            <h3>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--accent);"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                Отчёт по исполнителям
+            </h3>
+            <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 16px;">
+                Эффективность техников: количество закрытых заявок, среднее время работы.
+            </p>
+            <div class="report-actions">
+                <button class="btn-ghost" onclick="openModal('modalExport')">Excel</button>
+                <button class="btn-ghost">Печать</button>
+            </div>
+        </div>
+
+        <div class="report-card">
+            <h3>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--accent);"><path d="M3 21h18M5 21V7l7-4 7 4v14"/></svg>
+                Отчёт по кабинетам
+            </h3>
+            <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 16px;">
+                Заявки по кабинетам с оборудованием и историей обслуживания.
+            </p>
+            <div class="report-actions">
+                <button class="btn-ghost" onclick="openModal('modalExport')">Excel</button>
+                <button class="btn-ghost">Печать</button>
+            </div>
+        </div>
+    </section>
+</main>
+
+<!-- ============ MOBILE NAV ============ -->
+<nav class="mobile-nav">
+    <div class="mobile-nav-inner">
+        <div class="mobile-nav-item active" onclick="switchPage('tasks')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            <span>Заявки</span>
+        </div>
+        <div class="mobile-nav-item" onclick="switchPage('cabinets')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 21h18M5 21V7l7-4 7 4v14"/></svg>
+            <span>Кабинеты</span>
+        </div>
+        <div class="mobile-nav-item" onclick="switchPage('cartridges')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>
+            <span>Картриджи</span>
+        </div>
+        <div class="mobile-nav-item" onclick="openModal('modalNotifications')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+            <span>Уведомления</span>
+        </div>
+        <div class="mobile-nav-item" onclick="openModal('modalProfile')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="7" r="4"/><path d="M5.5 21v-2a4 4 0 0 1 4-4h5a4 4 0 0 1 4 4v2"/></svg>
+            <span>Профиль</span>
+        </div>
+    </div>
+</nav>
+
+<!-- ============ MODALS ============ -->
+
+<!-- PROFILE -->
+<div class="modal-backdrop" id="modalProfile">
+    <div class="modal">
+        <div class="modal-head">
+            <h2><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="7" r="4"/><path d="M5.5 21v-2a4 4 0 0 1 4-4h5a4 4 0 0 1 4 4v2"/></svg> Профиль</h2>
+            <button class="modal-close" onclick="closeModal('modalProfile')">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="profile-header">
+                <div class="profile-avatar">И</div>
+                <div class="profile-name">Иванов Иван Иванович</div>
+                <div class="profile-role">
+                    <span class="role-pill">Администратор</span>
+                </div>
+            </div>
+            <div class="profile-info-grid">
+                <div class="profile-info-item">
+                    <div class="label">Логин</div>
+                    <div class="value">admin</div>
+                </div>
+                <div class="profile-info-item">
+                    <div class="label">Email</div>
+                    <div class="value">ivanov@company.ru</div>
+                </div>
+                <div class="profile-info-item">
+                    <div class="label">Телефон</div>
+                    <div class="value">+7 (999) 123-45-67</div>
+                </div>
+                <div class="profile-info-item">
+                    <div class="label">Отдел</div>
+                    <div class="value">IT отдел</div>
+                </div>
+                <div class="profile-info-item">
+                    <div class="label">Всего заявок</div>
+                    <div class="value">42</div>
+                </div>
+                <div class="profile-info-item">
+                    <div class="label">Выполнено</div>
+                    <div class="value">38</div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn-ghost" onclick="closeModal('modalProfile')">Закрыть</button>
+            <button class="btn-primary" onclick="closeModal('modalProfile'); openModal('modalEditUser')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+                Редактировать
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- NOTIFICATIONS -->
+<div class="modal-backdrop" id="modalNotifications">
+    <div class="modal">
+        <div class="modal-head">
+            <h2><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg> Уведомления <span class="badge badge-new" style="font-size: 11px;">3 новых</span></h2>
+            <button class="modal-close" onclick="closeModal('modalNotifications')">×</button>
+        </div>
+        <div class="modal-body" style="padding: 8px;">
+            <div class="notification-item unread" onclick="closeModal('modalNotifications'); openTask(1247)">
+                <div class="notif-icon" style="background: var(--accent-soft); color: var(--accent);">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                </div>
+                <div class="notif-body">
+                    <div class="notif-title">Новая заявка №1247</div>
+                    <div class="notif-text">Не включается компьютер в бухгалтерии — Козлова А.С.</div>
+                    <div class="notif-time">15 минут назад</div>
+                </div>
+                <div class="notif-dot"></div>
+            </div>
+            <div class="notification-item unread" onclick="closeModal('modalNotifications'); openTask(1243)">
+                <div class="notif-icon" style="background: var(--warning-soft); color: var(--warning);">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                </div>
+                <div class="notif-body">
+                    <div class="notif-title">Новый комментарий</div>
+                    <div class="notif-text">Петров П.П. прокомментировал заявку №1243</div>
+                    <div class="notif-time">32 минуты назад</div>
+                </div>
+                <div class="notif-dot"></div>
+            </div>
+            <div class="notification-item unread" onclick="closeModal('modalNotifications'); openTask(1240)">
+                <div class="notif-icon" style="background: var(--success-soft); color: var(--success);">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
+                </div>
+                <div class="notif-body">
+                    <div class="notif-title">Заявка выполнена</div>
+                    <div class="notif-text">Морозов Д.А. закрыл заявку №1240</div>
+                    <div class="notif-time">1 час назад</div>
+                </div>
+                <div class="notif-dot"></div>
+            </div>
+            <div class="notification-item">
+                <div class="notif-icon" style="background: var(--accent-soft); color: var(--accent);">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                </div>
+                <div class="notif-body">
+                    <div class="notif-title">Заявка взята в работу</div>
+                    <div class="notif-text">Петров П.П. взял заявку №1242</div>
+                    <div class="notif-time">3 часа назад</div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn-ghost" onclick="toast('Готово', 'Все уведомления прочитаны', 'success'); closeModal('modalNotifications')">Отметить прочитанными</button>
+            <button class="btn-primary" onclick="closeModal('modalNotifications')">Понятно</button>
+        </div>
+    </div>
+</div>
+
+<!-- CREATE TASK -->
+<div class="modal-backdrop" id="modalCreateTask">
+    <div class="modal large">
+        <div class="modal-head">
+            <h2><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg> Новая заявка</h2>
+            <button class="modal-close" onclick="closeModal('modalCreateTask')">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-row">
+                <div class="field">
+                    <label>Тип работы *</label>
+                    <select>
+                        <option>Выберите тип работы</option>
+                        <option>Ремонт оборудования</option>
+                        <option>Установка ПО</option>
+                        <option>Настройка сети</option>
+                        <option>Замена картриджа</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label>Приоритет</label>
+                    <select>
+                        <option>Средний</option>
+                        <option>Высокий</option>
+                        <option>Низкий</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="field">
+                    <label>Срок выполнения *</label>
+                    <input type="datetime-local" value="2026-09-25T15:00">
+                </div>
+                <div class="field">
+                    <label>Длительность</label>
+                    <select>
+                        <option>15 минут</option>
+                        <option>30 минут</option>
+                        <option selected>1 час</option>
+                        <option>2 часа</option>
+                        <option>4 часа</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="field">
+                    <label>От кого (ФИО) *</label>
+                    <input type="text" placeholder="Например: Иванов И.И.">
+                </div>
+                <div class="field">
+                    <label>Кабинет *</label>
+                    <select>
+                        <option>Выберите кабинет</option>
+                        <option>Каб. 101</option>
+                        <option>Каб. 102</option>
+                        <option>Каб. 204</option>
+                        <option>Каб. 301</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="field">
+                    <label>Исполнитель</label>
+                    <select>
+                        <option>Не назначать</option>
+                        <option>Петров П.П.</option>
+                        <option>Морозов Д.А.</option>
+                        <option>Соколова М.И.</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label>Помощник</label>
+                    <select>
+                        <option>Не назначать</option>
+                        <option>Петров П.П.</option>
+                        <option>Морозов Д.А.</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row full">
+                <div class="field">
+                    <label>Описание работы *</label>
+                    <textarea placeholder="Подробно опишите проблему или задачу…"></textarea>
+                </div>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn-ghost" onclick="closeModal('modalCreateTask')">Отмена</button>
+            <button class="btn-primary" onclick="closeModal('modalCreateTask'); toast('Создано', 'Заявка №1248 создана', 'success')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>
+                Создать заявку
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- EXPORT -->
+<div class="modal-backdrop" id="modalExport">
+    <div class="modal">
+        <div class="modal-head">
+            <h2><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg> Экспорт данных</h2>
+            <button class="modal-close" onclick="closeModal('modalExport')">×</button>
+        </div>
+        <div class="modal-body">
+            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+                Выберите формат экспорта. Данные будут отфильтрованы по текущим параметрам списка.
+            </p>
+            <div class="export-options">
+                <div class="export-option active" onclick="selectExport(this)">
+                    <div class="export-icon" style="color: #10b981;">📊</div>
+                    <div class="export-name">Excel</div>
+                    <div class="export-desc">XLSX с формулами</div>
+                </div>
+                <div class="export-option" onclick="selectExport(this)">
+                    <div class="export-icon" style="color: #ef4444;">📄</div>
+                    <div class="export-name">PDF</div>
+                    <div class="export-desc">Печатная версия</div>
+                </div>
+                <div class="export-option" onclick="selectExport(this)">
+                    <div class="export-icon" style="color: var(--accent);">📋</div>
+                    <div class="export-name">CSV</div>
+                    <div class="export-desc">Универсальный формат</div>
+                </div>
+            </div>
+            <div class="field" style="margin-bottom: 14px;">
+                <label>Период</label>
+                <select>
+                    <option>Все заявки</option>
+                    <option>За последний месяц</option>
+                    <option>За последние 3 месяца</option>
+                    <option>За текущий год</option>
+                </select>
+            </div>
+            <div class="field">
+                <label>Что включить</label>
+                <select>
+                    <option>Только отфильтрованные заявки</option>
+                    <option>Все заявки</option>
+                    <option>Только выполненные</option>
+                    <option>Только просроченные</option>
+                </select>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn-ghost" onclick="closeModal('modalExport')">Отмена</button>
+            <button class="btn-primary" onclick="closeModal('modalExport'); toast('Экспорт', 'Файл скачивается…', 'success')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                Скачать
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- TASK -->
+<div class="modal-backdrop" id="modalTask">
+    <div class="modal large">
+        <div class="modal-head">
+            <div class="task-modal-head-inner">
+                <div class="task-num" id="taskModalNumber">#1247</div>
+                <div style="flex: 1; min-width: 0;">
+                    <h2 class="task-modal-title" id="taskModalTitle">Не включается компьютер в бухгалтерии — чёрный экран, вентиляторы крутятся</h2>
+                    <div class="task-modal-meta">
+                        <span>📅 22.09.2026, 09:15</span>
+                        <span class="badge badge-progress">В работе</span>
+                    </div>
+                </div>
+            </div>
+            <button class="modal-close" onclick="closeModal('modalTask')">×</button>
+        </div>
+
+        <div class="task-tabs">
+            <button class="task-tab active" data-tab="details" onclick="switchTaskTab('details')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                Детали
+            </button>
+            <button class="task-tab" data-tab="comments" onclick="switchTaskTab('comments')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                Комментарии
+                <span class="task-tab-badge">3</span>
+            </button>
+            <button class="task-tab" data-tab="attachments" onclick="switchTaskTab('attachments')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21.44 11.05 12.25 20.24a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66L9.41 17.41a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                Вложения
+                <span class="task-tab-badge">2</span>
+            </button>
+            <button class="task-tab" data-tab="history" onclick="switchTaskTab('history')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                История
+            </button>
+        </div>
+
+        <div class="modal-body">
+            <!-- DETAILS -->
+            <div class="task-tab-panel active" data-panel="details">
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <div class="label">Тип работы</div>
+                        <div class="value">Ремонт оборудования</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="label">Приоритет</div>
+                        <div class="value" style="color: var(--danger);">🔴 Высокий</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="label">Срок</div>
+                        <div class="value">22.09.2026, 12:00</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="label">Кабинет</div>
+                        <div class="value">Каб. 204 · IT отдел</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="label">От кого</div>
+                        <div class="value">Козлова Анна Сергеевна</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="label">Исполнитель</div>
+                        <div class="value">
+                            <div class="cell-user-avatar" style="background: linear-gradient(135deg,#6366f1,#8b5cf6); width: 22px; height: 22px; font-size: 10px;">П</div>
+                            Петров П.П.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="desc-block">
+                    <h3>Описание</h3>
+                    <p>С утра компьютер не включается: при нажатии кнопки питания кулеры начинают крутиться, но на экране ничего не появляется. Индикатор на системном блоке горит. Проблема началась после вчерашнего отключения электричества.</p>
+                </div>
+            </div>
+
+            <!-- COMMENTS -->
+            <div class="task-tab-panel" data-panel="comments">
+                <div class="comment">
+                    <div class="comment-avatar">П</div>
+                    <div class="comment-body">
+                        <div class="comment-head">
+                            <span class="comment-author">Петров П.П.</span>
+                            <span class="comment-time">22.09.2026, 10:02</span>
+                        </div>
+                        <div class="comment-text">Взял в работу. Проверяю блок питания.</div>
+                    </div>
+                </div>
+                <div class="comment internal">
+                    <div class="comment-avatar">И</div>
+                    <div class="comment-body">
+                        <div class="comment-head">
+                            <span class="comment-author">
+                                Иванов И.И.
+                                <span class="comment-badge">внутр.</span>
+                            </span>
+                            <span class="comment-time">22.09.2026, 10:15</span>
+                        </div>
+                        <div class="comment-text"><span class="mention">@Петров П.П.</span> возьми запасной БП со склада, если этот не запустится.</div>
+                    </div>
+                </div>
+                <div class="comment">
+                    <div class="comment-avatar">К</div>
+                    <div class="comment-body">
+                        <div class="comment-head">
+                            <span class="comment-author">Козлова А.С.</span>
+                            <span class="comment-time">22.09.2026, 10:30</span>
+                        </div>
+                        <div class="comment-text">Спасибо! Ждём. Работы много, компьютер очень нужен.</div>
+                    </div>
+                </div>
+
+                <div class="comment-form">
+                    <textarea placeholder="Написать комментарий... Используйте @ для упоминания"></textarea>
+                    <div class="comment-form-footer">
+                        <label class="form-switch">
+                            <input type="checkbox">
+                            Внутренний (виден только техникам и админам)
+                        </label>
+                        <button class="btn-primary" style="padding: 8px 16px; font-size: 12px;" onclick="toast('Отправлено', 'Комментарий добавлен', 'success')">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m22 2-7 20-4-9-9-4z"/></svg>
+                            Отправить
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ATTACHMENTS -->
+            <div class="task-tab-panel" data-panel="attachments">
+                <div class="attachments-grid">
+                    <div class="attachment-card">
+                        <div class="attachment-preview">📷</div>
+                        <div class="attachment-info">
+                            <div class="attachment-name">photo_1.jpg</div>
+                            <div class="attachment-meta">1.2 МБ · Козлова А.С.</div>
+                        </div>
+                    </div>
+                    <div class="attachment-card">
+                        <div class="attachment-preview">📄</div>
+                        <div class="attachment-info">
+                            <div class="attachment-name">diag_report.pdf</div>
+                            <div class="attachment-meta">340 КБ · Петров П.П.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="drop-zone" onclick="toast('Загрузка', 'Выберите файл в диалоге', 'info')">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 15V3M7 10l5-5 5 5"/><path d="M3 15v4a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4"/></svg>
+                    <div class="drop-zone-text">Перетащите файлы сюда</div>
+                    <div class="drop-zone-hint">или нажмите, чтобы выбрать. Макс. 10 МБ</div>
+                </div>
+            </div>
+
+            <!-- HISTORY -->
+            <div class="task-tab-panel" data-panel="history">
+                <div class="history-filters">
+                    <button class="history-filter active">Все</button>
+                    <button class="history-filter">Изменения статуса</button>
+                    <button class="history-filter">Изменения исполнителя</button>
+                    <button class="history-filter">Изменения сроков</button>
+                </div>
+                <div class="timeline">
+                    <div class="tl-item success">
+                        <div class="tl-dot"></div>
+                        <div class="tl-head">
+                            <span class="tl-author">Петров П.П.</span>
+                            <span class="tl-time">22.09, 10:02</span>
+                        </div>
+                        <div class="tl-text"><strong>Статус:</strong> Новое → В работе</div>
+                    </div>
+                    <div class="tl-item">
+                        <div class="tl-dot"></div>
+                        <div class="tl-head">
+                            <span class="tl-author">Петров П.П.</span>
+                            <span class="tl-time">22.09, 09:47</span>
+                        </div>
+                        <div class="tl-text"><strong>Исполнитель:</strong> — → Петров П.П.</div>
+                    </div>
+                    <div class="tl-item">
+                        <div class="tl-dot"></div>
+                        <div class="tl-head">
+                            <span class="tl-author">Козлова А.С.</span>
+                            <span class="tl-time">22.09, 09:15</span>
+                        </div>
+                        <div class="tl-text"><strong>Создана заявка</strong> с приоритетом «Высокий»</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-foot" style="justify-content: space-between;">
+            <button class="btn-ghost" style="color: var(--danger); border-color: var(--danger);">
+                🗑️ Удалить
+            </button>
+            <div style="display: flex; gap: 8px;">
+                <button class="btn-ghost" onclick="closeModal('modalTask')">Отмена</button>
+                <button class="btn-ghost" id="btnTakeTask" style="color: var(--accent); border-color: var(--accent);" onclick="closeModal('modalTask'); toast('Взято', 'Заявка взята в работу', 'success')">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                    Взять в работу
+                </button>
+                <button class="btn-primary" onclick="closeModal('modalTask'); toast('Закрыто', 'Заявка выполнена', 'success')">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>
+                    Закрыть заявку
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- EDIT USER -->
+<div class="modal-backdrop" id="modalEditUser">
+    <div class="modal">
+        <div class="modal-head">
+            <h2><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg> Редактировать пользователя</h2>
+            <button class="modal-close" onclick="closeModal('modalEditUser')">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-row">
+                <div class="field">
+                    <label>ФИО *</label>
+                    <input type="text" value="Иванов Иван Иванович">
+                </div>
+                <div class="field">
+                    <label>Логин *</label>
+                    <input type="text" value="admin">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="field">
+                    <label>Роль</label>
+                    <select>
+                        <option>Администратор</option>
+                        <option>Техник</option>
+                        <option>Пользователь</option>
+                        <option>Разработчик</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label>Пароль (оставьте пустым, чтобы не менять)</label>
+                    <input type="password" placeholder="••••••">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="field">
+                    <label>Email</label>
+                    <input type="email" value="ivanov@company.ru">
+                </div>
+                <div class="field">
+                    <label>Телефон</label>
+                    <input type="text" value="+7 (999) 123-45-67">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="field">
+                    <label>Отдел</label>
+                    <input type="text" value="IT отдел">
+                </div>
+                <div class="field">
+                    <label>Статус</label>
+                    <label class="form-switch" style="margin-top: 8px;">
+                        <input type="checkbox" checked>
+                        Учетная запись активна
+                    </label>
+                </div>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn-ghost" onclick="closeModal('modalEditUser')">Отмена</button>
+            <button class="btn-primary" onclick="closeModal('modalEditUser'); toast('Сохранено', 'Пользователь обновлён', 'success')">Сохранить</button>
+        </div>
+    </div>
+</div>
+
+<!-- CABINET MODAL -->
+<div class="modal-backdrop" id="modalCabinet">
+    <div class="modal">
+        <div class="modal-head">
+            <h2><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l7-4 7 4v14"/></svg> Кабинет</h2>
+            <button class="modal-close" onclick="closeModal('modalCabinet')">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-row">
+                <div class="field">
+                    <label>Номер кабинета *</label>
+                    <input type="text" value="Кабинет 204">
+                </div>
+                <div class="field">
+                    <label>Корпус</label>
+                    <input type="text" value="Корпус А">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="field">
+                    <label>Этаж</label>
+                    <input type="text" value="2 этаж">
+                </div>
+                <div class="field">
+                    <label>Ответственный</label>
+                    <input type="text" value="Иванов И.И.">
+                </div>
+            </div>
+            <div class="form-row full">
+                <div class="field">
+                    <label>Описание / назначение</label>
+                    <input type="text" value="IT отдел">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="field">
+                    <label>Телефон</label>
+                    <input type="text" value="+7 (999) 204-40-40">
+                </div>
+                <div class="field">
+                    <label>Статус</label>
+                    <label class="form-switch" style="margin-top: 8px;">
+                        <input type="checkbox" checked>
+                        Кабинет активен
+                    </label>
+                </div>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn-ghost" onclick="closeModal('modalCabinet')">Отмена</button>
+            <button class="btn-primary" onclick="closeModal('modalCabinet'); toast('Сохранено', 'Кабинет обновлён', 'success')">Сохранить</button>
+        </div>
+    </div>
+</div>
+
+<!-- IMPERSONATE -->
+<div class="modal-backdrop" id="modalImpersonate">
+    <div class="modal small">
+        <div class="modal-head">
+            <h2><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/></svg> Сменить пользователя</h2>
+            <button class="modal-close" onclick="closeModal('modalImpersonate')">×</button>
+        </div>
+        <div class="modal-body">
+            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+                Вы войдёте под выбранным пользователем. Для возврата используйте кнопку «Вернуться к себе (DEV)».
+            </p>
+            <div class="field">
+                <label>Пользователь</label>
+                <select>
+                    <option>Петров Пётр Петрович — Техник</option>
+                    <option>Сидоров Сидор Сидорович — Техник</option>
+                    <option>Козлова Анна Сергеевна — Пользователь</option>
+                    <option>Морозов Дмитрий Александрович — Техник</option>
+                </select>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn-ghost" onclick="closeModal('modalImpersonate')">Отмена</button>
+            <button class="btn-primary" onclick="closeModal('modalImpersonate'); toast('Смена', 'Вы вошли как Петров П.П.', 'info')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+                Войти
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- TOASTS -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- COMMAND PALETTE -->
+<div class="palette-overlay" id="paletteOverlay" onclick="if(event.target===this) closePalette()">
+    <div class="palette">
+        <input type="text" id="paletteInput" placeholder="Введите команду или раздел…" oninput="filterPalette(this.value)">
+        <div class="palette-results" id="paletteResults"></div>
+    </div>
+</div>
+
+<!-- CONTEXT MENU -->
+<div class="context-menu hidden" id="contextMenu">
+    <div class="dropdown-item" onclick="hideContextMenu()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        Просмотреть
+    </div>
+    <div class="dropdown-item" onclick="hideContextMenu()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>
+        Закрыть
+    </div>
+    <div class="dropdown-divider"></div>
+    <div class="dropdown-item danger" onclick="hideContextMenu()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        Удалить
+    </div>
+</div>
+
+<!-- FAB -->
+<button class="fab" onclick="openModal('modalCreateTask')" title="Создать заявку">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+</button>
+
+<script>
+// ============================================================
+// THEME
+// ============================================================
+function toggleTheme() {
+    const html = document.documentElement;
+    const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    html.setAttribute('data-theme', next);
+    toast('Тема', next === 'dark' ? 'Тёмная тема' : 'Светлая тема', 'info', 1200);
+}
+
+// ============================================================
+// PAGE SWITCHING
+// ============================================================
+const PAGE_TITLES = {
+    'tasks': 'Заявки',
+    'dashboard': 'Дашборд',
+    'cabinets': 'Кабинеты',
+    'cartridges': 'Картриджи',
+    'licenses': 'Лицензии',
+    'users': 'Пользователи',
+    'contacts': 'Внешние контакты',
+    'directory': 'Справочник',
+    'reports': 'Отчёты'
+};
+
+function switchPage(page) {
+    document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+    const target = document.getElementById('page-' + page);
+    if (target) target.classList.remove('hidden');
+
+    document.querySelectorAll('.sidebar .nav-item').forEach(n => {
+        n.classList.toggle('active', n.dataset.page === page);
+    });
+
+    document.querySelectorAll('.mobile-nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('topbarTitleText').textContent = PAGE_TITLES[page] || 'Заявки';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+document.querySelectorAll('.sidebar .nav-item[data-page]').forEach(item => {
+    item.addEventListener('click', () => switchPage(item.dataset.page));
+});
+
+// ============================================================
+// MODALS
+// ============================================================
+function openModal(id) {
+    const el = document.getElementById(id);
+    if (el) {
+        el.classList.add('open');
+        document.body.style.overflow = 'hidden';
+    }
+}
+function closeModal(id) {
+    const el = document.getElementById(id);
+    if (el) {
+        el.classList.remove('open');
+        document.body.style.overflow = '';
+    }
+}
+document.querySelectorAll('.modal-backdrop').forEach(m => {
+    m.addEventListener('click', e => {
+        if (e.target === m) closeModal(m.id);
+    });
+});
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+        document.querySelectorAll('.modal-backdrop.open').forEach(m => closeModal(m.id));
+        closePalette();
+    }
+});
+
+// ============================================================
+// TASK MODAL
+// ============================================================
+function openTask(id) {
+    const taskData = {
+        1247: { title: 'Не включается компьютер в бухгалтерии — чёрный экран, вентиляторы крутятся', status: 'Новое' },
+        1243: { title: 'Пропал интернет в отделе продаж — не грузятся сайты', status: 'В работе' },
+        1242: { title: 'Зависает 1С при формировании отчёта', status: 'В работе' },
+        1241: { title: 'Установить Excel на новый ноутбук директора', status: 'Новое' },
+        1240: { title: 'Не работает принтер HP LaserJet — мигает оранжевая лампочка', status: 'Выполнено' },
+        1246: { title: 'Не работает принтер HP LaserJet', status: 'Новое' }
+    };
+    const data = taskData[id] || { title: 'Заявка №' + id, status: 'Новое' };
+    document.getElementById('taskModalNumber').textContent = '#' + id;
+    document.getElementById('taskModalTitle').textContent = data.title;
+
+    const btnTake = document.getElementById('btnTakeTask');
+    if (btnTake) {
+        btnTake.style.display = (data.status === 'Новое') ? '' : 'none';
+    }
+
+    switchTaskTab('details');
+    openModal('modalTask');
+}
+
+function switchTaskTab(name) {
+    document.querySelectorAll('#modalTask .task-tab').forEach(b => {
+        b.classList.toggle('active', b.dataset.tab === name);
+    });
+    document.querySelectorAll('#modalTask .task-tab-panel').forEach(p => {
+        p.classList.toggle('active', p.dataset.panel === name);
+    });
+}
+
+// ============================================================
+// VIEW SWITCHER
+// ============================================================
+function switchView(view) {
+    document.querySelectorAll('#viewSwitcher button').forEach(b => {
+        b.classList.toggle('active', b.dataset.view === view);
+    });
+
+    const table = document.getElementById('tableView');
+    const kanban = document.getElementById('kanbanView');
+
+    if (view === 'kanban') {
+        table.classList.add('hidden');
+        kanban.classList.remove('hidden');
+        initKanbanDrag();
+    } else {
+        kanban.classList.add('hidden');
+        table.classList.remove('hidden');
+    }
+
+    try { localStorage.setItem('supportactive_view', view); } catch(e) {}
+}
+
+(function() {
+    try {
+        const saved = localStorage.getItem('supportactive_view');
+        if (saved === 'kanban') switchView('kanban');
+    } catch(e) {}
+})();
+
+// ============================================================
+// KANBAN DRAG & DROP
+// ============================================================
+const KB_TRANSITIONS = {
+    'Новое': ['В работе', 'Выполнено'],
+    'В работе': ['Выполнено'],
+    'Выполнено': [],
+};
+
+let draggedCard = null;
+
+function initKanbanDrag() {
+    document.querySelectorAll('#kanbanView .kb-card').forEach(card => {
+        card.draggable = true;
+        card.ondragstart = e => {
+            draggedCard = card;
+            card.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+        };
+        card.ondragend = () => {
+            card.classList.remove('dragging');
+            document.querySelectorAll('.kb-column').forEach(c => {
+                c.classList.remove('drop-valid', 'drop-invalid');
+            });
+        };
+    });
+
+    document.querySelectorAll('#kanbanView .kb-column').forEach(col => {
+        col.ondragover = e => {
+            e.preventDefault();
+            if (!draggedCard) return;
+            const fromCol = draggedCard.closest('.kb-column');
+            col.classList.remove('drop-valid', 'drop-invalid');
+            if (fromCol === col) {
+                col.classList.add('drop-valid');
+            } else if (isTransitionAllowed(fromCol, col)) {
+                col.classList.add('drop-valid');
+            } else {
+                col.classList.add('drop-invalid');
+            }
+        };
+        col.ondragleave = () => {
+            col.classList.remove('drop-valid', 'drop-invalid');
+        };
+        col.ondrop = e => {
+            e.preventDefault();
+            col.classList.remove('drop-valid', 'drop-invalid');
+
+            if (!draggedCard) return;
+            const fromCol = draggedCard.closest('.kb-column');
+            if (fromCol === col) return;
+
+            if (!isTransitionAllowed(fromCol, col)) {
+                toast('Переход запрещён', 'Нельзя выполнить такое перемещение', 'warning');
+                return;
+            }
+
+            col.appendChild(draggedCard);
+            updateKanbanCounts();
+
+            const taskId = draggedCard.querySelector('.kb-card-id').textContent.replace('#', '');
+            toast('Успешно', `Заявка №${taskId} перемещена`, 'success');
+        };
+    });
+}
+
+function getColumnStatus(col) {
+    return col.getAttribute('data-status') || '';
+}
+
+function isTransitionAllowed(fromCol, toCol) {
+    const from = getColumnStatus(fromCol);
+    const to = getColumnStatus(toCol);
+    const allowed = KB_TRANSITIONS[from] || [];
+    return allowed.indexOf(to) !== -1;
+}
+
+function updateKanbanCounts() {
+    document.querySelectorAll('#kanbanView .kb-column').forEach(col => {
+        const count = col.querySelectorAll('.kb-card').length;
+        col.querySelector('.kb-count').textContent = count;
+    });
+}
+
+// ============================================================
+// FILTERS
+// ============================================================
+function toggleFilters() {
+    const panel = document.getElementById('filtersPanel');
+    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+}
+
+// ============================================================
+// EXPORT
+// ============================================================
+function selectExport(el) {
+    document.querySelectorAll('.export-option').forEach(o => o.classList.remove('active'));
+    el.classList.add('active');
+}
+
+// ============================================================
+// HISTORY FILTER
+// ============================================================
+document.querySelectorAll('.history-filter').forEach(btn => {
+    btn.addEventListener('click', () => {
+        btn.parentElement.querySelectorAll('.history-filter').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+    });
+});
+
+// ============================================================
+// DROPDOWNS
+// ============================================================
+function toggleDropdown(id, event) {
+    if (event) event.stopPropagation();
+    const dd = document.getElementById(id);
+    if (!dd) return;
+
+    const isHidden = dd.classList.contains('hidden');
+    document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.add('hidden'));
+
+    if (isHidden) {
+        dd.classList.remove('hidden');
+    }
+}
+
+function closeDropdown(id) {
+    const dd = document.getElementById(id);
+    if (dd) dd.classList.add('hidden');
+}
+
+document.addEventListener('click', () => {
+    document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.add('hidden'));
+});
+
+// ============================================================
+// TOASTS
+// ============================================================
+function toast(title, text, type = 'info', duration = 3500) {
+    const container = document.getElementById('toastContainer');
+    if (!container) return;
+
+    const icons = {
+        success: '✓',
+        warning: '⚠',
+        error: '✕',
+        info: 'ⓘ',
+    };
+
+    const el = document.createElement('div');
+    el.className = 'toast ' + type;
+    el.innerHTML = `
+        <div class="toast-icon">${icons[type] || icons.info}</div>
+        <div class="toast-body">
+            <div class="toast-title">${escapeHtml(title)}</div>
+            ${text ? `<div class="toast-text">${escapeHtml(text)}</div>` : ''}
+        </div>
+        <button class="toast-close" onclick="this.parentElement.remove()">×</button>
+    `;
+    container.appendChild(el);
+
+    if (duration > 0) {
+        setTimeout(() => {
+            el.classList.add('hiding');
+            setTimeout(() => el.remove(), 200);
+        }, duration);
+    }
+}
+
+function escapeHtml(s) {
+    const d = document.createElement('div');
+    d.appendChild(document.createTextNode(String(s || '')));
+    return d.innerHTML;
+}
+
+// ============================================================
+// PUSH
+// ============================================================
+function togglePush(btn) {
+    btn.style.background = 'linear-gradient(135deg, var(--accent), var(--accent-2))';
+    btn.style.color = 'white';
+    btn.style.borderColor = 'transparent';
+    toast('Уведомления', 'Push-уведомления включены', 'success');
+}
+
+// ============================================================
+// REFRESH
+// ============================================================
+function refreshData() {
+    const icon = document.querySelector('.icon-btn[title="Обновить"] svg');
+    if (icon) {
+        icon.style.transition = 'transform 0.6s';
+        icon.style.transform = 'rotate(360deg)';
+        setTimeout(() => {
+            icon.style.transition = '';
+            icon.style.transform = '';
+        }, 700);
+    }
+    toast('Обновлено', 'Данные актуальны', 'success', 1500);
+}
+
+// ============================================================
+// HOTKEYS HELP
+// ============================================================
+function showHotkeysHelp() {
+    alert(
+        'Горячие клавиши:\n\n' +
+        'N — Создать заявку\n' +
+        'F — Поиск\n' +
+        'R — Обновить\n' +
+        'B — Уведомления\n' +
+        'T — Сменить тему\n' +
+        '? — Эта справка\n' +
+        'Ctrl+K — Командная палитра\n' +
+        'Ctrl+Q — Выйти\n' +
+        'Esc — Закрыть'
+    );
+}
+
+// ============================================================
+// COMMAND PALETTE
+// ============================================================
+const PALETTE_COMMANDS = [
+    { id: 'nav.tasks', title: 'Заявки', icon: '📋', action: () => switchPage('tasks') },
+    { id: 'nav.dashboard', title: 'Дашборд', icon: '📊', action: () => switchPage('dashboard') },
+    { id: 'nav.cabinets', title: 'Кабинеты', icon: '🏢', action: () => switchPage('cabinets') },
+    { id: 'nav.cartridges', title: 'Картриджи', icon: '🖨️', action: () => switchPage('cartridges') },
+    { id: 'nav.licenses', title: 'Лицензии', icon: '🔑', action: () => switchPage('licenses') },
+    { id: 'nav.users', title: 'Пользователи', icon: '👥', action: () => switchPage('users') },
+    { id: 'nav.contacts', title: 'Внешние контакты', icon: '📞', action: () => switchPage('contacts') },
+    { id: 'nav.directory', title: 'Справочник', icon: '📚', action: () => switchPage('directory') },
+    { id: 'nav.reports', title: 'Отчёты', icon: '📄', action: () => switchPage('reports') },
+    { id: 'act.newTask', title: 'Создать заявку', icon: '➕', action: () => openModal('modalCreateTask') },
+    { id: 'act.notifications', title: 'Уведомления', icon: '🔔', action: () => openModal('modalNotifications') },
+    { id: 'act.export', title: 'Экспорт данных', icon: '📥', action: () => openModal('modalExport') },
+    { id: 'act.profile', title: 'Профиль', icon: '👤', action: () => openModal('modalProfile') },
+    { id: 'act.theme', title: 'Сменить тему', icon: '🌗', action: () => toggleTheme() },
+    { id: 'act.help', title: 'Горячие клавиши', icon: '⌨️', action: () => showHotkeysHelp() },
+];
+
+function openPalette() {
+    const overlay = document.getElementById('paletteOverlay');
+    if (!overlay) return;
+    overlay.classList.add('open');
+    const input = document.getElementById('paletteInput');
+    input.value = '';
+    filterPalette('');
+    setTimeout(() => input.focus(), 50);
+}
+
+function closePalette() {
+    const overlay = document.getElementById('paletteOverlay');
+    if (overlay) overlay.classList.remove('open');
+}
+
+function filterPalette(query) {
+    const results = document.getElementById('paletteResults');
+    if (!results) return;
+    const q = query.toLowerCase().trim();
+
+    const filtered = PALETTE_COMMANDS.filter(c =>
+        !q || c.title.toLowerCase().indexOf(q) !== -1
+    );
+
+    if (filtered.length === 0) {
+        results.innerHTML = '<div class="palette-item" style="color:var(--text-muted);cursor:default;">Ничего не найдено</div>';
+        return;
+    }
+
+    results.innerHTML = filtered.map(c => `
+        <div class="palette-item" onclick="executePaletteCmd('${c.id}')">
+            <span style="font-size:1.1rem;">${c.icon}</span>
+            <span>${c.title}</span>
+        </div>
+    `).join('');
+}
+
+function executePaletteCmd(id) {
+    const cmd = PALETTE_COMMANDS.find(c => c.id === id);
+    closePalette();
+    if (cmd) setTimeout(() => cmd.action(), 100);
+}
+
+// ============================================================
+// CONTEXT MENU
+// ============================================================
+document.querySelectorAll('#tableView tbody tr').forEach(row => {
+    row.addEventListener('contextmenu', e => {
+        e.preventDefault();
+        const menu = document.getElementById('contextMenu');
+        menu.classList.remove('hidden');
+        menu.style.left = Math.min(e.clientX, window.innerWidth - 220) + 'px';
+        menu.style.top = Math.min(e.clientY, window.innerHeight - 160) + 'px';
+    });
+});
+
+function hideContextMenu() {
+    const menu = document.getElementById('contextMenu');
+    if (menu) menu.classList.add('hidden');
+}
+
+document.addEventListener('click', () => hideContextMenu());
+document.addEventListener('scroll', () => hideContextMenu());
+
+// ============================================================
+// HOTKEYS
+// ============================================================
+document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        const overlay = document.getElementById('paletteOverlay');
+        if (overlay && overlay.classList.contains('open')) {
+            closePalette();
+        } else {
+            openPalette();
+        }
+        return;
+    }
+
+    if (e.key === 'Escape') {
+        closePalette();
+        hideContextMenu();
+    }
+
+    const t = e.target;
+    if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (document.querySelector('.modal-backdrop.open')) return;
+
+    switch (e.key.toLowerCase()) {
+        case 'n':
+            e.preventDefault();
+            openModal('modalCreateTask');
+            break;
+        case 'f':
+            e.preventDefault();
+            const search = document.querySelector('.search-input input');
+            if (search) search.focus();
+            break;
+        case 'r':
+            e.preventDefault();
+            refreshData();
+            break;
+        case 'b':
+            e.preventDefault();
+            openModal('modalNotifications');
+            break;
+        case 't':
+            e.preventDefault();
+            toggleTheme();
+            break;
+        case '?':
+            e.preventDefault();
+            showHotkeysHelp();
+            break;
+    }
+});
+</script>
+</body>
+</html>

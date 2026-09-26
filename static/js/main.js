@@ -32,16 +32,6 @@
         'Разработчик':   'dev',
     };
 
-    // Кто видит кнопку «Создать заявку» в шапке user-card.
-    // Техник НЕ МОЖЕТ создавать заявки — он исполнитель.
-    // Пользователь создаёт заявки через свою кнопку над таблицей.
-    var CAN_CREATE_TASK = {
-        'Администратор': true,
-        'Техник':        false,
-        'Пользователь':  false,
-        'Разработчик':   false,
-    };
-
     // ============================================================
     // ИНИЦИАЛИЗАЦИЯ
     // ============================================================
@@ -125,7 +115,8 @@
             window.App.Tasks.loadStatistics();
         }
 
-        // Для Техника данные Kanban уже загружены внутри setupInterfaceByRole
+        // Для Техника данные Kanban/Таблица грузятся внутри TasksKanban.init()
+        // в setupInterfaceByRole().
         if (role !== 'Техник') {
             if (window.App.Tasks) {
                 if (window.App.Tasks.loadFilters) window.App.Tasks.loadFilters();
@@ -187,25 +178,18 @@
             $('#kanbanFiltersPanel').remove();
         }
 
-        // ---------- Кнопка «Создать заявку» в шапке ----------
-        // Видна только тем, кому разрешено создавать (по факту — только Админу)
-        if (CAN_CREATE_TASK[role]) {
-            $('#headerCreateTaskBtn').show();
-        } else {
-            $('#headerCreateTaskBtn').hide();
-        }
-
         if (role === 'Техник') {
             applyRoleVisibility();
 
             $('#tasksBlock').hide();
             $('#kanbanBlock').show();
 
+            // Инициализируем модуль Kanban (создаёт тулбар с ComboBox)
+            // Внутри init() либо грузится Kanban, либо Таблица (по сохранённому выбору)
             if (window.App.TasksKanban && window.App.TasksKanban.init) {
                 window.App.TasksKanban.init();
             }
 
-            // Техник не создаёт заявки — скрываем все кнопки создания
             $('#tasksBlock .btn-danger').hide();
             $('#tasksBlock .btn-success').hide();
             $('#filterUserBlock').hide();
@@ -223,7 +207,6 @@
             $('.user-card .col-md-6').hide();
             $('.filters-section').hide();
 
-            // У Пользователя — своя кнопка над таблицей
             if ($('#userCreateTaskBtn').length === 0) {
                 $('.table-container').before(
                     '<div id="userCreateTaskBtn" class="mb-3">' +
@@ -300,21 +283,30 @@
             window.App.MobileUX.closeAllSwipeRows();
         }
 
+        // ---------- Заявки ----------
         if (pageName === 'tasks') {
             var role = window.currentUserRole;
 
             if (role === 'Техник') {
-                $('#tasksBlock').hide();
-                $('#kanbanBlock').show();
-                $('#otherPagesBlock').hide();
-
+                // Техник: его вид (Kanban/Таблица) управляется внутри TasksKanban
                 if ($('#tasksToolbar').length === 0 &&
                     window.App.TasksKanban &&
                     window.App.TasksKanban.init) {
                     window.App.TasksKanban.init();
                 } else if (window.App.TasksKanban &&
                            window.App.TasksKanban.load) {
-                    window.App.TasksKanban.load();
+                    // Если уже на таблице — не трогаем
+                    if (window.App.TasksKanban.getViewMode &&
+                        window.App.TasksKanban.getViewMode() === 'table') {
+                        $('#tasksBlock').show();
+                        $('#kanbanBlock').hide();
+                        if (window.App.Tasks &&
+                            window.App.Tasks.loadTasks) {
+                            window.App.Tasks.loadTasks(1);
+                        }
+                    } else {
+                        window.App.TasksKanban.load();
+                    }
                 }
             } else {
                 $('#kanbanBlock').hide();
@@ -324,6 +316,7 @@
                     window.App.Tasks.loadTasks(1);
                 }
             }
+            $('#otherPagesBlock').hide();
             return;
         }
 
@@ -367,7 +360,14 @@
         var role = window.currentUserRole;
         if (role === 'Техник' &&
             window.App.TasksKanban &&
-            window.App.TasksKanban.load) {
+            window.App.TasksKanban.getViewMode &&
+            window.App.TasksKanban.getViewMode() === 'table') {
+            if (window.App.Tasks && window.App.Tasks.loadTasks) {
+                window.App.Tasks.loadTasks(state.currentPage || 1);
+            }
+        } else if (role === 'Техник' &&
+                   window.App.TasksKanban &&
+                   window.App.TasksKanban.load) {
             window.App.TasksKanban.load();
         } else if (window.App.Tasks && window.App.Tasks.loadTasks) {
             window.App.Tasks.loadTasks(state.currentPage || 1);

@@ -1,5 +1,9 @@
 // static/js/tasks.js
-// Список заявок, фильтры, пагинация, серверный поиск, создание, контекстное меню
+// Список заявок, фильтры, пагинация, серверный поиск, создание, контекстное меню.
+//
+// Особенность для Техника:
+//   вместо параметра `user` используется `for_technician` —
+//   бэкенд возвращает только «мои» заявки + «Новое без исполнителя».
 
 (function() {
     'use strict';
@@ -14,13 +18,18 @@
     var state = window.App.state;
     var searchDebounceTimer = null;
 
-    // ============= СТАТИСТИКА =============
+    // ============================================================
+    // СТАТИСТИКА
+    // ============================================================
     function loadStatistics() {
         if (window.currentUserRole === 'Пользователь') return;
 
         fetch('/api/statistics')
             .then(function(r) {
-                if (r.status === 401) { window.location.href = '/login'; return null; }
+                if (r.status === 401) {
+                    window.location.href = '/login';
+                    return null;
+                }
                 return r.json();
             })
             .then(function(data) {
@@ -39,16 +48,23 @@
                     utils.animateNumber('#statMyCompleted', data.user_total || 0);
                 }
             })
-            .catch(function(err) { console.error('[tasks] statistics error:', err); });
+            .catch(function(err) {
+                console.error('[tasks] statistics error:', err);
+            });
     }
 
-    // ============= ФИЛЬТРЫ =============
+    // ============================================================
+    // ФИЛЬТРЫ
+    // ============================================================
     function loadFilters() {
         if (window.currentUserRole === 'Пользователь') return;
 
         fetch('/api/filters')
             .then(function(r) {
-                if (r.status === 401) { window.location.href = '/login'; return null; }
+                if (r.status === 401) {
+                    window.location.href = '/login';
+                    return null;
+                }
                 return r.json();
             })
             .then(function(data) {
@@ -58,7 +74,8 @@
                     var $s = $(sel);
                     $s.empty().append('<option value="">' + allText + '</option>');
                     (list || []).forEach(function(v) {
-                        $s.append('<option value="' + utils.escapeHtml(v) + '">' + utils.escapeHtml(v) + '</option>');
+                        $s.append('<option value="' + utils.escapeHtml(v) + '">' +
+                                  utils.escapeHtml(v) + '</option>');
                     });
                 }
 
@@ -70,10 +87,14 @@
                     fill('#filterUser', data.users, 'Все пользователи');
                 }
             })
-            .catch(function(err) { console.error('[tasks] filters error:', err); });
+            .catch(function(err) {
+                console.error('[tasks] filters error:', err);
+            });
     }
 
-    // ============= СПИСОК =============
+    // ============================================================
+    // СПИСОК
+    // ============================================================
     function loadTasks(page) {
         page = page || 1;
         state.currentPage = page;
@@ -86,8 +107,12 @@
         var role = window.currentUserRole;
 
         if (role === 'Техник') {
+            // 🆕 Техник — используем for_technician вместо user.
+            // Бэкенд вернёт «мои» + «Новое без исполнителя».
             var userName = window.currentUserFullName || $('#userName').text().trim();
-            if (userName && userName !== 'Неизвестно') params.append('user', userName);
+            if (userName && userName !== 'Неизвестно') {
+                params.append('for_technician', userName);
+            }
 
             var wt = $('#filterWorkType').val();
             var cb = $('#filterCabinet').val();
@@ -102,9 +127,14 @@
                 params.append('date_from', fd + ' 00:00:00');
                 params.append('date_to', fd + ' 23:59:59');
             }
+
         } else if (role === 'Пользователь') {
-            if (state.currentUserId) params.append('created_by', state.currentUserId);
+            if (state.currentUserId) {
+                params.append('created_by', state.currentUserId);
+            }
+
         } else {
+            // Администратор / другие — видят всё
             var wt2 = $('#filterWorkType').val();
             var cb2 = $('#filterCabinet').val();
             var st2 = $('#filterStatus').val();
@@ -128,12 +158,18 @@
 
         fetch('/api/tasks?' + params.toString())
             .then(function(r) {
-                if (r.status === 401) { window.location.href = '/login'; return null; }
+                if (r.status === 401) {
+                    window.location.href = '/login';
+                    return null;
+                }
                 return r.json();
             })
             .then(function(data) {
                 if (!data) return;
-                if (data.error) { showErrorInTable(data.error); return; }
+                if (data.error) {
+                    showErrorInTable(data.error);
+                    return;
+                }
                 renderTasksTable(data.items || []);
                 state.currentTotalPages = data.pages || 1;
                 renderPagination(data);
@@ -152,10 +188,12 @@
     function showErrorInTable(msg) {
         var colSpan = (window.currentUserRole === 'Администратор') ? 11 : 10;
         $('#tasksTableBody').html(
-            '<tr><td colspan="' + colSpan + '" class="text-center py-5 text-danger">' +
+            '<tr><td colspan="' + colSpan +
+            '" class="text-center py-5 text-danger">' +
             '<i class="bi bi-exclamation-triangle" style="font-size:3rem;"></i>' +
             '<p class="mt-2">' + utils.escapeHtml(msg) + '</p>' +
-            '<button class="btn btn-sm btn-primary mt-2" onclick="loadTasks(1)">Повторить</button></td></tr>'
+            '<button class="btn btn-sm btn-primary mt-2" ' +
+            'onclick="loadTasks(1)">Повторить</button></td></tr>'
         );
     }
 
@@ -173,14 +211,20 @@
             );
             return;
         }
-        tasks.forEach(function(t) { tbody.append(createTaskRow(t)); });
+        tasks.forEach(function(t) {
+            tbody.append(createTaskRow(t));
+        });
     }
 
     function renderPagination(data) {
         var $pag = $('#tasksPagination');
-        if (!data || data.pages <= 1) { $pag.empty(); return; }
+        if (!data || data.pages <= 1) {
+            $pag.empty();
+            return;
+        }
 
-        var page = data.page, pages = data.pages;
+        var page = data.page;
+        var pages = data.pages;
         var html = '<nav><ul class="pagination pagination-sm justify-content-center mb-0">';
 
         html += '<li class="page-item ' + (page === 1 ? 'disabled' : '') + '">' +
@@ -190,19 +234,28 @@
                 '<a class="page-link" href="#" onclick="loadTasks(' + (page - 1) + '); return false;">' +
                 '<i class="bi bi-chevron-left"></i></a></li>';
 
-        var start = Math.max(1, page - 2), end = Math.min(pages, page + 2);
+        var start = Math.max(1, page - 2);
+        var end = Math.min(pages, page + 2);
 
         if (start > 1) {
-            html += '<li class="page-item"><a class="page-link" href="#" onclick="loadTasks(1); return false;">1</a></li>';
-            if (start > 2) html += '<li class="page-item disabled"><span class="page-link">…</span></li>';
+            html += '<li class="page-item"><a class="page-link" href="#" ' +
+                    'onclick="loadTasks(1); return false;">1</a></li>';
+            if (start > 2) {
+                html += '<li class="page-item disabled"><span class="page-link">…</span></li>';
+            }
         }
         for (var i = start; i <= end; i++) {
             html += '<li class="page-item ' + (i === page ? 'active' : '') + '">' +
-                    '<a class="page-link" href="#" onclick="loadTasks(' + i + '); return false;">' + i + '</a></li>';
+                    '<a class="page-link" href="#" ' +
+                    'onclick="loadTasks(' + i + '); return false;">' + i + '</a></li>';
         }
         if (end < pages) {
-            if (end < pages - 1) html += '<li class="page-item disabled"><span class="page-link">…</span></li>';
-            html += '<li class="page-item"><a class="page-link" href="#" onclick="loadTasks(' + pages + '); return false;">' + pages + '</a></li>';
+            if (end < pages - 1) {
+                html += '<li class="page-item disabled"><span class="page-link">…</span></li>';
+            }
+            html += '<li class="page-item"><a class="page-link" href="#" ' +
+                    'onclick="loadTasks(' + pages + '); return false;">' +
+                    pages + '</a></li>';
         }
 
         html += '<li class="page-item ' + (page === pages ? 'disabled' : '') + '">' +
@@ -215,7 +268,8 @@
 
         html += '<div class="text-center text-muted small mt-2">' +
                 'Показано ' + ((page - 1) * data.per_page + 1) + '–' +
-                Math.min(page * data.per_page, data.total) + ' из ' + data.total + '</div>';
+                Math.min(page * data.per_page, data.total) +
+                ' из ' + data.total + '</div>';
 
         $pag.html(html);
     }
@@ -242,20 +296,26 @@
         var statusClass = utils.getStatusClass(task.status);
         var priorityClass = utils.getPriorityClass(task.priority);
 
-        var rowStyle = '', rowClass = '', deadlineHtml = '';
+        var rowStyle = '';
+        var rowClass = '';
+        var deadlineHtml = '';
 
-        if (task.status !== 'Выполнено' && task.status !== 'Отменено' && task.deadline) {
+        if (task.status !== 'Выполнено' &&
+            task.status !== 'Отменено' &&
+            task.deadline) {
             var dl = new Date(task.deadline.replace(' ', 'T'));
             var diffMs = dl - new Date();
             var diffHours = diffMs / 3600000;
             if (diffMs < 0) {
                 rowClass = 'table-danger';
                 rowStyle = 'background-color:#f8d7da !important;';
-                deadlineHtml = '<span class="badge bg-danger">Просрочена</span> ' + utils.formatDate(task.deadline);
+                deadlineHtml = '<span class="badge bg-danger">Просрочена</span> ' +
+                               utils.formatDate(task.deadline);
             } else if (diffHours < 24) {
                 rowClass = 'table-warning';
                 rowStyle = 'background-color:#fff3cd !important;';
-                deadlineHtml = '<span class="badge bg-warning text-dark">Скоро</span> ' + utils.formatDate(task.deadline);
+                deadlineHtml = '<span class="badge bg-warning text-dark">Скоро</span> ' +
+                               utils.formatDate(task.deadline);
             } else {
                 deadlineHtml = utils.formatDate(task.deadline);
             }
@@ -266,7 +326,8 @@
         var row = '<tr class="task-row ' + rowClass + '" style="' + rowStyle + '" ' +
                   'data-task-id="' + task.id + '" ' +
                   'onclick="viewTask(' + task.id + ')" ' +
-                  'oncontextmenu="handleContextMenu(event, ' + task.id + '); return false;">';
+                  'oncontextmenu="handleContextMenu(event, ' + task.id +
+                  '); return false;">';
 
         if (window.currentUserRole === 'Администратор') {
             row += '<td onclick="event.stopPropagation()">' +
@@ -280,31 +341,48 @@
             '<td>' + utils.escapeHtml(task.cabinet || '-') + '</td>' +
             '<td title="' + utils.escapeHtml(task.description || '') + '">' +
             utils.escapeHtml(utils.truncateText(task.description, 40)) + '</td>' +
-            '<td><span class="badge bg-secondary">' + utils.escapeHtml(task.work_type || 'Не указан') + '</span></td>' +
-            '<td><span class="status-badge ' + statusClass + '">' + utils.escapeHtml(task.status || 'Новое') + '</span></td>' +
-            '<td><span class="' + priorityClass + '"><i class="bi bi-flag-fill"></i> ' +
+            '<td><span class="badge bg-secondary">' +
+            utils.escapeHtml(task.work_type || 'Не указан') + '</span></td>' +
+            '<td><span class="status-badge ' + statusClass + '">' +
+            utils.escapeHtml(task.status || 'Новое') + '</span></td>' +
+            '<td><span class="' + priorityClass + '">' +
+            '<i class="bi bi-flag-fill"></i> ' +
             utils.escapeHtml(task.priority || 'Средний') + '</span></td>' +
-            '<td>' + (task.executor ? utils.escapeHtml(task.executor) : '<span class="text-muted">Не назначен</span>') + '</td>' +
-            '<td>' + (task.assistant ? utils.escapeHtml(task.assistant) : '<span class="text-muted">Не назначен</span>') + '</td>';
+            '<td>' + (task.executor
+                ? utils.escapeHtml(task.executor)
+                : '<span class="text-muted">Не назначен</span>') + '</td>' +
+            '<td>' + (task.assistant
+                ? utils.escapeHtml(task.assistant)
+                : '<span class="text-muted">Не назначен</span>') + '</td>';
 
         return row + '</tr>';
     }
 
     function clearFilters() {
-        $('#filterWorkType, #filterCabinet, #filterStatus, #filterUser, #filterDate, #taskSearchInput').val('');
+        $('#filterWorkType, #filterCabinet, #filterStatus, ' +
+          '#filterUser, #filterDate, #taskSearchInput').val('');
         loadTasks(1);
     }
 
-    // ============= СОЗДАНИЕ =============
+    // ============================================================
+    // СОЗДАНИЕ
+    // ============================================================
     function createTask() {
         var form = document.getElementById('createTaskForm');
-        if (!form.checkValidity()) { form.reportValidity(); return; }
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
 
         var formData = new FormData(form);
         var data = {};
         formData.forEach(function(value, key) { data[key] = value; });
 
-        Swal.fire({ title: 'Создание...', allowOutsideClick: false, didOpen: function() { Swal.showLoading(); } });
+        Swal.fire({
+            title: 'Создание...',
+            allowOutsideClick: false,
+            didOpen: function() { Swal.showLoading(); },
+        });
 
         fetch('/api/create_task', {
             method: 'POST',
@@ -315,72 +393,116 @@
             .then(function(result) {
                 if (result.success) {
                     $('#createTaskModal').modal('hide');
-                    Swal.fire({ icon: 'success', title: 'Заявка создана!',
-                                text: 'Номер: ' + result.task_id, timer: 2000, showConfirmButton: false });
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Заявка создана!',
+                        text: 'Номер: ' + result.task_id,
+                        timer: 2000,
+                        showConfirmButton: false,
+                    });
                     api.refreshData();
                 } else {
-                    Swal.fire({ icon: 'error', title: 'Ошибка', text: result.error });
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Ошибка',
+                        text: result.error,
+                    });
                 }
             })
-            .catch(function() { Swal.fire({ icon: 'error', title: 'Ошибка', text: 'Не удалось создать заявку' }); });
+            .catch(function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Ошибка',
+                    text: 'Не удалось создать заявку',
+                });
+            });
     }
 
-    // ============= МАССОВОЕ ЗАКРЫТИЕ =============
+    // ============================================================
+    // МАССОВОЕ ЗАКРЫТИЕ
+    // ============================================================
     function closeSelectedTasks() {
-        if (state.selectedTasks.size === 0) { Swal.fire({ icon: 'info', title: 'Не выбраны заявки' }); return; }
+        if (state.selectedTasks.size === 0) {
+            Swal.fire({ icon: 'info', title: 'Не выбраны заявки' });
+            return;
+        }
         Swal.fire({
-            title: 'Закрыть заявки?', text: 'Выбрано: ' + state.selectedTasks.size,
-            icon: 'question', showCancelButton: true, confirmButtonText: 'Да'
-        }).then(function(r) { if (r.isConfirmed) executeCloseMultipleTasks(); });
+            title: 'Закрыть заявки?',
+            text: 'Выбрано: ' + state.selectedTasks.size,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Да',
+        }).then(function(r) {
+            if (r.isConfirmed) executeCloseMultipleTasks();
+        });
     }
 
     function executeCloseMultipleTasks() {
         var promises = Array.from(state.selectedTasks).map(function(id) {
-            return fetch('/api/close_task/' + id, { method: 'POST' }).then(function(r) { return r.json(); });
+            return fetch('/api/close_task/' + id, { method: 'POST' })
+                .then(function(r) { return r.json(); });
         });
         Promise.all(promises).then(function() {
             state.selectedTasks.clear();
             $('#selectAll').prop('checked', false);
-            Swal.fire({ icon: 'success', title: 'Заявки закрыты!', timer: 1500, showConfirmButton: false });
+            Swal.fire({
+                icon: 'success',
+                title: 'Заявки закрыты!',
+                timer: 1500,
+                showConfirmButton: false,
+            });
             api.refreshData();
         });
     }
 
     function toggleTaskSelection(taskId, isChecked) {
-        if (isChecked) state.selectedTasks.add(taskId.toString());
-        else {
+        if (isChecked) {
+            state.selectedTasks.add(taskId.toString());
+        } else {
             state.selectedTasks.delete(taskId.toString());
             $('#selectAll').prop('checked', false);
         }
     }
 
-    // ============= КОНТЕКСТНОЕ МЕНЮ =============
+    // ============================================================
+    // КОНТЕКСТНОЕ МЕНЮ
+    // ============================================================
     function handleContextMenu(event, taskId) {
         event.preventDefault();
         event.stopPropagation();
         $('#contextMenu').remove();
 
         var menuHtml = '<div id="contextMenu" class="context-menu" ' +
-                       'style="left:' + event.pageX + 'px;top:' + event.pageY + 'px;">' +
-            '<div class="context-menu-item" onclick="viewTask(' + taskId + '); $(\'#contextMenu\').remove();">' +
+                       'style="left:' + event.pageX + 'px;top:' +
+                       event.pageY + 'px;">' +
+            '<div class="context-menu-item" ' +
+            'onclick="viewTask(' + taskId +
+            '); $(\'#contextMenu\').remove();">' +
             '<i class="bi bi-eye"></i> Просмотреть</div>';
 
-        if (window.currentUserRole === 'Администратор' || window.currentUserRole === 'Техник') {
+        if (window.currentUserRole === 'Администратор' ||
+            window.currentUserRole === 'Техник') {
             menuHtml += '<div class="context-menu-divider"></div>' +
-                '<div class="context-menu-item" onclick="currentTaskId=' + taskId + '; closeCurrentTask(); $(\'#contextMenu\').remove();">' +
+                '<div class="context-menu-item" ' +
+                'onclick="currentTaskId=' + taskId +
+                '; closeCurrentTask(); $(\'#contextMenu\').remove();">' +
                 '<i class="bi bi-check-circle"></i> Закрыть</div>';
         }
 
         menuHtml += '<div class="context-menu-divider"></div>' +
-            '<div class="context-menu-item text-danger" onclick="$(\'#contextMenu\').remove();">' +
+            '<div class="context-menu-item text-danger" ' +
+            'onclick="$(\'#contextMenu\').remove();">' +
             '<i class="bi bi-x-circle"></i> Отмена</div></div>';
 
         $('body').append(menuHtml);
 
         var $menu = $('#contextMenu');
-        var mw = $menu.outerWidth(), mh = $menu.outerHeight();
-        var ww = $(window).width(), wh = $(window).height();
-        var left = event.pageX, top = event.pageY;
+        var mw = $menu.outerWidth();
+        var mh = $menu.outerHeight();
+        var ww = $(window).width();
+        var wh = $(window).height();
+        var left = event.pageX;
+        var top = event.pageY;
         if (left + mw > ww) left = ww - mw - 10;
         if (top + mh > wh) top = wh - mh - 10;
         if (left < 0) left = 10;
@@ -388,27 +510,35 @@
         $menu.css({ left: left + 'px', top: top + 'px' });
     }
 
-    // ============= ОБРАБОТЧИКИ =============
+    // ============================================================
+    // ОБРАБОТЧИКИ
+    // ============================================================
     function setupEventHandlers() {
         $('#filterWorkType, #filterCabinet, #filterStatus, #filterUser')
             .on('change', function() { loadTasks(1); });
 
         $(document).on('input', '#taskSearchInput', function() {
             clearTimeout(searchDebounceTimer);
-            searchDebounceTimer = setTimeout(function() { loadTasks(1); }, 400);
+            searchDebounceTimer = setTimeout(function() {
+                loadTasks(1);
+            }, 400);
         });
 
         $(document).on('change', '#selectAll', function() {
             var isChecked = $(this).prop('checked');
             $('.task-checkbox').each(function() {
                 $(this).prop('checked', isChecked);
-                if (isChecked) state.selectedTasks.add($(this).val().toString());
-                else state.selectedTasks.delete($(this).val().toString());
+                if (isChecked) {
+                    state.selectedTasks.add($(this).val().toString());
+                } else {
+                    state.selectedTasks.delete($(this).val().toString());
+                }
             });
         });
 
         $(document).on('click', function(event) {
-            if ($('#contextMenu').length && !$(event.target).closest('#contextMenu').length) {
+            if ($('#contextMenu').length &&
+                !$(event.target).closest('#contextMenu').length) {
                 $('#contextMenu').remove();
             }
         });
@@ -426,7 +556,9 @@
         });
     }
 
-    // ============= ФОРМА СОЗДАНИЯ =============
+    // ============================================================
+    // ФОРМА СОЗДАНИЯ
+    // ============================================================
     function loadCabinetsForForm() {
         fetch('/api/cabinets')
             .then(function(r) { return r.json(); })
@@ -434,8 +566,10 @@
                 var $s = $('#cabinetSelect');
                 $s.empty().append('<option value="">Выберите кабинет</option>');
                 (cabinets || []).forEach(function(c) {
-                    var label = c.cabinet_number + (c.description ? ' - ' + c.description : '');
-                    $s.append('<option value="' + utils.escapeHtml(c.cabinet_number) + '">' +
+                    var label = c.cabinet_number +
+                        (c.description ? ' - ' + c.description : '');
+                    $s.append('<option value="' +
+                              utils.escapeHtml(c.cabinet_number) + '">' +
                               utils.escapeHtml(label) + '</option>');
                 });
             });
@@ -451,8 +585,12 @@
                 $a.empty().append('<option value="">Выберите помощника</option>');
                 (executors || []).forEach(function(x) {
                     var label = x.full_name + ' (' + x.role + ')';
-                    $e.append('<option value="' + utils.escapeHtml(x.full_name) + '">' + utils.escapeHtml(label) + '</option>');
-                    $a.append('<option value="' + utils.escapeHtml(x.full_name) + '">' + utils.escapeHtml(label) + '</option>');
+                    $e.append('<option value="' +
+                              utils.escapeHtml(x.full_name) + '">' +
+                              utils.escapeHtml(label) + '</option>');
+                    $a.append('<option value="' +
+                              utils.escapeHtml(x.full_name) + '">' +
+                              utils.escapeHtml(label) + '</option>');
                 });
             });
     }
@@ -466,7 +604,8 @@
                 if (types && !types.error) {
                     types.forEach(function(t) {
                         if (t.is_active) {
-                            $s.append('<option value="' + utils.escapeHtml(t.name) + '">' +
+                            $s.append('<option value="' +
+                                      utils.escapeHtml(t.name) + '">' +
                                       utils.escapeHtml(t.name) + '</option>');
                         }
                     });
@@ -488,13 +627,17 @@
                     $('input[name="from_user"]').val(data.full_name);
                 }
                 if (data.role === 'Пользователь') {
-                    $('select[name="executor"]').closest('.col-md-6').hide();
-                    $('select[name="assistant"]').closest('.col-md-6').hide();
+                    $('select[name="executor"]')
+                        .closest('.col-md-6').hide();
+                    $('select[name="assistant"]')
+                        .closest('.col-md-6').hide();
                     $('select[name="executor"]').val('');
                     $('select[name="assistant"]').val('');
                 } else {
-                    $('select[name="executor"]').closest('.col-md-6').show();
-                    $('select[name="assistant"]').closest('.col-md-6').show();
+                    $('select[name="executor"]')
+                        .closest('.col-md-6').show();
+                    $('select[name="assistant"]')
+                        .closest('.col-md-6').show();
                     loadExecutorsForForm();
                 }
             });
@@ -502,8 +645,11 @@
         var now = new Date();
         var tomorrow = new Date(now.getTime() + 24 * 3600 * 1000);
         var pad = function(n) { return String(n).padStart(2, '0'); };
-        var dt = tomorrow.getFullYear() + '-' + pad(tomorrow.getMonth() + 1) + '-' +
-                 pad(tomorrow.getDate()) + 'T' + pad(tomorrow.getHours()) + ':' + pad(tomorrow.getMinutes());
+        var dt = tomorrow.getFullYear() + '-' +
+                 pad(tomorrow.getMonth() + 1) + '-' +
+                 pad(tomorrow.getDate()) + 'T' +
+                 pad(tomorrow.getHours()) + ':' +
+                 pad(tomorrow.getMinutes());
         $('input[name="deadline"]').val(dt);
 
         $('#createTaskModal').modal('show');
@@ -512,8 +658,11 @@
     function setupCabinetSearch() {
         $('#cabinetSelect').on('input', function() {
             var t = $(this).val();
-            if (t && t.length >= 1) searchCabinetsFromAPI(t);
-            else loadCabinetsForForm();
+            if (t && t.length >= 1) {
+                searchCabinetsFromAPI(t);
+            } else {
+                loadCabinetsForForm();
+            }
         });
     }
 
@@ -525,23 +674,31 @@
                 var cur = $s.val();
                 $s.empty().append('<option value="">Выберите кабинет</option>');
                 (cabinets || []).forEach(function(c) {
-                    var label = c.cabinet_number + (c.description ? ' - ' + c.description : '');
-                    $s.append('<option value="' + utils.escapeHtml(c.cabinet_number) + '">' +
+                    var label = c.cabinet_number +
+                        (c.description ? ' - ' + c.description : '');
+                    $s.append('<option value="' +
+                              utils.escapeHtml(c.cabinet_number) + '">' +
                               utils.escapeHtml(label) + '</option>');
                 });
                 if (cur) $s.val(cur);
             });
     }
 
-    // ============= ОБНОВЛЕНИЕ =============
+    // ============================================================
+    // ОБНОВЛЕНИЕ
+    // ============================================================
     function refreshData() {
         if (window.App.Auth) window.App.Auth.loadUserInfo();
         loadStatistics();
         loadTasks(state.currentPage || 1);
-        if (window.App.Notifications) window.App.Notifications.loadUnreadCount();
+        if (window.App.Notifications) {
+            window.App.Notifications.loadUnreadCount();
+        }
     }
 
-    // ============= ЭКСПОРТ =============
+    // ============================================================
+    // ЭКСПОРТ
+    // ============================================================
     api.loadStatistics = loadStatistics;
     api.loadFilters = loadFilters;
     api.loadTasks = loadTasks;

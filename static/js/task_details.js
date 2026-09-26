@@ -16,12 +16,21 @@
     // ============= ОТКРЫТИЕ МОДАЛКИ =============
     function viewTask(taskId) {
         state.currentTaskId = taskId;
-        $('#taskNumber').text(taskId);
+
+        // Заполняем шапку сразу (номер), остальное заполнит displayTaskDetails
+        $('#taskModalNumber').text('#' + taskId);
+        $('#taskModalTitle').text('Загрузка...');
+        $('#taskModalMetaDate').text('—');
+        $('#taskModalMetaStatus')
+            .attr('class', 'status-badge status-new')
+            .text('Загрузка...');
+
         $('#taskDetails').html(
             '<div class="text-center py-5">' +
-            '<div class="spinner-border text-primary"></div>' +
-            '<p class="mt-2">Загрузка...</p></div>'
+            '<div class="spinner-border" style="color:var(--m-accent)"></div>' +
+            '<p class="mt-2 text-muted">Загрузка...</p></div>'
         );
+
         $('#viewTaskModal').modal('show');
 
         fetch('/api/task/' + taskId)
@@ -50,6 +59,7 @@
             });
     }
 
+    // ============= ОТРИСОВКА ДЕТАЛЕЙ =============
     function displayTaskDetails(task) {
         task = task || {};
 
@@ -79,134 +89,209 @@
             canDelete = false;
         }
 
+        // ---------- Шапка модалки ----------
+        $('#taskModalNumber').text('#' + tid);
+        $('#taskModalTitle').text(task.description || 'Без описания');
+
+        var dateStr = task.created_date ? utils.formatDate(task.created_date) : '—';
+        $('#taskModalMetaDate').text('📅 ' + dateStr);
+
+        $('#taskModalMetaStatus')
+            .attr('class', 'status-badge ' + statusClass)
+            .text(task.status || 'Новое');
+
+        // ---------- Рендер контента ----------
         var html = '';
 
-        // ---- Вкладки ----
+        // --- Табы ---
         html += '<ul class="nav nav-tabs task-tabs" role="tablist">';
-        html += '<li class="nav-item"><a class="nav-link active" data-tab="details" onclick="switchTaskTab(\'details\')">' +
+        html += '<li class="nav-item"><a class="nav-link active" data-tab="details" ' +
+                'onclick="switchTaskTab(\'details\')">' +
                 '<i class="bi bi-info-circle"></i> Детали</a></li>';
-        html += '<li class="nav-item"><a class="nav-link" data-tab="comments" onclick="switchTaskTab(\'comments\')">' +
+        html += '<li class="nav-item"><a class="nav-link" data-tab="comments" ' +
+                'onclick="switchTaskTab(\'comments\')">' +
                 '<i class="bi bi-chat-dots"></i> Комментарии' +
-                ' <span class="badge" id="commentsBadge"' + (commentsCount > 0 ? '' : ' style="display:none"') + '>' + commentsCount + '</span></a></li>';
-        html += '<li class="nav-item"><a class="nav-link" data-tab="attachments" onclick="switchTaskTab(\'attachments\')">' +
+                ' <span class="badge" id="commentsBadge"' +
+                (commentsCount > 0 ? '' : ' style="display:none"') + '>' +
+                commentsCount + '</span></a></li>';
+        html += '<li class="nav-item"><a class="nav-link" data-tab="attachments" ' +
+                'onclick="switchTaskTab(\'attachments\')">' +
                 '<i class="bi bi-paperclip"></i> Вложения' +
-                ' <span class="badge" id="attachmentsBadge"' + (attachCount > 0 ? '' : ' style="display:none"') + '>' + attachCount + '</span></a></li>';
-        html += '<li class="nav-item"><a class="nav-link" data-tab="history" onclick="switchTaskTab(\'history\')">' +
+                ' <span class="badge" id="attachmentsBadge"' +
+                (attachCount > 0 ? '' : ' style="display:none"') + '>' +
+                attachCount + '</span></a></li>';
+        html += '<li class="nav-item"><a class="nav-link" data-tab="history" ' +
+                'onclick="switchTaskTab(\'history\')">' +
                 '<i class="bi bi-clock-history"></i> История' +
-                (histCount > 0 ? ' <span class="badge">' + histCount + '</span>' : '') + '</a></li>';
+                (histCount > 0 ? ' <span class="badge">' + histCount + '</span>' : '') +
+                '</a></li>';
         html += '</ul>';
 
-        // ---- Детали ----
+        // --- Детали ---
         html += '<div class="task-tab-pane active" data-tab-content="details">';
-        html += '<div class="row">';
-        html += '<div class="col-md-6">' +
-            '<p><strong>Дата создания:</strong> ' + utils.formatDate(task.created_date) + '</p>';
 
+        var deadlineHtml = utils.formatDate(task.deadline);
         if (task.status !== 'Выполнено' && task.status !== 'Отменено' && task.deadline) {
             var dl = new Date(task.deadline.replace(' ', 'T'));
             var now = new Date();
             if (dl < now) {
-                html += '<p><strong>Срок:</strong> <span class="text-danger fw-bold">' +
-                        utils.formatDate(task.deadline) + ' (Просрочена)</span></p>';
+                deadlineHtml = '<span style="color:var(--m-danger);font-weight:600">' +
+                    utils.formatDate(task.deadline) + ' (Просрочена)</span>';
             } else if ((dl - now) / 3600000 < 24) {
-                html += '<p><strong>Срок:</strong> <span class="text-warning fw-bold">' +
-                        utils.formatDate(task.deadline) + ' (Скоро истекает)</span></p>';
-            } else {
-                html += '<p><strong>Срок:</strong> ' + utils.formatDate(task.deadline) + '</p>';
+                deadlineHtml = '<span style="color:var(--m-warning);font-weight:600">' +
+                    utils.formatDate(task.deadline) + ' (Скоро истекает)</span>';
             }
-        } else {
-            html += '<p><strong>Срок:</strong> ' + utils.formatDate(task.deadline) + '</p>';
         }
-        html += '<p><strong>От кого:</strong> ' + utils.escapeHtml(task.from_user || '-') + '</p>' +
-                '<p><strong>Кабинет:</strong> ' + utils.escapeHtml(task.cabinet || '-') + '</p></div>';
 
-        html += '<div class="col-md-6">' +
-            '<p><strong>Статус:</strong> <span class="status-badge ' + statusClass + '">' +
-            utils.escapeHtml(task.status) + '</span></p>' +
-            '<p><strong>Тип работы:</strong> ' + utils.escapeHtml(task.work_type || '-') + '</p>' +
-            '<p><strong>Приоритет:</strong> ' + utils.escapeHtml(task.priority || 'Средний') + '</p>' +
-            '<p><strong>Исполнитель:</strong> ' + utils.escapeHtml(task.executor || '-') + '</p>' +
-            '<p><strong>Помощник:</strong> ' + utils.escapeHtml(task.assistant || '-') + '</p></div>';
+        var priorityColor = '#71717a';
+        if (task.priority === 'Высокий') priorityColor = 'var(--m-danger)';
+        else if (task.priority === 'Средний') priorityColor = '#b45309';
+        else if (task.priority === 'Низкий') priorityColor = '#047857';
 
-        html += '<div class="col-12"><hr><h6>Описание:</h6>' +
-                '<div class="p-3 bg-light rounded">' +
-                utils.escapeHtml(task.description || '-') + '</div></div>';
+        html += '<div class="m-detail-grid">';
+        html += '<div class="m-detail-item">' +
+                '<div class="label">Дата создания</div>' +
+                '<div class="value">' + utils.escapeHtml(dateStr) + '</div></div>';
+        html += '<div class="m-detail-item">' +
+                '<div class="label">Срок</div>' +
+                '<div class="value">' + deadlineHtml + '</div></div>';
+        html += '<div class="m-detail-item">' +
+                '<div class="label">От кого</div>' +
+                '<div class="value">' + utils.escapeHtml(task.from_user || '—') +
+                '</div></div>';
+        html += '<div class="m-detail-item">' +
+                '<div class="label">Кабинет</div>' +
+                '<div class="value">' + utils.escapeHtml(task.cabinet || '—') +
+                '</div></div>';
+        html += '<div class="m-detail-item">' +
+                '<div class="label">Тип работы</div>' +
+                '<div class="value">' + utils.escapeHtml(task.work_type || '—') +
+                '</div></div>';
+        html += '<div class="m-detail-item">' +
+                '<div class="label">Приоритет</div>' +
+                '<div class="value" style="color:' + priorityColor + '">' +
+                utils.escapeHtml(task.priority || 'Средний') + '</div></div>';
+        html += '<div class="m-detail-item">' +
+                '<div class="label">Исполнитель</div>' +
+                '<div class="value">' +
+                utils.escapeHtml(task.executor || 'Не назначен') +
+                '</div></div>';
+        html += '<div class="m-detail-item">' +
+                '<div class="label">Помощник</div>' +
+                '<div class="value">' +
+                utils.escapeHtml(task.assistant || 'Не назначен') +
+                '</div></div>';
+        html += '</div>';
+
+        html += '<div class="m-desc-block">' +
+                '<h3>Описание</h3>' +
+                '<p>' + utils.escapeHtml(task.description || '—') + '</p></div>';
 
         if (task.completed_date) {
-            html += '<div class="col-12 mt-3"><p class="text-success"><strong>Выполнено:</strong> ' +
-                    utils.formatDate(task.completed_date) + '</p></div>';
+            html += '<div class="m-desc-block" ' +
+                    'style="background:var(--m-success-soft);border-color:transparent">' +
+                    '<h3 style="color:#047857">Выполнено</h3>' +
+                    '<p style="color:#047857">' +
+                    utils.escapeHtml(utils.formatDate(task.completed_date)) +
+                    '</p></div>';
         }
-        html += '</div></div>';
 
-        // ---- Комментарии ----
+        html += '</div>'; // end details
+
+        // --- Комментарии ---
         html += '<div class="task-tab-pane" data-tab-content="comments">';
-        html += '<div id="commentsList"><div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div></div>';
-        html += '<hr>';
-        html += '<div class="comment-form">';
+        html += '<div id="commentsList"><div class="text-center py-4">' +
+                '<div class="spinner-border spinner-border-sm" ' +
+                'style="color:var(--m-accent)"></div></div></div>';
+        html += '<div class="m-comment-form comment-form">';
         html += '<label class="form-label">Новый комментарий</label>';
-        html += '<textarea class="form-control" id="newCommentText" rows="3" placeholder="Введите комментарий..."></textarea>';
-        html += '<div class="d-flex justify-content-between align-items-center mt-2 flex-wrap gap-2">';
-        if (window.currentUserRole === 'Администратор' || window.currentUserRole === 'Техник') {
-            html += '<div class="form-check">' +
-                    '<input class="form-check-input" type="checkbox" id="commentInternal">' +
-                    '<label class="form-check-label small" for="commentInternal">' +
-                    'Внутренний (виден только техникам и админам)</label></div>';
+        html += '<textarea class="form-control" id="newCommentText" rows="3" ' +
+                'placeholder="Введите комментарий..."></textarea>';
+        html += '<div class="m-form-footer">';
+        if (window.currentUserRole === 'Администратор' ||
+            window.currentUserRole === 'Техник') {
+            html += '<label class="m-switch">' +
+                    '<input type="checkbox" id="commentInternal">' +
+                    '<span>Внутренний (виден только техникам и админам)</span>' +
+                    '</label>';
         } else {
             html += '<div></div>';
         }
-        html += '<button type="button" class="btn btn-primary btn-sm" id="submitCommentBtn" onclick="submitComment(this)">' +
+        html += '<button type="button" class="m-btn m-btn-primary" ' +
+                'id="submitCommentBtn" onclick="submitComment(this)">' +
                 '<i class="bi bi-send"></i> Отправить</button>';
         html += '</div></div>';
-        html += '</div>';
+        html += '</div>'; // end comments
 
-        // ---- Вложения ----
+        // --- Вложения ---
         html += '<div class="task-tab-pane" data-tab-content="attachments">';
-        html += '<div class="attachments-drop-zone" id="dropZone">' +
+        html += '<div class="m-drop-zone attachments-drop-zone" id="dropZone">' +
                 '<i class="bi bi-cloud-arrow-up"></i>' +
-                '<p><strong>Перетащите файлы сюда</strong> или нажмите для выбора</p>' +
-                '<small>Изображения, PDF, документы, архивы. Макс. 10 МБ на файл.</small>' +
+                '<p>Перетащите файлы сюда</p>' +
+                '<small>или нажмите для выбора. Изображения, PDF, документы. ' +
+                'Макс. 10 МБ.</small>' +
                 '</div>';
         html += '<input type="file" id="attachFileInput" multiple style="display:none;">';
-        html += '<div class="upload-progress" id="uploadProgress">' +
-                '<div class="upload-progress-bar" id="uploadProgressBar"></div></div>';
-        html += '<div id="attachmentsList"></div>';
-        html += '</div>';
+        html += '<div class="m-upload-progress upload-progress" id="uploadProgress">' +
+                '<div class="m-upload-progress-bar upload-progress-bar" ' +
+                'id="uploadProgressBar"></div></div>';
+        html += '<div id="attachmentsList" class="mt-3"></div>';
+        html += '</div>'; // end attachments
 
-        // ---- История ----
+        // --- История ---
         html += '<div class="task-tab-pane" data-tab-content="history">';
         if (history.length > 0) {
-            html += '<div class="table-responsive"><table class="table table-sm table-striped mb-0">';
-            html += '<thead><tr><th style="width:140px">Когда</th><th>Кто</th><th>Что</th><th>Было</th><th>Стало</th></tr></thead><tbody>';
-            history.forEach(function(h) {
-                html += '<tr>' +
-                    '<td><small>' + utils.formatDate(h.created_at) + '</small></td>' +
-                    '<td><small>' + utils.escapeHtml(h.user_name || '-') + '</small></td>' +
-                    '<td><strong>' + utils.escapeHtml(h.field_name || '') + '</strong></td>' +
-                    '<td><small class="text-muted">' +
-                    utils.escapeHtml(utils.truncateText(h.old_value || '-', 30)) + '</small></td>' +
-                    '<td><small class="text-success">' +
-                    utils.escapeHtml(utils.truncateText(h.new_value || '-', 30)) + '</small></td>' +
-                    '</tr>';
+            html += '<div class="m-history-filters">' +
+                    '<button class="m-history-filter active">Все</button>' +
+                    '<button class="m-history-filter">Изменения статуса</button>' +
+                    '<button class="m-history-filter">Изменения исполнителя</button>' +
+                    '</div>';
+            html += '<div class="m-timeline">';
+            history.forEach(function(h, idx) {
+                var cls = (h.field_name === 'Статус' && idx === 0) ? 'success' : '';
+                html += '<div class="m-tl-item ' + cls + '">' +
+                        '<div class="m-tl-dot"></div>' +
+                        '<div class="m-tl-head">' +
+                        '<span class="m-tl-author">' +
+                        utils.escapeHtml(h.user_name || '—') + '</span>' +
+                        '<span class="m-tl-time">' +
+                        utils.formatDate(h.created_at) + '</span>' +
+                        '</div>' +
+                        '<div class="m-tl-text">' +
+                        '<strong>' + utils.escapeHtml(h.field_name || '') +
+                        ':</strong> ' +
+                        utils.escapeHtml(h.old_value || '—') + ' → ' +
+                        utils.escapeHtml(h.new_value || '—') +
+                        '</div></div>';
             });
-            html += '</tbody></table></div>';
+            html += '</div>';
         } else {
-            html += '<div class="empty-state"><i class="bi bi-clock-history"></i>' +
+            html += '<div class="empty-state">' +
+                    '<i class="bi bi-clock-history"></i>' +
                     '<p>Изменений пока не было</p></div>';
         }
-        html += '</div>';
+        html += '</div>'; // end history
 
         $('#taskDetails').html(html);
+
+        // Кнопки футера
         $('#btnCloseTask').toggle(canClose);
         $('#btnTakeTask').toggle(canTake);
         $('#btnDeleteTask').toggle(canDelete);
 
-        // Подгрузка вкладок
+        // Загрузка вкладок
         if (tid) {
-            try { if (window.App.Comments) window.App.Comments.load(tid); }
-            catch (e) { console.error('[task_details] loadComments:', e); }
+            try {
+                if (window.App.Comments) window.App.Comments.load(tid);
+            } catch (e) {
+                console.error('[task_details] loadComments:', e);
+            }
 
-            try { if (window.App.Attachments) window.App.Attachments.load(tid); }
-            catch (e) { console.error('[task_details] loadAttachments:', e); }
+            try {
+                if (window.App.Attachments) window.App.Attachments.load(tid);
+            } catch (e) {
+                console.error('[task_details] loadAttachments:', e);
+            }
         } else {
             console.error('[task_details] Не удалось определить ID заявки');
         }
@@ -214,10 +299,12 @@
 
     // ============= ПЕРЕКЛЮЧЕНИЕ ВКЛАДОК =============
     function switchTaskTab(name) {
-        $('.task-tabs .nav-link').removeClass('active');
-        $('.task-tabs .nav-link[data-tab="' + name + '"]').addClass('active');
-        $('.task-tab-pane').removeClass('active');
-        $('.task-tab-pane[data-tab-content="' + name + '"]').addClass('active');
+        $('#viewTaskModal .task-tabs .nav-link').removeClass('active');
+        $('#viewTaskModal .task-tabs .nav-link[data-tab="' + name + '"]')
+            .addClass('active');
+        $('#viewTaskModal .task-tab-pane').removeClass('active');
+        $('#viewTaskModal .task-tab-pane[data-tab-content="' + name + '"]')
+            .addClass('active');
     }
 
     // ============= ЗАКРЫТИЕ ЗАЯВКИ =============
@@ -241,8 +328,12 @@
             .then(function(data) {
                 if (data.success) {
                     $('#viewTaskModal').modal('hide');
-                    Swal.fire({ icon: 'success', title: 'Заявка закрыта!',
-                                timer: 1500, showConfirmButton: false });
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Заявка закрыта!',
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
                     if (window.App.Tasks) window.App.Tasks.refreshData();
                 } else {
                     utils.showErrorMessage(data.error);
@@ -250,19 +341,20 @@
             });
     }
 
-    // ============= УДАЛЕНИЕ ЗАЯВКИ (только Администратор) =============
+    // ============= УДАЛЕНИЕ ЗАЯВКИ =============
     function deleteCurrentTask() {
         if (!state.currentTaskId) return;
 
-        // Двойное подтверждение — критичное действие
         Swal.fire({
             icon: 'warning',
             title: 'Удалить заявку?',
             html:
-                '<p>Заявка <strong>№' + state.currentTaskId + '</strong> будет удалена безвозвратно.</p>' +
+                '<p>Заявка <strong>№' + state.currentTaskId +
+                '</strong> будет удалена безвозвратно.</p>' +
                 '<p class="text-danger small mb-0">' +
                 '<i class="bi bi-exclamation-triangle"></i> ' +
-                'Вместе с заявкой удалятся все её комментарии, вложения и история.' +
+                'Вместе с заявкой удалятся все её комментарии, ' +
+                'вложения и история.' +
                 '</p>',
             showCancelButton: true,
             confirmButtonText: '<i class="bi bi-trash"></i> Да, удалить',
@@ -313,7 +405,8 @@
 
         Swal.fire({
             title: 'Взять заявку в работу?',
-            text: 'Заявка №' + state.currentTaskId + ' будет переведена в статус "В работе"',
+            text: 'Заявка №' + state.currentTaskId +
+                  ' будет переведена в статус "В работе"',
             icon: 'question',
             showCancelButton: true,
             confirmButtonText: 'Да, взять в работу',
@@ -322,13 +415,18 @@
         }).then(function(result) {
             if (!result.isConfirmed) return;
 
-            fetch('/api/task/' + state.currentTaskId + '/take', { method: 'POST' })
+            fetch('/api/task/' + state.currentTaskId + '/take',
+                  { method: 'POST' })
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
                     if (data.success) {
                         $('#viewTaskModal').modal('hide');
-                        Swal.fire({ icon: 'success', title: 'Заявка взята в работу!',
-                                    timer: 1500, showConfirmButton: false });
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Заявка взята в работу!',
+                            timer: 1500,
+                            showConfirmButton: false
+                        });
                         if (window.App.Tasks) window.App.Tasks.refreshData();
                     } else {
                         utils.showErrorMessage(data.error);
@@ -353,5 +451,5 @@
     window.deleteCurrentTask = deleteCurrentTask;
     window.takeTask = takeTask;
 
-    console.log('[task_details] Загружено');
+    console.log('[task_details] Загружено (редизайн)');
 })();
