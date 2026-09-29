@@ -1,4 +1,5 @@
 // static/js/cabinets_manage.js
+// Управление кабинетами — карточками (grid).
 
 (function() {
     'use strict';
@@ -13,11 +14,13 @@
 
     var cabinetsCache = [];
 
-    // ============= СПИСОК =============
+    // ============================================================
+    // ЗАГРУЗКА СТРАНИЦЫ
+    // ============================================================
     function loadCabinetsManagePage() {
-        var $contentBlock = $('#otherPagesBlock');
+        var $block = $('#otherPagesBlock');
 
-        $contentBlock.html(
+        $block.html(
             '<div class="text-center py-5">' +
             '<div class="spinner-border text-primary"></div>' +
             '<p class="mt-2">Загрузка кабинетов...</p>' +
@@ -28,107 +31,179 @@
             .then(function(r) { return r.json(); })
             .then(function(cabinets) {
                 if (cabinets.error) {
-                    $contentBlock.html(
-                        '<div class="alert alert-danger">' +
-                        utils.escapeHtml(cabinets.error) + '</div>'
-                    );
+                    $block.html('<div class="alert alert-danger">' +
+                        utils.escapeHtml(cabinets.error) + '</div>');
                     return;
                 }
 
                 cabinetsCache = cabinets || [];
 
-                var html = '<div class="card">';
-                html += '<div class="card-header bg-primary text-white">';
-                html += '<div class="d-flex justify-content-between align-items-center flex-wrap gap-2">';
-                html += '<h5 class="mb-0"><i class="bi bi-door-closed"></i> Управление кабинетами</h5>';
-                html += '<div class="d-flex gap-2 align-items-center">';
-                html += '<span class="badge bg-light text-dark">Всего: ' + cabinetsCache.length + '</span>';
-                html += '<button class="btn btn-sm btn-light" onclick="loadCabinetsManagePage()">' +
-                        '<i class="bi bi-arrow-clockwise"></i> Обновить</button>';
-                html += '<button class="btn btn-sm btn-success" onclick="showAddCabinetModal()">' +
-                        '<i class="bi bi-plus-circle"></i> Добавить кабинет</button>';
-                html += '</div></div></div>';
-                html += '<div class="card-body">';
+                // Параллельно подтягиваем статистику по каждому кабинету
+                var promises = cabinetsCache.map(function(cab) {
+                    return fetch('/api/cabinets/' + cab.id + '/details')
+                        .then(function(r) { return r.json(); })
+                        .then(function(d) {
+                            return {
+                                id: cab.id,
+                                computers: (d.computers || []).length,
+                                printers: (d.printers || []).length,
+                                network: (d.network_devices || []).length,
+                            };
+                        })
+                        .catch(function() {
+                            return { id: cab.id, computers: 0, printers: 0, network: 0 };
+                        });
+                });
 
-                html += '<div class="row mb-3"><div class="col-md-6 col-lg-4">' +
-                        '<div class="input-group">' +
-                        '<span class="input-group-text"><i class="bi bi-search"></i></span>' +
-                        '<input type="text" class="form-control" id="cabinetSearchInput" ' +
-                        'placeholder="Поиск по номеру, этажу..." oninput="filterCabinetsTable()">' +
-                        '</div></div></div>';
-
-                html += '<div class="table-responsive">';
-                html += '<table class="table table-striped table-hover align-middle">';
-                html += '<thead><tr>';
-                html += '<th>Номер</th><th>Этаж</th><th>Корпус</th>';
-                html += '<th>Описание</th><th>Ответственный</th><th>Телефон</th>';
-                html += '<th>Статус</th><th>Действия</th>';
-                html += '</tr></thead><tbody id="cabinetsTableBody"></tbody></table></div>';
-
-                html += '</div></div>';
-                $contentBlock.html(html);
-
-                renderRows(cabinetsCache);
+                Promise.all(promises)
+                    .then(function(stats) {
+                        var statsMap = {};
+                        stats.forEach(function(s) { statsMap[s.id] = s; });
+                        renderCards(statsMap);
+                    })
+                    .catch(function() {
+                        renderCards({});
+                    });
             })
             .catch(function(error) {
                 console.error('[cabinets_manage] load error:', error);
-                $contentBlock.html(
-                    '<div class="alert alert-danger">Ошибка загрузки: ' +
-                    utils.escapeHtml(error.message) + '</div>'
-                );
+                $block.html('<div class="alert alert-danger">Ошибка загрузки: ' +
+                    utils.escapeHtml(error.message) + '</div>');
             });
     }
 
-    function renderRows(cabinets) {
-        var $tbody = $('#cabinetsTableBody');
-        $tbody.empty();
+    // ============================================================
+    // РЕНДЕР
+    // ============================================================
+    function renderCards(statsMap) {
+        var total = cabinetsCache.length;
 
-        if (!cabinets || cabinets.length === 0) {
-            $tbody.append('<tr><td colspan="8" class="text-center py-4 text-muted">Кабинеты не найдены</td></tr>');
-            return;
+        var html = '';
+        html += '<div class="cabinets-toolbar">';
+        html += '<div class="toolbar-left">';
+        html += '<div class="search-input">';
+        html += '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>';
+        html += '<input type="text" id="cabinetSearchInput" placeholder="Поиск по номеру, этажу, корпусу…" oninput="filterCabinetsCards()">';
+        html += '</div>';
+        html += '<span class="cabinets-count">Всего: <strong>' + total + '</strong></span>';
+        html += '</div>';
+        html += '<div class="toolbar-right">';
+        html += '<button class="btn-ghost" onclick="loadCabinetsManagePage()">' +
+                '<i class="bi bi-arrow-clockwise"></i> Обновить</button>';
+        html += '<button class="btn-primary" onclick="showAddCabinetModal()">' +
+                '<i class="bi bi-plus-circle"></i> Добавить кабинет</button>';
+        html += '</div>';
+        html += '</div>';
+
+        html += '<div class="cabinets-grid" id="cabinetsGrid">';
+        if (total === 0) {
+            html += '<div class="cabinets-empty">' +
+                    '<i class="bi bi-door-closed" style="font-size:3rem;opacity:.3;"></i>' +
+                    '<p class="mt-2 mb-0">Кабинетов ещё нет</p>' +
+                    '<button class="btn-primary mt-3" onclick="showAddCabinetModal()">' +
+                    '<i class="bi bi-plus-circle"></i> Добавить первый</button>' +
+                    '</div>';
+        } else {
+            cabinetsCache.forEach(function(cab) {
+                var st = statsMap[cab.id] || { computers: 0, printers: 0, network: 0 };
+                html += renderCabinetCard(cab, st);
+            });
+        }
+        html += '</div>';
+
+        $('#otherPagesBlock').html(html);
+    }
+
+    function renderCabinetCard(cab, stats) {
+        var title = cab.cabinet_number || 'Без номера';
+
+        // Подзаголовок: «IT отдел · 2 этаж · Корпус А»
+        var parts = [cab.description, cab.floor, cab.building].filter(Boolean);
+        var subtitle = parts.join(' · ');
+
+        var statusBadge = cab.is_active
+            ? '<span class="cabinet-card-status active">Активен</span>'
+            : '<span class="cabinet-card-status inactive">Неактивен</span>';
+
+        var statsHtml = '';
+        if (stats.computers > 0) {
+            statsHtml += '<span class="cabinet-card-stat">' +
+                '<span class="cabinet-card-stat-icon">💻</span>' +
+                '<strong>' + stats.computers + '</strong> ' +
+                utils.pluralize(stats.computers, 'ПК', 'ПК', 'ПК') +
+                '</span>';
+        }
+        if (stats.printers > 0) {
+            statsHtml += '<span class="cabinet-card-stat">' +
+                '<span class="cabinet-card-stat-icon">🖨️</span>' +
+                '<strong>' + stats.printers + '</strong> ' +
+                utils.pluralize(stats.printers, 'принтер', 'принтера', 'принтеров') +
+                '</span>';
+        }
+        if (stats.network > 0) {
+            statsHtml += '<span class="cabinet-card-stat">' +
+                '<span class="cabinet-card-stat-icon">🌐</span>' +
+                '<strong>' + stats.network + '</strong> ' +
+                utils.pluralize(stats.network, 'сеть', 'сети', 'сетей') +
+                '</span>';
+        }
+        if (!statsHtml) {
+            statsHtml = '<span class="cabinet-card-stat cabinet-card-stat-empty">' +
+                'Оборудование не добавлено</span>';
         }
 
-        cabinets.forEach(function(cab) {
-            var statusBadge = cab.is_active
-                ? '<span class="badge bg-success">Активен</span>'
-                : '<span class="badge bg-danger">Неактивен</span>';
+        return '<div class="cabinet-card" data-cabinet-id="' + cab.id + '" ' +
+            'onclick="openCabinetDetails(' + cab.id + ')">' +
 
-            var row = '<tr>';
-            row += '<td><strong>' + utils.escapeHtml(cab.cabinet_number || '-') + '</strong></td>';
-            row += '<td>' + utils.escapeHtml(cab.floor || '-') + '</td>';
-            row += '<td>' + utils.escapeHtml(cab.building || '-') + '</td>';
-            row += '<td>' + utils.escapeHtml(cab.description || '-') + '</td>';
-            row += '<td>' + utils.escapeHtml(cab.responsible_person || '-') + '</td>';
-            row += '<td>' + utils.escapeHtml(cab.phone || '-') + '</td>';
-            row += '<td>' + statusBadge + '</td>';
-            row += '<td><div class="btn-group btn-group-sm">';
-            row += '<button class="btn btn-primary" onclick="openCabinetDetails(' + cab.id + ')" title="Оборудование кабинета">' +
-                   '<i class="bi bi-cpu"></i> Открыть</button>';
-            row += '<button class="btn btn-outline-success" onclick="editCabinet(' + cab.id + ')" title="Редактировать">' +
-                   '<i class="bi bi-pencil"></i></button>';
-            row += '<button class="btn btn-outline-danger" onclick="deleteCabinet(' + cab.id + ')" title="Удалить">' +
-                   '<i class="bi bi-trash"></i></button>';
-            row += '</div></td></tr>';
-            $tbody.append(row);
-        });
+            '<div class="cabinet-card-head">' +
+                '<div class="cabinet-card-title">' + utils.escapeHtml(title) + '</div>' +
+                statusBadge +
+            '</div>' +
+
+            (subtitle
+                ? '<div class="cabinet-card-subtitle">' + utils.escapeHtml(subtitle) + '</div>'
+                : '') +
+
+            '<div class="cabinet-card-divider"></div>' +
+
+            '<div class="cabinet-card-stats">' + statsHtml + '</div>' +
+
+            '<div class="cabinet-card-actions">' +
+                '<button type="button" class="btn-ghost" ' +
+                'onclick="event.stopPropagation(); editCabinet(' + cab.id + ')" ' +
+                'title="Редактировать"><i class="bi bi-pencil"></i></button>' +
+                '<button type="button" class="btn-ghost danger" ' +
+                'onclick="event.stopPropagation(); deleteCabinet(' + cab.id + ')" ' +
+                'title="Удалить"><i class="bi bi-trash"></i></button>' +
+            '</div>' +
+
+            '</div>';
     }
 
-    function filterCabinetsTable() {
+    // ============================================================
+    // ПОИСК / ФИЛЬТР
+    // ============================================================
+    function filterCabinetsCards() {
         var q = ($('#cabinetSearchInput').val() || '').toLowerCase().trim();
-        if (!q) { renderRows(cabinetsCache); return; }
+        var $grid = $('#cabinetsGrid');
+        $grid.find('.cabinet-card').each(function() {
+            var $card = $(this);
+            var id = $card.data('cabinet-id');
+            var cab = cabinetsCache.find(function(c) { return c.id === id; });
+            if (!cab) { $card.hide(); return; }
 
-        var filtered = cabinetsCache.filter(function(c) {
-            return (c.cabinet_number || '').toLowerCase().indexOf(q) !== -1
-                || (c.floor || '').toLowerCase().indexOf(q) !== -1
-                || (c.building || '').toLowerCase().indexOf(q) !== -1
-                || (c.description || '').toLowerCase().indexOf(q) !== -1
-                || (c.responsible_person || '').toLowerCase().indexOf(q) !== -1
-                || (c.phone || '').toLowerCase().indexOf(q) !== -1;
+            var haystack = [
+                cab.cabinet_number, cab.floor, cab.building,
+                cab.description, cab.responsible_person, cab.phone,
+            ].join(' ').toLowerCase();
+
+            $card.toggle(!q || haystack.indexOf(q) !== -1);
         });
-        renderRows(filtered);
     }
 
-    // ============= МОДАЛКА =============
+    // ============================================================
+    // МОДАЛКА
+    // ============================================================
     function showAddCabinetModal() {
         $('#cabinetId').val('');
         $('#cabinetNumber').val('');
@@ -140,8 +215,15 @@
         $('#cabinetIsActive').prop('checked', true);
         $('#cabinetActiveField').hide();
 
-        $('#cabinetModalTitle').html('<i class="bi bi-plus-circle"></i> Добавление кабинета');
-        $('#cabinetEditModal').modal('show');
+        $('#cabinetModalTitle').html(
+            '<i class="bi bi-plus-circle"></i> Добавление кабинета'
+        );
+
+        if (typeof window.openModal === 'function') {
+            window.openModal('cabinetEditModal');
+        } else {
+            $('#cabinetEditModal').modal('show');
+        }
     }
 
     function editCabinet(cabinetId) {
@@ -158,8 +240,15 @@
         $('#cabinetIsActive').prop('checked', cab.is_active == 1);
         $('#cabinetActiveField').show();
 
-        $('#cabinetModalTitle').html('<i class="bi bi-pencil-square"></i> Редактирование кабинета');
-        $('#cabinetEditModal').modal('show');
+        $('#cabinetModalTitle').html(
+            '<i class="bi bi-pencil-square"></i> Редактирование кабинета'
+        );
+
+        if (typeof window.openModal === 'function') {
+            window.openModal('cabinetEditModal');
+        } else {
+            $('#cabinetEditModal').modal('show');
+        }
     }
 
     function saveCabinet() {
@@ -174,22 +263,31 @@
             description: $('#cabinetDescription').val().trim(),
             responsible_person: $('#cabinetResponsible').val().trim(),
             phone: $('#cabinetPhone').val().trim(),
-            is_active: $('#cabinetIsActive').is(':checked') ? 1 : 0
+            is_active: $('#cabinetIsActive').is(':checked') ? 1 : 0,
         };
 
-        var url = id ? ('/api/directory/cabinets/' + id) : '/api/directory/cabinets';
+        var url = id
+            ? ('/api/directory/cabinets/' + id)
+            : '/api/directory/cabinets';
         var method = id ? 'PUT' : 'POST';
 
         fetch(url, {
             method: method,
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
+            body: JSON.stringify(data),
         })
             .then(function(r) { return r.json(); })
             .then(function(result) {
                 if (result.success) {
-                    $('#cabinetEditModal').modal('hide');
-                    Swal.fire({ icon: 'success', title: 'Сохранено!', timer: 1500, showConfirmButton: false });
+                    if (typeof window.closeModal === 'function') {
+                        window.closeModal('cabinetEditModal');
+                    } else {
+                        $('#cabinetEditModal').modal('hide');
+                    }
+                    Swal.fire({
+                        icon: 'success', title: 'Сохранено!',
+                        timer: 1500, showConfirmButton: false,
+                    });
                     if (typeof loadFilters === 'function') loadFilters();
                     loadCabinetsManagePage();
                 } else {
@@ -197,7 +295,10 @@
                 }
             })
             .catch(function() {
-                Swal.fire({ icon: 'error', title: 'Ошибка', text: 'Не удалось сохранить кабинет' });
+                Swal.fire({
+                    icon: 'error', title: 'Ошибка',
+                    text: 'Не удалось сохранить кабинет',
+                });
             });
     }
 
@@ -207,19 +308,23 @@
 
         Swal.fire({
             title: 'Удалить кабинет?',
-            html: 'Кабинет <strong>' + utils.escapeHtml(name) + '</strong> и всё его оборудование будут удалены.',
+            html: 'Кабинет <strong>' + utils.escapeHtml(name) +
+                  '</strong> и всё его оборудование будут удалены.',
             icon: 'warning',
             showCancelButton: true,
             confirmButtonText: 'Да, удалить',
             cancelButtonText: 'Отмена',
-            confirmButtonColor: '#dc3545'
+            confirmButtonColor: '#dc3545',
         }).then(function(result) {
             if (!result.isConfirmed) return;
             fetch('/api/directory/cabinets/' + cabinetId, { method: 'DELETE' })
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
                     if (data.success) {
-                        Swal.fire({ icon: 'success', title: 'Кабинет удалён', timer: 1500, showConfirmButton: false });
+                        Swal.fire({
+                            icon: 'success', title: 'Кабинет удалён',
+                            timer: 1500, showConfirmButton: false,
+                        });
                         if (typeof loadFilters === 'function') loadFilters();
                         loadCabinetsManagePage();
                     } else {
@@ -229,23 +334,22 @@
         });
     }
 
-    // ============= ЭКСПОРТ =============
+    // ============================================================
+    // ЭКСПОРТ
+    // ============================================================
     api.load = loadCabinetsManagePage;
     api.showAdd = showAddCabinetModal;
     api.edit = editCabinet;
     api.save = saveCabinet;
     api.remove = deleteCabinet;
-    api.filter = filterCabinetsTable;
+    api.filter = filterCabinetsCards;
 
-    // Глобальные алиасы для inline onclick.
-    // ⚠️ window.openCabinetDetails определяется ТОЛЬКО в cabinet_core.js —
-    //    не дублируйте его здесь.
     window.loadCabinetsManagePage = loadCabinetsManagePage;
     window.showAddCabinetModal = showAddCabinetModal;
     window.editCabinet = editCabinet;
     window.saveCabinet = saveCabinet;
     window.deleteCabinet = deleteCabinet;
-    window.filterCabinetsTable = filterCabinetsTable;
+    window.filterCabinetsCards = filterCabinetsCards;
 
-    console.log('[cabinets_manage] Загружено (без ID)');
+    console.log('[cabinets_manage] Загружено (карточки)');
 })();

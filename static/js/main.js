@@ -22,9 +22,6 @@
         return;
     }
 
-    // ============================================================
-    // МАППИНГ РОЛЕЙ
-    // ============================================================
     var ROLE_CODE = {
         'Администратор': 'admin',
         'Техник':        'tech',
@@ -48,21 +45,6 @@
         if (window.App.MobileUX) window.App.MobileUX.init();
 
         checkAuthAndInit();
-
-        $('#editFullName').on('input', function() {
-            var fullName = $(this).val();
-            var editMode = $('#editUserForm').data('edit-mode');
-            if (editMode === 'create' && fullName && fullName.trim().length > 0) {
-                var initials = fullName.trim().charAt(0).toUpperCase();
-                var colorIndex = fullName.trim().length % utils.avatarColors.length;
-                $('#editUserAvatar').css({
-                    'background-image': 'none',
-                    'background-color': utils.avatarColors[colorIndex],
-                    'color': 'white',
-                }).html('<span style="font-size:40px;">' +
-                    utils.escapeHtml(initials) + '</span>');
-            }
-        });
     }
 
     // ============================================================
@@ -109,27 +91,36 @@
             window.App.Auth.loadUserInfo();
         }
 
-        var role = window.currentUserRole;
-
-        if (window.App.Tasks && window.App.Tasks.loadStatistics) {
-            window.App.Tasks.loadStatistics();
+        if (window.App.Tasks) {
+            if (window.App.Tasks.loadStatistics) window.App.Tasks.loadStatistics();
+            if (window.App.Tasks.loadFilters) window.App.Tasks.loadFilters();
+            if (window.App.Tasks.setupEventHandlers) {
+                window.App.Tasks.setupEventHandlers();
+            }
+            if (window.App.Tasks.setupContextMenu) {
+                window.App.Tasks.setupContextMenu();
+            }
+            if (window.App.Tasks.setupCabinetSearch) {
+                window.App.Tasks.setupCabinetSearch();
+            }
         }
 
-        // Для Техника данные Kanban/Таблица грузятся внутри TasksKanban.init()
-        // в setupInterfaceByRole().
-        if (role !== 'Техник') {
-            if (window.App.Tasks) {
-                if (window.App.Tasks.loadFilters) window.App.Tasks.loadFilters();
-                if (window.App.Tasks.loadTasks) window.App.Tasks.loadTasks(1);
-                if (window.App.Tasks.setupEventHandlers) {
-                    window.App.Tasks.setupEventHandlers();
-                }
-                if (window.App.Tasks.setupContextMenu) {
-                    window.App.Tasks.setupContextMenu();
-                }
-                if (window.App.Tasks.setupCabinetSearch) {
-                    window.App.Tasks.setupCabinetSearch();
-                }
+        // Применяем сохранённый режим просмотра (таблица / канбан).
+        // Если сохранён kanban — TasksKanban перерисует доску.
+        var mode = 'table';
+        try { mode = localStorage.getItem('supportactive_view') || 'table'; } catch (e) {}
+        var role = window.currentUserRole;
+
+        if (mode === 'kanban' && role !== 'Пользователь'
+            && window.App.TasksKanban
+            && typeof window.App.TasksKanban.switchView === 'function') {
+            window.App.TasksKanban.switchView('kanban');
+        } else {
+            // Таблица
+            $('#adminKanbanBlock').hide();
+            $('#tableView').show();
+            if (window.App.Tasks && window.App.Tasks.loadTasks) {
+                window.App.Tasks.loadTasks(1);
             }
         }
 
@@ -173,75 +164,55 @@
             });
         }
 
-        function removeKanbanToolbar() {
-            $('#tasksToolbar').remove();
-            $('#kanbanFiltersPanel').remove();
-        }
+        // Общая часть: показываем #tasksBlock, скрываем канбан-доску и другие
+        $('#otherPagesBlock').hide();
+        $('#adminKanbanBlock').hide();
+        $('#tableView').show();
+        $('#tasksBlock').show();
 
         if (role === 'Техник') {
             applyRoleVisibility();
 
-            $('#tasksBlock').hide();
-            $('#kanbanBlock').show();
+            // Техник не создаёт заявки — скрываем кнопку и FAB
+            $('#createTaskBtn').hide();
+            $('#muxFab').hide();
+            $('.filters-section .btn-success').hide();
 
-            // Инициализируем модуль Kanban (создаёт тулбар с ComboBox)
-            // Внутри init() либо грузится Kanban, либо Таблица (по сохранённому выбору)
-            if (window.App.TasksKanban && window.App.TasksKanban.init) {
-                window.App.TasksKanban.init();
-            }
+            // Техник не делает массовые операции — скрываем bulk-bar
+            $('#bulkBar').hide();
 
-            $('#tasksBlock .btn-danger').hide();
-            $('#tasksBlock .btn-success').hide();
+            // У Техника нет фильтра по пользователю
             $('#filterUserBlock').hide();
 
-            $('#statMyCompleted').closest('.col-3').hide();
-            $('.user-card .col-md-6 .col-3')
-                .removeClass('col-3').addClass('col-4');
+            // В статистике скрываем 4-й блок «Мои» — он не имеет смысла,
+            // у Техника все его показатели уже «мои»
+            $('.user-stats .stat-box').eq(3).hide();
 
         } else if (role === 'Пользователь') {
             applyRoleVisibility();
-            removeKanbanToolbar();
 
-            $('#kanbanBlock').hide();
-            $('#tasksBlock').show();
-            $('.user-card .col-md-6').hide();
+            // Пользователь не пользуется канбаном
+            $('#viewSwitcher').hide();
+
+            // Скрываем фильтры и bulk-bar, показывает только свои заявки
             $('.filters-section').hide();
+            $('#filtersPanel').hide();
+            $('#bulkBar').hide();
 
-            if ($('#userCreateTaskBtn').length === 0) {
-                $('.table-container').before(
-                    '<div id="userCreateTaskBtn" class="mb-3">' +
-                    '<button class="btn btn-success" ' +
-                    'onclick="showCreateTaskModal()">' +
-                    '<i class="bi bi-plus-circle"></i> Создать заявку' +
-                    '</button></div>'
-                );
-            }
-            $('#userCreateTaskBtn').show();
+            // Кнопка «Создать заявку» — оставляем (Пользователь может)
+            $('#createTaskBtn').show();
 
         } else if (role === 'Администратор') {
             $('.sidebar .nav-link').show();
-            removeKanbanToolbar();
-
-            $('#kanbanBlock').hide();
-            $('#tasksBlock').show();
-            $('#userCreateTaskBtn').hide();
+            $('#createTaskBtn').show();
 
         } else if (role === 'Разработчик') {
             applyRoleVisibility();
-            removeKanbanToolbar();
-
-            $('#kanbanBlock').hide();
-            $('#tasksBlock').hide();
-            $('.filters-section .btn-success').hide();
-            $('#userCreateTaskBtn').hide();
-            $('.user-card .col-md-6').hide();
+            $('#createTaskBtn').hide();
+            $('#muxFab').hide();
 
         } else {
             applyRoleVisibility();
-            removeKanbanToolbar();
-
-            $('#kanbanBlock').hide();
-            $('#tasksBlock').show();
         }
     }
 
@@ -285,52 +256,31 @@
 
         // ---------- Заявки ----------
         if (pageName === 'tasks') {
-            var role = window.currentUserRole;
-
-            if (role === 'Техник') {
-                // Первый вход: init() сам создаст тулбар и покажет нужный блок
-                if ($('#tasksToolbar').length === 0 &&
-                    window.App.TasksKanban &&
-                    window.App.TasksKanban.init) {
-                    window.App.TasksKanban.init();
-                } else if (window.App.TasksKanban) {
-                    // 🆕 Определяем текущий режим и ЯВНО показываем нужный блок,
-                    //    иначе после возврата с другой вкладки он остаётся hidden
-                    var mode = window.App.TasksKanban.getViewMode
-                        ? window.App.TasksKanban.getViewMode()
-                        : 'kanban';
-
-                    if (mode === 'table') {
-                        $('#tasksBlock').show();
-                        $('#kanbanBlock').hide();
-                        if (window.App.Tasks && window.App.Tasks.loadTasks) {
-                            window.App.Tasks.loadTasks(1);
-                        }
-                    } else {
-                        // kanban
-                        $('#tasksBlock').hide();
-                        $('#kanbanBlock').show();
-                        if (window.App.TasksKanban.load) {
-                            window.App.TasksKanban.load();
-                        }
-                    }
-                }
-                $('#otherPagesBlock').hide();
-                return;
-            }
-
-            // Остальные роли (Пользователь / Администратор / прочие)
-            $('#kanbanBlock').hide();
-            $('#tasksBlock').show();
             $('#otherPagesBlock').hide();
-            if (window.App.Tasks && window.App.Tasks.loadTasks) {
-                window.App.Tasks.loadTasks(1);
+            $('#tasksBlock').show();
+
+            // Применяем сохранённый режим
+            var mode = 'table';
+            try { mode = localStorage.getItem('supportactive_view') || 'table'; } catch (e) {}
+
+            if (mode === 'kanban'
+                && window.currentUserRole !== 'Пользователь'
+                && window.App.TasksKanban
+                && typeof window.App.TasksKanban.switchView === 'function') {
+                window.App.TasksKanban.switchView('kanban');
+            } else {
+                $('#adminKanbanBlock').hide();
+                $('#tableView').show();
+                if (window.App.Tasks && window.App.Tasks.loadTasks) {
+                    window.App.Tasks.loadTasks(1);
+                }
             }
             return;
         }
 
+        // ---------- Остальные разделы ----------
         $('#tasksBlock').hide();
-        $('#kanbanBlock').hide();
+        $('#adminKanbanBlock').hide();
         $('#otherPagesBlock').show();
 
         var moduleMap = {
@@ -366,18 +316,15 @@
             window.App.Tasks.loadStatistics();
         }
 
-        var role = window.currentUserRole;
-        if (role === 'Техник' &&
-            window.App.TasksKanban &&
-            window.App.TasksKanban.getViewMode &&
-            window.App.TasksKanban.getViewMode() === 'table') {
-            if (window.App.Tasks && window.App.Tasks.loadTasks) {
-                window.App.Tasks.loadTasks(state.currentPage || 1);
-            }
-        } else if (role === 'Техник' &&
-                   window.App.TasksKanban &&
-                   window.App.TasksKanban.load) {
-            window.App.TasksKanban.load();
+        // Что перезагружать — таблицу или канбан
+        var mode = 'table';
+        try { mode = localStorage.getItem('supportactive_view') || 'table'; } catch (e) {}
+
+        if (mode === 'kanban'
+            && window.currentUserRole !== 'Пользователь'
+            && window.App.TasksKanban
+            && typeof window.App.TasksKanban.switchView === 'function') {
+            window.App.TasksKanban.switchView('kanban');
         } else if (window.App.Tasks && window.App.Tasks.loadTasks) {
             window.App.Tasks.loadTasks(state.currentPage || 1);
         }

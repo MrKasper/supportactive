@@ -1,125 +1,244 @@
+<!-- templates/dashboard.html -->
 {% extends "base.html" %}
 
 {% block head_extra %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/tasks.css') }}">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+/* Специфичные стили дашборда */
+.dash-kpi-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
+}
+.dash-chart-wrap {
+    padding: 20px 22px 12px;
+    height: 320px;
+    position: relative;
+}
+.dash-chart-wrap canvas {
+    max-height: 100%;
+}
+.dash-statuses-wrap {
+    padding: 20px;
+    height: 320px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.dash-statuses-wrap canvas {
+    max-height: 260px;
+}
+.dash-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+.dash-table thead th {
+    padding: 10px 14px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--border);
+}
+.dash-table tbody td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    vertical-align: middle;
+}
+.dash-table tbody tr:last-child td { border-bottom: none; }
+.dash-table tbody tr:hover { background: var(--surface-2); }
+.dash-table .num { text-align: center; font-variant-numeric: tabular-nums; }
+.dash-table .num-success { color: var(--success); font-weight: 600; }
+.dash-table .num-warning { color: #b45309; }
+.dash-table .num-accent { color: var(--accent); font-weight: 600; }
+
+.dash-list {
+    display: flex;
+    flex-direction: column;
+    padding: 8px 0;
+}
+.dash-list-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 20px;
+    font-size: 13px;
+    color: var(--text);
+    border-bottom: 1px solid var(--border);
+}
+.dash-list-item:last-child { border-bottom: none; }
+.dash-list-item:hover { background: var(--surface-2); }
+.dash-list-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.dash-list-value {
+    font-weight: 700;
+    color: var(--accent);
+    flex-shrink: 0;
+}
+</style>
 {% endblock %}
 
 {% block content %}
-<div class="sidebar">
-    <div class="sidebar-header">
-        <div class="logo-wrapper-sidebar">
-            <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo"
-                 style="max-width:70px" onerror="this.style.display='none'">
+<div class="app-shell">
+
+    <!-- ============================================================ -->
+    <!-- SIDEBAR                                                       -->
+    <!-- ============================================================ -->
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <div class="brand-mark">🎧</div>
+            <div class="brand-text">
+                <h3>Support Active</h3>
+                <small>v{{ APP_VERSION }}</small>
+            </div>
         </div>
-        <h4 class="mt-2">Support Active</h4>
-        <small class="text-white-50">Дашборд</small>
-    </div>
-    <div class="sidebar-menu">
-        <nav class="nav flex-column">
-            <a class="nav-link" href="/"><i class="bi bi-arrow-left"></i>
-                <span>К заявкам</span></a>
-            <a class="nav-link active" href="/dashboard">
-                <i class="bi bi-graph-up"></i><span>Дашборд</span></a>
+
+        <nav class="sidebar-nav">
+            <div class="nav-section-title">Основное</div>
+            <a class="nav-link nav-item" href="/">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                <span>Заявки</span>
+            </a>
+            <a class="nav-link nav-item active" href="/dashboard">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+                <span>Дашборд</span>
+            </a>
         </nav>
-    </div>
-</div>
 
-<div class="main-content">
-    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-        <h3 class="mb-0"><i class="bi bi-graph-up"></i> Дашборд руководителя</h3>
-        <button class="btn btn-outline-primary btn-sm" onclick="Dashboard.reload()">
-            <i class="bi bi-arrow-clockwise"></i> Обновить
-        </button>
-    </div>
-
-    <!-- KPI -->
-    <div class="row g-3 mb-4" id="dash-kpi">
-        <div class="col-12 text-center py-5">
-            <div class="spinner-border text-primary"></div>
-        </div>
-    </div>
-
-    <!-- Графики -->
-    <div class="row g-3 mb-4">
-        <div class="col-lg-8">
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <h6 class="mb-0"><i class="bi bi-bar-chart-line"></i> Динамика по месяцам</h6>
-                </div>
-                <div class="card-body">
-                    <canvas id="chartMonthly" height="90"></canvas>
+        <div class="sidebar-footer">
+            <div class="sidebar-user">
+                <div class="sidebar-user-avatar" id="dashUserAvatar">?</div>
+                <div class="sidebar-user-info">
+                    <div class="sidebar-user-name" id="dashUserName">—</div>
+                    <div class="sidebar-user-role" id="dashUserRole">—</div>
                 </div>
             </div>
         </div>
-        <div class="col-lg-4">
+    </aside>
+
+    <!-- ============================================================ -->
+    <!-- MAIN                                                          -->
+    <!-- ============================================================ -->
+    <main class="main">
+        <div class="topbar">
+            <h1 class="topbar-title">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+                <span>Дашборд руководителя</span>
+            </h1>
+            <div class="topbar-actions">
+                <button class="btn-ghost" onclick="Dashboard.reload()">
+                    <i class="bi bi-arrow-clockwise"></i> Обновить
+                </button>
+            </div>
+        </div>
+
+        <!-- KPI -->
+        <div class="dash-kpi-row" id="dash-kpi">
+            <div class="col-12 text-center py-5">
+                <span class="spinner-border"></span>
+            </div>
+        </div>
+
+        <!-- Графики -->
+        <div class="grid-2 mb-4">
             <div class="card">
-                <div class="card-header bg-info text-white">
-                    <h6 class="mb-0"><i class="bi bi-pie-chart"></i> Статусы</h6>
+                <div class="card-head">
+                    <h2>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+                        Динамика по месяцам
+                    </h2>
+                    <span class="badge-soft">12 месяцев</span>
                 </div>
-                <div class="card-body">
-                    <canvas id="chartStatuses" height="220"></canvas>
+                <div class="dash-chart-wrap">
+                    <canvas id="chartMonthly"></canvas>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-head">
+                    <h2>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
+                        Статусы
+                    </h2>
+                </div>
+                <div class="dash-statuses-wrap">
+                    <canvas id="chartStatuses"></canvas>
                 </div>
             </div>
         </div>
-    </div>
 
-    <div class="row g-3 mb-4">
-        <div class="col-lg-6">
+        <!-- Таблица исполнителей + списки -->
+        <div class="grid-2 mb-4">
             <div class="card">
-                <div class="card-header bg-success text-white">
-                    <h6 class="mb-0"><i class="bi bi-people"></i> Топ исполнителей</h6>
+                <div class="card-head">
+                    <h2>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>
+                        Топ исполнителей
+                    </h2>
                 </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-sm table-striped mb-0">
-                            <thead><tr>
+                <div class="table-responsive">
+                    <table class="dash-table">
+                        <thead>
+                            <tr>
                                 <th>Исполнитель</th>
-                                <th class="text-center">Всего</th>
-                                <th class="text-center">Выполнено</th>
-                                <th class="text-center">В работе</th>
-                                <th class="text-center">Ср. часы</th>
-                            </tr></thead>
-                            <tbody id="dash-executors">
-                                <tr><td colspan="5" class="text-center text-muted py-3">
-                                    <div class="spinner-border spinner-border-sm"></div></td></tr>
-                            </tbody>
-                        </table>
+                                <th class="num">Всего</th>
+                                <th class="num">Выполнено</th>
+                                <th class="num">В работе</th>
+                                <th class="num">Ср. часы</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dash-executors">
+                            <tr><td colspan="5" class="text-center text-muted py-3">
+                                <span class="spinner-border spinner-border-sm"></span></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div>
+                <div class="card mb-3">
+                    <div class="card-head">
+                        <h2>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l7-4 7 4v14"/></svg>
+                            Топ кабинетов
+                        </h2>
+                    </div>
+                    <div class="dash-list" id="dash-cabinets">
+                        <div class="text-center text-muted py-3">
+                            <span class="spinner-border spinner-border-sm"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-head">
+                        <h2>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41 12 22l-9-9V3h10z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>
+                            Топ типов работ
+                        </h2>
+                    </div>
+                    <div class="dash-list" id="dash-work-types">
+                        <div class="text-center text-muted py-3">
+                            <span class="spinner-border spinner-border-sm"></span>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-lg-3">
-            <div class="card">
-                <div class="card-header bg-warning text-dark">
-                    <h6 class="mb-0"><i class="bi bi-door-open"></i> Топ кабинетов</h6>
-                </div>
-                <div class="card-body p-0">
-                    <table class="table table-sm mb-0">
-                        <tbody id="dash-cabinets">
-                            <tr><td class="text-center text-muted py-3">
-                                <div class="spinner-border spinner-border-sm"></div></td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-        <div class="col-lg-3">
-            <div class="card">
-                <div class="card-header bg-secondary text-white">
-                    <h6 class="mb-0"><i class="bi bi-tags"></i> Топ типов работ</h6>
-                </div>
-                <div class="card-body p-0">
-                    <table class="table table-sm mb-0">
-                        <tbody id="dash-work-types">
-                            <tr><td class="text-center text-muted py-3">
-                                <div class="spinner-border spinner-border-sm"></div></td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
+
+    </main>
 </div>
 {% endblock %}
 

@@ -1,5 +1,5 @@
 // static/js/directory.js
-// Справочник: кабинеты + типы проблем
+// Справочник: кабинеты + типы проблем (карточками в 2 колонки).
 
 (function() {
     'use strict';
@@ -12,11 +12,16 @@
     var api = window.App.register('Directory');
     var utils = window.App.utils;
 
-    // ============= СТРАНИЦА =============
-    function loadDirectoryPage() {
-        var $contentBlock = $('#otherPagesBlock');
+    var cabinetsCache = [];
+    var problemTypesCache = [];
 
-        $contentBlock.html(
+    // ============================================================
+    // СТРАНИЦА
+    // ============================================================
+    function loadDirectoryPage() {
+        var $block = $('#otherPagesBlock');
+
+        $block.html(
             '<div class="text-center py-5">' +
             '<div class="spinner-border text-primary"></div>' +
             '<p class="mt-2">Загрузка справочника...</p>' +
@@ -25,220 +30,231 @@
 
         Promise.all([
             fetch('/api/directory/cabinets').then(function(r) { return r.json(); }),
-            fetch('/api/directory/problem-types').then(function(r) { return r.json(); })
+            fetch('/api/directory/problem-types').then(function(r) { return r.json(); }),
         ])
             .then(function(results) {
                 var cabinets = results[0];
                 var problemTypes = results[1];
 
-                var html = '';
+                if (cabinets.error || problemTypes.error) {
+                    $block.html(
+                        '<div class="alert alert-danger">' +
+                        utils.escapeHtml(cabinets.error || problemTypes.error) +
+                        '</div>'
+                    );
+                    return;
+                }
 
-                html += buildTable(
-                    'Кабинеты', 'cabinet', 'bi bi-door-open',
-                    ['Номер кабинета', 'Этаж', 'Корпус', 'Описание', 'Статус'],
-                    cabinets,
-                    ['cabinet_number', 'floor', 'building', 'description'],
-                    'cabinets'
-                );
+                cabinetsCache = cabinets || [];
+                problemTypesCache = problemTypes || [];
 
-                html += buildTable(
-                    'Типы проблем', 'problem-type', 'bi bi-exclamation-triangle',
-                    ['Название', 'Описание', 'Статус'],
-                    problemTypes,
-                    ['name', 'description'],
-                    'problem-types'
-                );
-
-                $contentBlock.html(html);
+                render();
             })
             .catch(function(error) {
                 console.error('[directory] load error:', error);
-                $contentBlock.html(
+                $block.html(
                     '<div class="alert alert-danger">Ошибка загрузки: ' +
                     utils.escapeHtml(error.message) + '</div>'
                 );
             });
     }
 
-    // ============= ТАБЛИЦА =============
-    function buildTable(title, type, icon, headers, data, fields, apiType) {
-        var html = '<div class="card mb-4">';
-        html += '<div class="card-header bg-primary text-white">';
-        html += '<div class="d-flex justify-content-between align-items-center flex-wrap gap-2">';
-        html += '<h6 class="mb-0"><i class="' + icon + '"></i> ' + title + '</h6>';
-        html += '<div class="d-flex gap-2 align-items-center">';
-        html += '<span class="badge bg-light text-dark">Всего: ' + (data ? data.length : 0) + '</span>';
-        html += '<button class="btn btn-sm btn-light" onclick="showAddDirectoryItem(\'' + type + '\', \'' + apiType + '\')">';
-        html += '<i class="bi bi-plus-circle"></i> Добавить</button>';
-        html += '</div></div></div>';
+    // ============================================================
+    // ОБЩИЙ РЕНДЕР
+    // ============================================================
+    function render() {
+        var html = '';
+        html += '<div class="row g-3">';
+        html += '<div class="col-md-6">' + renderCabinetsCard() + '</div>';
+        html += '<div class="col-md-6">' + renderProblemTypesCard() + '</div>';
+        html += '</div>';
 
-        html += '<div class="card-body"><div class="table-responsive">';
-        html += '<table class="table table-striped table-hover table-sm">';
-        html += '<thead><tr>';
-        headers.forEach(function(h) { html += '<th>' + h + '</th>'; });
-        html += '<th style="width:100px;">Действия</th>';
-        html += '</tr></thead><tbody>';
+        $('#otherPagesBlock').html(html);
+    }
 
-        if (!data || data.length === 0) {
-            html += '<tr><td colspan="' + (headers.length + 1) + '" class="text-center text-muted">Нет данных</td></tr>';
+    // ============================================================
+    // КАРТОЧКА: КАБИНЕТЫ
+    // ============================================================
+    function renderCabinetsCard() {
+        var html = '<div class="table-wrap table-container">';
+
+        // Шапка
+        html += '<div class="table-head">';
+        html += '<div class="table-head-title">';
+        html += '<i class="bi bi-door-closed" style="color: var(--accent);"></i>';
+        html += ' Кабинеты';
+        html += ' <span class="table-head-count">' + cabinetsCache.length + '</span>';
+        html += '</div>';
+        html += '<button class="btn-primary" ' +
+                'onclick="showAddCabinetModal()">' +
+                '<i class="bi bi-plus-lg"></i> Добавить</button>';
+        html += '</div>';
+
+        // Тело
+        if (cabinetsCache.length === 0) {
+            html += '<div class="empty-state">' +
+                '<i class="bi bi-door-closed"></i>' +
+                '<p>Кабинеты не добавлены</p></div>';
         } else {
-            data.forEach(function(item) {
-                html += '<tr>';
-                fields.forEach(function(field) {
-                    html += '<td>' + utils.escapeHtml(item[field] !== null && item[field] !== undefined ? item[field] : '-') + '</td>';
-                });
-                if (!fields.includes('is_active') && item.is_active !== undefined) {
-                    html += '<td>' +
-                        (item.is_active
-                            ? '<span class="badge bg-success">Активен</span>'
-                            : '<span class="badge bg-danger">Неактивен</span>') +
-                        '</td>';
-                }
+            html += '<div class="table-scroll"><table class="table directory-table">';
+            html += '<thead><tr>';
+            html += '<th>Номер</th>';
+            html += '<th>Этаж</th>';
+            html += '<th>Корпус</th>';
+            html += '<th>Статус</th>';
+            html += '<th style="width: 80px; text-align: right;">Действия</th>';
+            html += '</tr></thead><tbody>';
 
-                html += '<td><div class="btn-group btn-group-sm">';
-                html += '<button class="btn btn-outline-success" onclick="showEditDirectoryItem(\'' +
-                        type + '\', \'' + apiType + '\', ' + item.id + ')" title="Редактировать">' +
+            cabinetsCache.forEach(function(c) {
+                var statusBadge = c.is_active
+                    ? '<span class="badge badge-completed">Активен</span>'
+                    : '<span class="badge badge-cancelled">Неактивен</span>';
+
+                html += '<tr>';
+                html += '<td><strong>' + utils.escapeHtml(c.cabinet_number || '—') + '</strong></td>';
+                html += '<td>' + utils.escapeHtml(c.floor || '—') + '</td>';
+                html += '<td>' + utils.escapeHtml(c.building || '—') + '</td>';
+                html += '<td>' + statusBadge + '</td>';
+                html += '<td>';
+                html += '<div class="row-actions">';
+                html += '<button class="btn-icon-sm edit" ' +
+                        'onclick="editCabinet(' + c.id + ')" title="Редактировать">' +
                         '<i class="bi bi-pencil"></i></button>';
-                html += '<button class="btn btn-outline-danger" onclick="deleteDirectoryItem(\'' +
-                        type + '\', \'' + apiType + '\', ' + item.id + ')" title="Удалить">' +
+                html += '<button class="btn-icon-sm delete" ' +
+                        'onclick="deleteCabinet(' + c.id + ')" title="Удалить">' +
                         '<i class="bi bi-trash"></i></button>';
-                html += '</div></td></tr>';
+                html += '</div>';
+                html += '</td>';
+                html += '</tr>';
             });
+
+            html += '</tbody></table></div>';
         }
 
-        html += '</tbody></table></div></div></div>';
+        html += '</div>';
         return html;
     }
 
-    // ============= ДОБАВЛЕНИЕ =============
-    function showAddDirectoryItem(type, apiType) {
-        var title = type === 'cabinet' ? 'Добавить кабинет' : 'Добавить тип проблемы';
-        var fields = type === 'cabinet'
-            ? buildCabinetForm(null)
-            : buildProblemTypeForm(null);
+    // ============================================================
+    // КАРТОЧКА: ТИПЫ ПРОБЛЕМ
+    // ============================================================
+    function renderProblemTypesCard() {
+        var html = '<div class="table-wrap table-container">';
 
-        Swal.fire({
-            title: title,
-            html: fields,
-            showCancelButton: true,
-            confirmButtonText: 'Добавить',
-            cancelButtonText: 'Отмена',
-            confirmButtonColor: '#28a745',
-            preConfirm: function() { return collectDirectoryForm(type); }
-        }).then(function(result) {
-            if (!result.isConfirmed) return;
+        html += '<div class="table-head">';
+        html += '<div class="table-head-title">';
+        html += '<i class="bi bi-exclamation-circle" style="color: var(--accent);"></i>';
+        html += ' Типы проблем';
+        html += ' <span class="table-head-count">' + problemTypesCache.length + '</span>';
+        html += '</div>';
+        html += '<button class="btn-primary" ' +
+                'onclick="showAddDirectoryItem(\'problem-type\', \'problem-types\')">' +
+                '<i class="bi bi-plus-lg"></i> Добавить</button>';
+        html += '</div>';
 
-            fetch('/api/directory/' + apiType, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(result.value)
-            })
-                .then(function(r) { return r.json(); })
-                .then(function(data) {
-                    if (data.success) {
-                        Swal.fire({ icon: 'success', title: 'Запись добавлена!', timer: 1500, showConfirmButton: false });
-                        loadDirectoryPage();
-                    } else {
-                        Swal.fire({ icon: 'error', title: 'Ошибка', text: data.error });
-                    }
-                });
-        });
-    }
+        if (problemTypesCache.length === 0) {
+            html += '<div class="empty-state">' +
+                '<i class="bi bi-exclamation-circle"></i>' +
+                '<p>Типы проблем не добавлены</p></div>';
+        } else {
+            html += '<div class="table-scroll"><table class="table directory-table">';
+            html += '<thead><tr>';
+            html += '<th>Название</th>';
+            html += '<th>Описание</th>';
+            html += '<th style="width: 80px; text-align: right;">Действия</th>';
+            html += '</tr></thead><tbody>';
 
-    // ============= РЕДАКТИРОВАНИЕ =============
-    function showEditDirectoryItem(type, apiType, itemId) {
-        fetch('/api/directory/' + apiType)
-            .then(function(r) { return r.json(); })
-            .then(function(items) {
-                var item = items.find(function(i) { return i.id === itemId; });
-                if (!item) { utils.showErrorMessage('Запись не найдена'); return; }
-
-                var title = type === 'cabinet' ? 'Редактировать кабинет' : 'Редактировать тип проблемы';
-                var fields = type === 'cabinet'
-                    ? buildCabinetForm(item)
-                    : buildProblemTypeForm(item);
-
-                Swal.fire({
-                    title: title,
-                    html: fields,
-                    showCancelButton: true,
-                    confirmButtonText: 'Сохранить',
-                    cancelButtonText: 'Отмена',
-                    confirmButtonColor: '#28a745',
-                    preConfirm: function() { return collectDirectoryForm(type, true); }
-                }).then(function(result) {
-                    if (!result.isConfirmed) return;
-
-                    fetch('/api/directory/' + apiType + '/' + itemId, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(result.value)
-                    })
-                        .then(function(r) { return r.json(); })
-                        .then(function(data) {
-                            if (data.success) {
-                                Swal.fire({ icon: 'success', title: 'Запись обновлена!', timer: 1500, showConfirmButton: false });
-                                loadDirectoryPage();
-                            } else {
-                                Swal.fire({ icon: 'error', title: 'Ошибка', text: data.error });
-                            }
-                        });
-                });
+            problemTypesCache.forEach(function(t) {
+                html += '<tr>';
+                html += '<td><strong>' + utils.escapeHtml(t.name || '—') + '</strong></td>';
+                html += '<td class="text-muted">' +
+                        utils.escapeHtml(t.description || '—') + '</td>';
+                html += '<td>';
+                html += '<div class="row-actions">';
+                html += '<button class="btn-icon-sm edit" ' +
+                        'onclick="showEditDirectoryItem(\'problem-type\', \'problem-types\', ' +
+                        t.id + ')" title="Редактировать">' +
+                        '<i class="bi bi-pencil"></i></button>';
+                html += '<button class="btn-icon-sm delete" ' +
+                        'onclick="deleteDirectoryItem(\'problem-type\', \'problem-types\', ' +
+                        t.id + ')" title="Удалить">' +
+                        '<i class="bi bi-trash"></i></button>';
+                html += '</div>';
+                html += '</td>';
+                html += '</tr>';
             });
+
+            html += '</tbody></table></div>';
+        }
+
+        html += '</div>';
+        return html;
     }
 
-    // ============= УДАЛЕНИЕ =============
-    function deleteDirectoryItem(type, apiType, itemId) {
-        Swal.fire({
-            title: 'Удалить запись?',
-            text: 'Действие нельзя отменить!',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonText: 'Да, удалить',
-            cancelButtonText: 'Отмена',
-            confirmButtonColor: '#dc3545'
-        }).then(function(result) {
-            if (!result.isConfirmed) return;
-            fetch('/api/directory/' + apiType + '/' + itemId, { method: 'DELETE' })
-                .then(function(r) { return r.json(); })
-                .then(function(data) {
-                    if (data.success) {
-                        Swal.fire({ icon: 'success', title: 'Запись удалена!', timer: 1500, showConfirmButton: false });
-                        loadDirectoryPage();
-                    } else {
-                        utils.showErrorMessage(data.error);
-                    }
-                });
-        });
-    }
-
-    // ============= ФОРМЫ =============
+    // ============================================================
+    // ФОРМА: КАБИНЕТ
+    // ============================================================
     function buildCabinetForm(item) {
         item = item || {};
-        return '<div class="mb-3 text-start"><label class="form-label">Номер кабинета *</label>' +
-            '<input id="swal-cabinet-number" class="form-control" value="' + utils.escapeHtml(item.cabinet_number || '') + '" placeholder="Например: Кабинет 601"></div>' +
-            '<div class="mb-3 text-start"><label class="form-label">Этаж</label>' +
-            '<input id="swal-floor" class="form-control" value="' + utils.escapeHtml(item.floor || '') + '" placeholder="Например: 6 этаж"></div>' +
-            '<div class="mb-3 text-start"><label class="form-label">Корпус</label>' +
-            '<input id="swal-building" class="form-control" value="' + utils.escapeHtml(item.building || '') + '" placeholder="Например: Корпус В"></div>' +
-            '<div class="mb-3 text-start"><label class="form-label">Описание</label>' +
-            '<input id="swal-description" class="form-control" value="' + utils.escapeHtml(item.description || '') + '"></div>' +
-            (item.id ? '<div class="mb-3 text-start"><div class="form-check form-switch">' +
-                '<input class="form-check-input" type="checkbox" id="swal-active" ' + (item.is_active ? 'checked' : '') + '>' +
-                '<label class="form-check-label" for="swal-active">Активен</label></div></div>' : '');
+        return '<div class="mb-3 text-start">' +
+            '<label class="form-label">Номер кабинета *</label>' +
+            '<input id="swal-cabinet-number" class="form-control" ' +
+            'value="' + utils.escapeHtml(item.cabinet_number || '') + '" ' +
+            'placeholder="Например: Кабинет 601"></div>' +
+
+            '<div class="form-row">' +
+            '<div class="field"><label>Этаж</label>' +
+            '<input id="swal-floor" class="form-control" ' +
+            'value="' + utils.escapeHtml(item.floor || '') + '" ' +
+            'placeholder="6 этаж"></div>' +
+            '<div class="field"><label>Корпус</label>' +
+            '<input id="swal-building" class="form-control" ' +
+            'value="' + utils.escapeHtml(item.building || '') + '" ' +
+            'placeholder="Корпус В"></div>' +
+            '</div>' +
+
+            '<div class="mb-3 text-start">' +
+            '<label class="form-label">Описание</label>' +
+            '<input id="swal-description" class="form-control" ' +
+            'value="' + utils.escapeHtml(item.description || '') + '"></div>' +
+
+            (item.id
+                ? '<div class="mb-3 text-start"><div class="form-check form-switch">' +
+                  '<input class="form-check-input" type="checkbox" id="swal-active" ' +
+                  (item.is_active ? 'checked' : '') + '>' +
+                  '<label class="form-check-label" for="swal-active">Активен</label>' +
+                  '</div></div>'
+                : '');
     }
 
+    // ============================================================
+    // ФОРМА: ТИП ПРОБЛЕМЫ
+    // ============================================================
     function buildProblemTypeForm(item) {
         item = item || {};
-        return '<div class="mb-3 text-start"><label class="form-label">Название *</label>' +
-            '<input id="swal-name" class="form-control" value="' + utils.escapeHtml(item.name || '') + '" placeholder="Например: Не включается компьютер"></div>' +
-            '<div class="mb-3 text-start"><label class="form-label">Описание</label>' +
-            '<textarea id="swal-description" class="form-control" rows="2">' + utils.escapeHtml(item.description || '') + '</textarea></div>' +
-            (item.id ? '<div class="mb-3 text-start"><div class="form-check form-switch">' +
-                '<input class="form-check-input" type="checkbox" id="swal-active" ' + (item.is_active ? 'checked' : '') + '>' +
-                '<label class="form-check-label" for="swal-active">Активен</label></div></div>' : '');
+        return '<div class="mb-3 text-start">' +
+            '<label class="form-label">Название *</label>' +
+            '<input id="swal-name" class="form-control" ' +
+            'value="' + utils.escapeHtml(item.name || '') + '" ' +
+            'placeholder="Например: Не включается компьютер"></div>' +
+
+            '<div class="mb-3 text-start">' +
+            '<label class="form-label">Описание</label>' +
+            '<textarea id="swal-description" class="form-control" rows="3">' +
+            utils.escapeHtml(item.description || '') + '</textarea></div>' +
+
+            (item.id
+                ? '<div class="mb-3 text-start"><div class="form-check form-switch">' +
+                  '<input class="form-check-input" type="checkbox" id="swal-active" ' +
+                  (item.is_active ? 'checked' : '') + '>' +
+                  '<label class="form-check-label" for="swal-active">Активен</label>' +
+                  '</div></div>'
+                : '');
     }
 
+    // ============================================================
+    // СБОР ФОРМЫ
+    // ============================================================
     function collectDirectoryForm(type, withActive) {
         var data = {};
 
@@ -268,7 +284,136 @@
         return data;
     }
 
-    // ============= ЭКСПОРТ =============
+    // ============================================================
+    // ДОБАВЛЕНИЕ / РЕДАКТИРОВАНИЕ / УДАЛЕНИЕ
+    // ============================================================
+    function showAddDirectoryItem(type, apiType) {
+        var title = type === 'cabinet' ? 'Добавить кабинет' : 'Добавить тип проблемы';
+        var fields = type === 'cabinet'
+            ? buildCabinetForm(null)
+            : buildProblemTypeForm(null);
+
+        Swal.fire({
+            title: title,
+            html: fields,
+            showCancelButton: true,
+            confirmButtonText: 'Добавить',
+            cancelButtonText: 'Отмена',
+            confirmButtonColor: '#6366f1',
+            customClass: { popup: 'swal-wide' },
+            preConfirm: function() { return collectDirectoryForm(type); },
+        }).then(function(result) {
+            if (!result.isConfirmed) return;
+
+            fetch('/api/directory/' + apiType, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(result.value),
+            })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        Swal.fire({
+                            icon: 'success', title: 'Запись добавлена!',
+                            timer: 1500, showConfirmButton: false,
+                        });
+                        loadDirectoryPage();
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'Ошибка', text: data.error });
+                    }
+                });
+        });
+    }
+
+    function showEditDirectoryItem(type, apiType, itemId) {
+        var cache = (type === 'cabinet') ? cabinetsCache : problemTypesCache;
+        var item = cache.find(function(i) { return i.id === itemId; });
+
+        if (!item) { utils.showErrorMessage('Запись не найдена'); return; }
+
+        var title = type === 'cabinet' ? 'Редактировать кабинет' : 'Редактировать тип проблемы';
+        var fields = type === 'cabinet'
+            ? buildCabinetForm(item)
+            : buildProblemTypeForm(item);
+
+        Swal.fire({
+            title: title,
+            html: fields,
+            showCancelButton: true,
+            confirmButtonText: 'Сохранить',
+            cancelButtonText: 'Отмена',
+            confirmButtonColor: '#6366f1',
+            customClass: { popup: 'swal-wide' },
+            preConfirm: function() { return collectDirectoryForm(type, true); },
+        }).then(function(result) {
+            if (!result.isConfirmed) return;
+
+            fetch('/api/directory/' + apiType + '/' + itemId, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(result.value),
+            })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        Swal.fire({
+                            icon: 'success', title: 'Запись обновлена!',
+                            timer: 1500, showConfirmButton: false,
+                        });
+                        loadDirectoryPage();
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'Ошибка', text: data.error });
+                    }
+                });
+        });
+    }
+
+    function deleteDirectoryItem(type, apiType, itemId) {
+        Swal.fire({
+            title: 'Удалить запись?',
+            text: 'Действие нельзя отменить!',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Да, удалить',
+            cancelButtonText: 'Отмена',
+            confirmButtonColor: '#dc3545',
+        }).then(function(result) {
+            if (!result.isConfirmed) return;
+
+            fetch('/api/directory/' + apiType + '/' + itemId, { method: 'DELETE' })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        Swal.fire({
+                            icon: 'success', title: 'Запись удалена!',
+                            timer: 1500, showConfirmButton: false,
+                        });
+                        loadDirectoryPage();
+                    } else {
+                        utils.showErrorMessage(data.error);
+                    }
+                });
+        });
+    }
+
+    // ============================================================
+    // МОДАЛКА: КАБИНЕТ (совместимость с cabinets_manage.js)
+    // ============================================================
+    function showAddCabinetModal() {
+        showAddDirectoryItem('cabinet', 'cabinets');
+    }
+
+    function editCabinet(cabinetId) {
+        showEditDirectoryItem('cabinet', 'cabinets', cabinetId);
+    }
+
+    function deleteCabinet(cabinetId) {
+        deleteDirectoryItem('cabinet', 'cabinets', cabinetId);
+    }
+
+    // ============================================================
+    // ЭКСПОРТ
+    // ============================================================
     api.load = loadDirectoryPage;
     api.showAdd = showAddDirectoryItem;
     api.showEdit = showEditDirectoryItem;
@@ -279,5 +424,10 @@
     window.showEditDirectoryItem = showEditDirectoryItem;
     window.deleteDirectoryItem = deleteDirectoryItem;
 
-    console.log('[directory] Загружено (без ID)');
+    // Переэкспорт (используется в справочнике)
+    window.showAddCabinetModal = showAddCabinetModal;
+    window.editCabinet = editCabinet;
+    window.deleteCabinet = deleteCabinet;
+
+    console.log('[directory] Загружено');
 })();

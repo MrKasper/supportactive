@@ -751,3 +751,32 @@
     .cart-month-table .cart-group-header td { padding: 8px 10px; font-size: 0.8rem; }
     .cart-month-table .cart-group-row td { padding-left: 14px; }
 }
+/* ============================================================
+   Отступ между табами и содержимым в модалке заявки
+   ============================================================ */
+#viewTaskModal .task-tabs {
+    margin-bottom: 20px;
+}
+
+#viewTaskModal .task-tab-pane.active {
+    padding-top: 4px;
+}
+
+/* Первая строка лейбла (ДАТА СОЗДАНИЯ и т.п.)
+   не липнет к табам */
+#viewTaskModal .task-tab-pane.active .detail-grid .detail-item:first-child,
+#viewTaskModal .task-tab-pane.active .m-detail-grid .m-detail-item:first-child {
+    margin-top: 0;
+}
+
+/* Аналогично для вкладки «История» — таймлайн тоже нужен отступ */
+#viewTaskModal .task-tab-pane.active .m-timeline,
+#viewTaskModal .task-tab-pane.active .history-filters {
+    margin-top: 4px;
+}
+
+@media (max-width: 640px) {
+    #viewTaskModal .task-tabs {
+        margin-bottom: 16px;
+    }
+}

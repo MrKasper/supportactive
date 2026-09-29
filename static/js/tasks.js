@@ -15,6 +15,56 @@
     var searchDebounceTimer = null;
 
     // ============================================================
+    // СЧЁТЧИКИ
+    // ============================================================
+    function updateNavTasksCount(count) {
+        var $badge = $('#navTasksCount');
+        if (!$badge.length) return;
+        if (count > 0) {
+            $badge.text(count).show();
+        } else {
+            $badge.hide();
+        }
+    }
+
+    function updateFiltersCount() {
+        var n = 0;
+        if ($('#filterWorkType').val()) n++;
+        if ($('#filterCabinet').val()) n++;
+        if ($('#filterStatus').val()) n++;
+        if ($('#filterUser').val()) n++;
+        if ($('#filterDate').val()) n++;
+
+        var $badge = $('#filtersCount');
+        if (!$badge.length) return;
+        if (n > 0) $badge.text(n).show();
+        else $badge.hide();
+    }
+
+    // ============================================================
+    // ЦВЕТ ПРИОРИТЕТА
+    // ============================================================
+    function applyPriorityStyle($select) {
+        $select.removeClass('priority-high priority-medium priority-low');
+        var v = $select.val();
+        if (v === 'Высокий') $select.addClass('priority-high');
+        else if (v === 'Средний') $select.addClass('priority-medium');
+        else if (v === 'Низкий') $select.addClass('priority-low');
+    }
+
+    function bindPriorityColor() {
+        $(document)
+            .off('change.prioStyle', 'select[name="priority"]')
+            .on('change.prioStyle', 'select[name="priority"]', function() {
+                applyPriorityStyle($(this));
+            });
+
+        $('select[name="priority"]').each(function() {
+            applyPriorityStyle($(this));
+        });
+    }
+
+    // ============================================================
     // СТАТИСТИКА
     // ============================================================
     function loadStatistics() {
@@ -30,6 +80,10 @@
             })
             .then(function(data) {
                 if (!data || data.error) return;
+
+                // Счётчик на пункте «Заявки» в сайдбаре
+                updateNavTasksCount(data.new_or_progress || data.new || 0);
+
                 if (window.currentUserRole === 'Техник') {
                     utils.animateNumber('#statCompleted', data.user_completed || 0);
                     utils.animateNumber('#statNewProgress', data.user_in_progress || 0);
@@ -82,15 +136,15 @@
                 if (window.currentUserRole === 'Администратор') {
                     fill('#filterUser', data.users, 'Все пользователи');
                 }
+
+                updateFiltersCount();
             })
             .catch(function(err) {
                 console.error('[tasks] filters error:', err);
             });
     }
 
-    // ============================================================
-    // ФИЛЬТРЫ (переехало из redesign.js) — открыть/закрыть панель
-    // ============================================================
+    // Открыть/закрыть панель фильтров
     function toggleFilters() {
         var panel = document.getElementById('filtersPanel');
         if (!panel) return;
@@ -368,6 +422,7 @@
     function clearFilters() {
         $('#filterWorkType, #filterCabinet, #filterStatus, ' +
           '#filterUser, #filterDate, #taskSearchInput').val('');
+        updateFiltersCount();
         loadTasks(1);
     }
 
@@ -428,7 +483,7 @@
     }
 
     // ============================================================
-    // МАССОВОЕ ЗАКРЫТИЕ
+    // МАССОВОЕ ЗАКРЫТИЕ / ВЫБОР
     // ============================================================
     function closeSelectedTasks() {
         if (state.selectedTasks.size === 0) {
@@ -454,6 +509,7 @@
         Promise.all(promises).then(function() {
             state.selectedTasks.clear();
             $('#selectAll').prop('checked', false);
+            updateBulkBar();
             Swal.fire({
                 icon: 'success',
                 title: 'Заявки закрыты!',
@@ -479,7 +535,8 @@
         var $bar = $('#bulkBar');
         if (n > 0) {
             $bar.addClass('active');
-            $('#bulkCount').text(n + ' ' + utils.pluralize(n, 'заявка', 'заявки', 'заявок') + ' выбрано');
+            $('#bulkCount').text(n + ' ' +
+                utils.pluralize(n, 'заявка', 'заявки', 'заявок') + ' выбрано');
         } else {
             $bar.removeClass('active');
         }
@@ -535,8 +592,11 @@
     // ОБРАБОТЧИКИ
     // ============================================================
     function setupEventHandlers() {
-        $('#filterWorkType, #filterCabinet, #filterStatus, #filterUser')
-            .on('change', function() { loadTasks(1); });
+        $('#filterWorkType, #filterCabinet, #filterStatus, #filterUser, #filterDate')
+            .on('change', function() {
+                updateFiltersCount();
+                loadTasks(1);
+            });
 
         $(document).on('input', '#taskSearchInput', function() {
             clearTimeout(searchDebounceTimer);
@@ -569,6 +629,12 @@
         $(document).on('keydown', function(event) {
             if (event.key === 'Escape') $('#contextMenu').remove();
         });
+
+        // Стиль приоритета
+        bindPriorityColor();
+
+        // Первичная отрисовка счётчика фильтров
+        updateFiltersCount();
     }
 
     function setupContextMenu() {
@@ -670,6 +736,10 @@
                  pad(tomorrow.getMinutes());
         $('input[name="deadline"]').val(dt);
 
+        // Сброс приоритета на «Средний» и подсветка
+        $('select[name="priority"]').val('Средний');
+        bindPriorityColor();
+
         if (typeof window.openModal === 'function') {
             window.openModal('createTaskModal');
         } else {
@@ -710,6 +780,9 @@
     // ОБНОВЛЕНИЕ
     // ============================================================
     function refreshData() {
+        updateFiltersCount();
+        bindPriorityColor();
+
         if (window.App.Auth) window.App.Auth.loadUserInfo();
         loadStatistics();
         loadTasks(state.currentPage || 1);
@@ -735,6 +808,9 @@
     api.setupCabinetSearch = setupCabinetSearch;
     api.showCreateTaskModal = showCreateTaskModal;
     api.toggleFilters = toggleFilters;
+    api.updateFiltersCount = updateFiltersCount;
+    api.updateNavTasksCount = updateNavTasksCount;
+    api.bindPriorityColor = bindPriorityColor;
 
     window.loadStatistics = loadStatistics;
     window.loadFilters = loadFilters;
