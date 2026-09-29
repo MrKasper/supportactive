@@ -608,7 +608,6 @@ def migrate_22_computer_peripherals_and_history(conn):
     """
     cur = conn.cursor()
 
-    # Поля периферии (JSON-объекты вида {"model": "..."})
     for col in ('speakers', 'webcam', 'headphones', 'microphone'):
         if not _column_exists(conn, 'cabinet_computers', col):
             try:
@@ -620,7 +619,6 @@ def migrate_22_computer_peripherals_and_history(conn):
             except sqlite3.OperationalError as e:
                 log.warning(f'  → Не удалось добавить {col}: {e}')
 
-    # Таблица истории
     cur.execute('''
         CREATE TABLE IF NOT EXISTS computer_components_history (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -669,6 +667,332 @@ def migrate_23_computer_monitors(conn):
     conn.commit()
 
 
+def migrate_24_tags(conn):
+    """
+    v24: теги для заявок.
+      • tags        — справочник тегов
+      • task_tags   — связь M:N
+    """
+    cur = conn.cursor()
+
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS tags (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL UNIQUE,
+            color TEXT DEFAULT '#6366f1',
+            description TEXT,
+            created_at TEXT NOT NULL,
+            deleted_at TEXT DEFAULT NULL
+        )
+    ''')
+
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS task_tags (
+            task_id INTEGER NOT NULL,
+            tag_id INTEGER NOT NULL,
+            created_at TEXT NOT NULL,
+            PRIMARY KEY (task_id, tag_id),
+            FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
+            FOREIGN KEY (tag_id)  REFERENCES tags(id)  ON DELETE CASCADE
+        )
+    ''')
+
+    cur.execute('CREATE INDEX IF NOT EXISTS idx_task_tags_task ON task_tags(task_id)')
+    cur.execute('CREATE INDEX IF NOT EXISTS idx_task_tags_tag  ON task_tags(tag_id)')
+
+    conn.commit()
+    log.info('  → Таблицы tags / task_tags созданы')
+
+
+def migrate_25_schedules(conn):
+    """
+    v25: расписания / повторяющиеся задачи.
+
+      • task_schedules  — шаблоны повторяющихся заявок
+      • schedule_tags   — какие теги привязывать к создаваемым заявкам
+
+    recurrence_type:
+      'daily'   — каждый день, config = {"time": "09:00"}
+      'weekly'  — по дням недели, config = {"time": "09:00", "days": [1,2,3,4,5]}
+      'monthly' — по дням месяца, config = {"time": "09:00", "days": [1, 15]}
+    """
+    cur = conn.cursor()
+
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS task_schedules (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            description TEXT,
+            work_type TEXT,
+            cabinet TEXT,
+            priority TEXT DEFAULT 'Средний',
+            from_user TEXT,
+            executor TEXT,
+            assistant TEXT,
+            duration_minutes INTEGER DEFAULT 60,
+            recurrence_type TEXT NOT NULL,
+            recurrence_config TEXT,
+            next_run_at TEXT,
+            last_run_at TEXT,
+            is_active INTEGER DEFAULT 1,
+            created_by INTEGER,
+            created_at TEXT NOT NULL,
+            deleted_at TEXT DEFAULT NULL
+        )
+    ''')
+
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS schedule_tags (
+            schedule_id INTEGER NOT NULL,
+            tag_id INTEGER NOT NULL,
+            PRIMARY KEY (schedule_id, tag_id),
+            FOREIGN KEY (schedule_id) REFERENCES task_schedules(id) ON DELETE CASCADE,
+            FOREIGN KEY (tag_id)      REFERENCES tags(id)           ON DELETE CASCADE
+        )
+    ''')
+
+    cur.execute(
+        'CREATE INDEX IF NOT EXISTS idx_schedule_next '
+        'ON task_schedules(next_run_at, is_active)'
+    )
+
+    conn.commit()
+    log.info('  → Таблицы task_schedules / schedule_tags созданы')
+
+
+def migrate_26_equipment_lifecycle(conn):
+    """
+    v26: жизненный цикл оборудования.
+
+      • Новые колонки у cabinet_computers / cabinet_printers /
+        cabinet_network_devices: purchase_date, warranty_until,
+        commissioned_at, decommissioned_at, life_status, supplier,
+        cost, serial_number
+      • Общая таблица equipment_lifecycle_events — история событий
+    """
+    cur = conn.cursor()
+
+    target_tables = (
+        'cabinet_computers',
+        'cabinet_printers',
+        'cabinet_network_devices',
+    )
+
+    new_columns = (
+        ('purchase_date',     'TEXT DEFAULT NULL'),
+        ('warranty_until',    'TEXT DEFAULT NULL'),
+        ('commissioned_at',   'TEXT DEFAULT NULL'),
+        ('decommissioned_at', 'TEXT DEFAULT NULL'),
+        ('life_status',       "TEXT DEFAULT 'active'"),
+        ('supplier',          'TEXT DEFAULT NULL'),
+        ('cost',              'REAL DEFAULT NULL'),
+        ('serial_number',     'TEXT DEFAULT NULL'),
+    )
+
+    for t in target_tables:
+        if not _table_exists(conn, t):
+            continue
+        for col, ddl in new_columns:
+            if not _column_exists(conn, t, col):
+                try:
+                    cur.execute(f'ALTER TABLE {t} ADD COLUMN {col} {ddl}')
+                    log.info(f'  → {t}.{col} добавлена')
+                except sqlite3.OperationalError as e:
+                    log.warning(f'  → {t}.{col}: {e}')
+
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS equipment_lifecycle_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            equipment_type TEXT NOT NULL,
+            equipment_id INTEGER NOT NULL,
+            cabinet_id INTEGER,
+            event_type TEXT NOT NULL,
+            event_date TEXT NOT NULL,
+            old_status TEXT,
+            new_status TEXT,
+            description TEXT,
+            user_id INTEGER,
+            user_name TEXT,
+            created_at TEXT NOT NULL
+        )
+    ''')
+    cur.execute(
+        'CREATE INDEX IF NOT EXISTS idx_eq_events_eq '
+        'ON equipment_lifecycle_events(equipment_type, equipment_id, event_date DESC)'
+    )
+    cur.execute(
+        'CREATE INDEX IF NOT EXISTS idx_eq_events_date '
+        'ON equipment_lifecycle_events(event_date DESC)'
+    )
+
+    conn.commit()
+    log.info('  → Таблица equipment_lifecycle_events создана')
+
+
+def migrate_27_maintenance_plans(conn):
+    """
+    v27: календарь обслуживания — плановые ТО оборудования.
+
+    Отдельная от task_schedules таблица, чтобы не смешивать
+    «расписания заявок» (бизнес-логика) и «обслуживание оборудования»
+    (технические работы по факту наличия техники).
+    """
+    cur = conn.cursor()
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS maintenance_plans (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            description TEXT,
+            equipment_type TEXT,
+            equipment_id INTEGER,
+            cabinet_id INTEGER,
+            work_type TEXT,
+            priority TEXT DEFAULT 'Средний',
+            duration_minutes INTEGER DEFAULT 60,
+            executor TEXT,
+            from_user TEXT,
+            recurrence_type TEXT NOT NULL,
+            recurrence_config TEXT,
+            next_run_at TEXT,
+            last_run_at TEXT,
+            last_task_id INTEGER,
+            is_active INTEGER DEFAULT 1,
+            created_by INTEGER,
+            created_at TEXT NOT NULL,
+            deleted_at TEXT DEFAULT NULL
+        )
+    ''')
+    cur.execute(
+        'CREATE INDEX IF NOT EXISTS idx_maintenance_next '
+        'ON maintenance_plans(next_run_at, is_active)'
+    )
+    cur.execute(
+        'CREATE INDEX IF NOT EXISTS idx_maintenance_eq '
+        'ON maintenance_plans(equipment_type, equipment_id)'
+    )
+    conn.commit()
+    log.info('  → Таблица maintenance_plans создана')
+
+
+def migrate_28_inventory(conn):
+    """
+    v28: инвентаризация оборудования.
+
+      • inventory_sessions — сессии инвентаризации
+      • inventory_items    — позиции внутри сессии
+    """
+    cur = conn.cursor()
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS inventory_sessions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            description TEXT,
+            scope_type TEXT NOT NULL,
+            scope_value TEXT,
+            responsible_person TEXT,
+            started_at TEXT,
+            finished_at TEXT,
+            status TEXT DEFAULT 'draft',
+            created_by INTEGER,
+            created_at TEXT NOT NULL,
+            notes TEXT
+        )
+    ''')
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS inventory_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id INTEGER NOT NULL,
+            equipment_type TEXT NOT NULL,
+            equipment_id INTEGER NOT NULL,
+            cabinet_id INTEGER,
+            expected_location TEXT,
+            actual_location TEXT,
+            status TEXT DEFAULT 'pending',
+            checked_by INTEGER,
+            checked_at TEXT,
+            notes TEXT,
+            FOREIGN KEY (session_id) REFERENCES inventory_sessions(id)
+                ON DELETE CASCADE
+        )
+    ''')
+    cur.execute(
+        'CREATE INDEX IF NOT EXISTS idx_inv_items_session '
+        'ON inventory_items(session_id, status)'
+    )
+    cur.execute(
+        'CREATE INDEX IF NOT EXISTS idx_inv_items_eq '
+        'ON inventory_items(equipment_type, equipment_id)'
+    )
+    conn.commit()
+    log.info('  → Таблицы inventory_sessions / inventory_items созданы')
+
+
+def migrate_29_computer_gpu_psu(conn):
+    """
+    v29: видеокарта и блок питания у компьютера.
+      • gpu — видеокарта (модель)
+      • psu — блок питания (модель + мощность)
+    """
+    cur = conn.cursor()
+
+    if not _column_exists(conn, 'cabinet_computers', 'gpu'):
+        try:
+            cur.execute(
+                'ALTER TABLE cabinet_computers ADD COLUMN gpu TEXT DEFAULT NULL'
+            )
+            log.info('  → Добавлена колонка cabinet_computers.gpu')
+        except sqlite3.OperationalError as e:
+            log.warning(f'  → Не удалось добавить gpu: {e}')
+
+    if not _column_exists(conn, 'cabinet_computers', 'psu'):
+        try:
+            cur.execute(
+                'ALTER TABLE cabinet_computers ADD COLUMN psu TEXT DEFAULT NULL'
+            )
+            log.info('  → Добавлена колонка cabinet_computers.psu')
+        except sqlite3.OperationalError as e:
+            log.warning(f'  → Не удалось добавить psu: {e}')
+
+    conn.commit()
+    log.info('  → Колонки cabinet_computers.gpu / .psu готовы')
+
+
+def migrate_30_report_templates(conn):
+    """
+    v30: шаблоны конструктора отчётов.
+
+    Каждый шаблон — это JSON-конфиг:
+      {
+        "fields": [...],
+        "filters": {...},
+        "group_by": [...],
+        "metrics": [...],
+        "sort": {...},
+        "limit": 1000
+      }
+    """
+    cur = conn.cursor()
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS report_templates (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            description TEXT,
+            config TEXT NOT NULL,
+            created_by INTEGER,
+            created_at TEXT NOT NULL,
+            is_shared INTEGER DEFAULT 0,
+            deleted_at TEXT DEFAULT NULL,
+            FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+        )
+    ''')
+    cur.execute(
+        'CREATE INDEX IF NOT EXISTS idx_report_tmpl_creator '
+        'ON report_templates(created_by, deleted_at)'
+    )
+    conn.commit()
+    log.info('  → Таблица report_templates создана')
+
+
 # ============================================================
 # РЕЕСТР МИГРАЦИЙ
 # ============================================================
@@ -696,6 +1020,13 @@ MIGRATIONS = [
     (21, migrate_21_printer_replace_dates),
     (22, migrate_22_computer_peripherals_and_history),
     (23, migrate_23_computer_monitors),
+    (24, migrate_24_tags),
+    (25, migrate_25_schedules),
+    (26, migrate_26_equipment_lifecycle),
+    (27, migrate_27_maintenance_plans),
+    (28, migrate_28_inventory),
+    (29, migrate_29_computer_gpu_psu),
+    (30, migrate_30_report_templates),
 ]
 
 

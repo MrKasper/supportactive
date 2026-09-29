@@ -53,6 +53,11 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/printer_card.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/computer_card.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/equipment.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tags_schedules.css') }}">
+    <!-- ⚠️ equipment_extras.css ПОСЛЕДНИМ: переопределяет .eq-ram-row
+         и .eq-storage-row на grid, добавляет стили для ТО и инвентаря -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/equipment_extras.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/calendar_reports.css') }}">
 
     {% block head_extra %}{% endblock %}
 

@@ -396,12 +396,23 @@
                    'onchange="toggleTaskSelection(' + task.id + ', this.checked)"></td>';
         }
 
+        var tagsHtml = '';
+        if (task.tags && task.tags.length > 0 && window.App.Tags) {
+            tagsHtml = '<div class="task-tags-row">' +
+                task.tags.map(function(t) {
+                    return window.App.Tags.renderChip(t, { small: true });
+                }).join('') +
+                '</div>';
+        }
+
         row += '<td>' + utils.formatDate(task.created_date) + '</td>' +
             '<td>' + deadlineHtml + '</td>' +
             '<td>' + utils.escapeHtml(task.from_user || '-') + '</td>' +
             '<td>' + utils.escapeHtml(task.cabinet || '-') + '</td>' +
             '<td title="' + utils.escapeHtml(task.description || '') + '">' +
-            utils.escapeHtml(utils.truncateText(task.description, 40)) + '</td>' +
+            utils.escapeHtml(utils.truncateText(task.description, 40)) +
+            tagsHtml +
+            '</td>' +
             '<td><span class="badge bg-secondary">' +
             utils.escapeHtml(task.work_type || 'Не указан') + '</span></td>' +
             '<td><span class="status-badge ' + statusClass + '">' +
@@ -439,6 +450,10 @@
         var formData = new FormData(form);
         var data = {};
         formData.forEach(function(value, key) { data[key] = value; });
+
+        if (window.App.Tags && window.App.Tags.getSelectedCreateTaskTags) {
+            data.tag_ids = window.App.Tags.getSelectedCreateTaskTags();
+        }
 
         Swal.fire({
             title: 'Создание...',
@@ -725,6 +740,16 @@
                     loadExecutorsForForm();
                 }
             });
+
+        // Пикер тегов
+        if (window.App.Tags) {
+            if (window.App.Tags.resetCreateTaskTags) {
+                window.App.Tags.resetCreateTaskTags();
+            }
+            if (window.App.Tags.initCreateTaskTagsPicker) {
+                window.App.Tags.initCreateTaskTagsPicker();
+            }
+        }
 
         var now = new Date();
         var tomorrow = new Date(now.getTime() + 24 * 3600 * 1000);

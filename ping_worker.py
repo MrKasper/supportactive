@@ -13,6 +13,8 @@ Support Active — отдельный worker для пинга ПК.
     PING_INTERVAL_SEC=300          ← интервал между проверками
 
 Дополнительно worker:
+    • Раз в цикл запускает due-расписания (проверяет next_run_at)
+    • Раз в цикл запускает due-планы ТО оборудования
     • Раз в сутки чистит старые уведомления (>60 дней)
     • Раз в сутки чистит старые login_attempts (>1 дня)
 """
@@ -65,7 +67,6 @@ def _run_cleanup():
     Раз в сутки:
       • Удаляет уведомления старше 60 дней
       • Удаляет login_attempts старше 1 дня (истёкшие блокировки)
-      • Удаляет пустые/старые записи из task_history (опционально)
     """
     global _last_cleanup_at
 
@@ -78,7 +79,6 @@ def _run_cleanup():
 
     log.info('[CLEANUP] Запуск ежедневной очистки...')
 
-    # 1. Уведомления старше 60 дней
     try:
         with db.transaction(immediate=True) as tx:
             tx.execute("""
@@ -89,7 +89,6 @@ def _run_cleanup():
     except Exception as e:
         log.warning(f'[CLEANUP] Ошибка удаления уведомлений: {e}')
 
-    # 2. Login attempts — истёкшие блокировки
     try:
         with db.transaction(immediate=True) as tx:
             tx.execute("""
@@ -101,10 +100,35 @@ def _run_cleanup():
     except Exception as e:
         log.warning(f'[CLEANUP] Ошибка удаления login_attempts: {e}')
 
-    # 3. Пустые сессии (если используется filesystem) — опционально
-    # (не трогаем, чтобы не мешать работающим сессиям)
-
     log.info('[CLEANUP] Ежедневная очистка завершена')
+
+
+# ============================================================
+# РАСПИСАНИЯ — каждый цикл
+# ============================================================
+def _run_schedules():
+    """Проверяет due-расписания и создаёт заявки."""
+    try:
+        from services.schedules import run_due_schedules
+        created = run_due_schedules()
+        if created:
+            log.info(f'[SCHEDULE] Создано задач по расписанию: {created}')
+    except Exception as e:
+        log.exception(f'[SCHEDULE] Ошибка обработки расписаний: {e}')
+
+
+# ============================================================
+# ПЛАНЫ ТО — каждый цикл
+# ============================================================
+def _run_maintenance():
+    """Проверяет due-планы ТО и создаёт заявки."""
+    try:
+        from services.maintenance import run_due_maintenance
+        created = run_due_maintenance()
+        if created:
+            log.info(f'[MAINTENANCE] Создано задач по ТО: {created}')
+    except Exception as e:
+        log.exception(f'[MAINTENANCE] Ошибка обработки планов ТО: {e}')
 
 
 # ============================================================
@@ -115,9 +139,10 @@ def main():
     log.info('Support Active — Ping Worker')
     log.info(f'Интервал пинга: {PING_INTERVAL_SEC} сек')
     log.info(f'Очистка: раз в {CLEANUP_INTERVAL_SEC // 3600} ч')
+    log.info('Расписания: каждый цикл')
+    log.info('Планы ТО: каждый цикл')
     log.info('=' * 60)
 
-    # Небольшая задержка — чтобы основное приложение поднялось первым
     log.info('Ожидание 15 секунд перед первым запуском...')
     time.sleep(15)
 
@@ -137,6 +162,12 @@ def main():
             break
         except Exception as e:
             log.exception(f'[PING] Ошибка: {e}')
+
+        # ---------- Расписания (due → создать заявки) ----------
+        _run_schedules()
+
+        # ---------- Планы ТО (due → создать заявки) ----------
+        _run_maintenance()
 
         # ---------- Очистка (раз в сутки) ----------
         try:

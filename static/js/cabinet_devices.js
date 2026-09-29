@@ -1,5 +1,9 @@
 // static/js/cabinet_devices.js
 // Устройства кабинета: сетевое оборудование, ПК, принтеры.
+//
+// ВАЖНО: строки RAM/Storage в форме ПК используют ТОЛЬКО inline-стили
+// (без классов .eq-ram-row / .eq-storage-row), чтобы избежать конфликтов
+// с любыми CSS-файлами и быть уверенными в grid-раскладке.
 
 (function() {
     'use strict';
@@ -17,6 +21,106 @@
     function Cabinet() { return window.App.Cabinet; }
 
     // ============================================================
+    // INLINE-СТИЛИ ДЛЯ ФОРМЫ ПК
+    // ============================================================
+    var STYLE_GRID_2COL =
+        'display:grid;grid-template-columns:1fr 1fr;gap:12px 16px;width:100%;';
+
+    var STYLE_RAM_ROW =
+        'display:grid;grid-template-columns:90px 46px minmax(0,1fr) 38px;' +
+        'gap:8px;align-items:center;width:100%;margin-bottom:8px;';
+
+    var STYLE_RAM_INPUT =
+        'width:100%;box-sizing:border-box;height:32px;padding:4px 8px;' +
+        'font-size:13px;text-align:center;border:1px solid #e8e8ec;' +
+        'border-radius:6px;background:#fff;color:#18181b;';
+
+    var STYLE_RAM_SELECT =
+        'width:100%;box-sizing:border-box;height:32px;padding:4px 8px;' +
+        'font-size:13px;border:1px solid #e8e8ec;border-radius:6px;' +
+        'background:#fff;color:#18181b;';
+
+    var STYLE_UNIT_LABEL =
+        'display:inline-flex;align-items:center;justify-content:center;' +
+        'height:32px;width:100%;background:#f4f4f5;border:1px solid #e8e8ec;' +
+        'border-radius:6px;font-size:11px;font-weight:600;color:#71717a;' +
+        'box-sizing:border-box;';
+
+    var STYLE_REMOVE_BTN =
+        'width:38px;height:32px;padding:0;display:inline-flex;' +
+        'align-items:center;justify-content:center;border-radius:6px;' +
+        'border:1px solid #e8e8ec;background:#fff;color:#ef4444;cursor:pointer;' +
+        'box-sizing:border-box;';
+
+    var STYLE_STORAGE_ROW =
+        'display:grid;grid-template-columns:90px 62px minmax(0,1fr) 38px;' +
+        'gap:8px;align-items:center;width:100%;margin-bottom:8px;';
+
+    var STYLE_STORAGE_INPUT =
+        'width:100%;box-sizing:border-box;height:32px;padding:4px 8px;' +
+        'font-size:13px;text-align:center;border:1px solid #e8e8ec;' +
+        'border-radius:6px;background:#fff;color:#18181b;';
+
+    var STYLE_STORAGE_SELECT =
+        'width:100%;box-sizing:border-box;height:32px;padding:4px 8px;' +
+        'font-size:13px;border:1px solid #e8e8ec;border-radius:6px;' +
+        'background:#fff;color:#18181b;';
+
+    var STYLE_IP_ROW =
+        'display:grid;grid-template-columns:minmax(0,1fr) 38px;' +
+        'gap:6px;align-items:stretch;width:100%;';
+
+    var STYLE_IP_INPUT =
+        'width:100%;box-sizing:border-box;height:32px;padding:4px 10px;' +
+        'font-size:13px;border:1px solid #e8e8ec;border-radius:8px 0 0 8px;' +
+        'background:#fff;color:#18181b;';
+
+    var STYLE_IP_RELOAD =
+        'width:38px;height:32px;padding:0;display:inline-flex;' +
+        'align-items:center;justify-content:center;border:1px solid #e8e8ec;' +
+        'border-radius:0 8px 8px 0;background:#fff;color:#71717a;cursor:pointer;' +
+        'box-sizing:border-box;';
+
+    var STYLE_FULL_BTN =
+        'display:block;width:100%;margin-top:6px;padding:8px 12px;' +
+        'text-align:center;border:1px solid #6366f1;border-radius:8px;' +
+        'background:transparent;color:#6366f1;cursor:pointer;font-size:13px;' +
+        'font-weight:500;box-sizing:border-box;';
+
+    var STYLE_SELECTED_BOX =
+        'border:1px solid #e8e8ec;border-radius:8px;padding:8px;' +
+        'background:#f4f4f5;min-height:40px;max-height:140px;' +
+        'overflow-y:auto;box-sizing:border-box;';
+
+    var STYLE_TOGGLE_SOFT =
+        'display:block;width:100%;margin-top:8px;padding:8px 12px;' +
+        'text-align:center;border:1px dashed #d4d4d8;border-radius:8px;' +
+        'background:transparent;color:#71717a;cursor:pointer;font-size:13px;' +
+        'box-sizing:border-box;';
+
+    var STYLE_AVAILABLE_BOX =
+        'border:1px solid #e8e8ec;border-radius:8px;padding:8px;' +
+        'background:#fff;max-height:200px;overflow-y:auto;margin-top:8px;' +
+        'box-sizing:border-box;';
+
+    var STYLE_FORM_LABEL =
+        'display:block;margin-bottom:5px;font-size:11px;font-weight:600;' +
+        'text-transform:uppercase;letter-spacing:0.05em;color:#71717a;';
+
+    var STYLE_FORM_BLOCK =
+        'display:block;width:100%;margin-top:18px;';
+
+    var STYLE_FORM_CONTROL =
+        'width:100%;box-sizing:border-box;height:34px;padding:6px 12px;' +
+        'font-size:13px;border:1px solid #e8e8ec;border-radius:8px;' +
+        'background:#fff;color:#18181b;font-family:inherit;';
+
+    var STYLE_FORM_TEXTAREA =
+        'width:100%;box-sizing:border-box;padding:8px 12px;font-size:13px;' +
+        'border:1px solid #e8e8ec;border-radius:8px;background:#fff;' +
+        'color:#18181b;font-family:inherit;resize:vertical;';
+
+    // ============================================================
     // ХЕЛПЕРЫ
     // ============================================================
     function dragHandle() {
@@ -30,6 +134,36 @@
         return '<div class="eq-empty"><i class="bi ' + icon + '"></i>' +
                utils.escapeHtml(text) + '</div>';
     }
+
+    // ============================================================
+    // ЖИЗНЕННЫЙ ЦИКЛ — обёртки
+    // ============================================================
+    function showComputerLifecycle(pcId) {
+        var cab = Cabinet();
+        if (!cab || !cab.data) return;
+        var pc = cab.data.computers.find(function(p) { return p.id === pcId; });
+        if (!pc) { utils.showErrorMessage('ПК не найден'); return; }
+        if (!window.App.EquipmentLifecycle) {
+            utils.showErrorMessage('Модуль жизненного цикла не загружен');
+            return;
+        }
+        window.App.EquipmentLifecycle.openForComputer(pc, cab.data.cabinet);
+    }
+
+    function showPrinterLifecycle(prId) {
+        var cab = Cabinet();
+        if (!cab || !cab.data) return;
+        var pr = cab.data.printers.find(function(x) { return x.id === prId; });
+        if (!pr) { utils.showErrorMessage('Принтер не найден'); return; }
+        if (!window.App.EquipmentLifecycle) {
+            utils.showErrorMessage('Модуль жизненного цикла не загружен');
+            return;
+        }
+        window.App.EquipmentLifecycle.openForPrinter(pr, cab.data.cabinet);
+    }
+
+    window.showComputerLifecycle = showComputerLifecycle;
+    window.showPrinterLifecycle = showPrinterLifecycle;
 
     // ============================================================
     // СЕКЦИЯ: СЕТЕВОЕ ОБОРУДОВАНИЕ
@@ -50,9 +184,7 @@
         if (net.length === 0) {
             html += emptyState('bi-hdd-network', 'Оборудование не добавлено');
         } else {
-            net.forEach(function(d) {
-                html += renderNetworkDevice(d);
-            });
+            net.forEach(function(d) { html += renderNetworkDevice(d); });
         }
         html += '</div></div>';
         return html;
@@ -122,9 +254,7 @@
         if (pcs.length === 0) {
             html += emptyState('bi-pc-display', 'Компьютеров нет');
         } else {
-            pcs.forEach(function(p) {
-                html += renderComputer(p);
-            });
+            pcs.forEach(function(p) { html += renderComputer(p); });
         }
         html += '</div></div>';
         return html;
@@ -138,6 +268,18 @@
         var btns = '';
         if (Cabinet().canEdit()) {
             btns =
+                '<button class="btn btn-outline-primary" ' +
+                'onclick="showComputerLifecycle(' + p.id + ')" ' +
+                'title="Жизненный цикл">' +
+                '<i class="bi bi-clock-history"></i></button>' +
+                '<button class="btn btn-outline-secondary" ' +
+                'onclick="duplicateComputer(' + p.id + ')" ' +
+                'title="Копировать ПК">' +
+                '<i class="bi bi-files"></i></button>' +
+                '<button class="btn btn-outline-info" ' +
+                'onclick="moveComputer(' + p.id + ')" ' +
+                'title="Переместить в другой кабинет">' +
+                '<i class="bi bi-arrow-left-right"></i></button>' +
                 '<button class="btn btn-outline-dark" ' +
                 'onclick="showComputerQR(' + p.id + ')" title="QR-код">' +
                 '<i class="bi bi-qr-code"></i></button>' +
@@ -176,6 +318,20 @@
                     '</span>';
             });
             storageHtml += '</div>';
+        }
+
+        var gpuPsuHtml = '';
+        if (p.gpu || p.psu) {
+            gpuPsuHtml = '<div class="eq-meta">';
+            if (p.gpu) {
+                gpuPsuHtml += '<i class="bi bi-gpu-card"></i> GPU: ' +
+                    utils.escapeHtml(p.gpu) + ' ';
+            }
+            if (p.psu) {
+                gpuPsuHtml += '<i class="bi bi-plug"></i> БП: ' +
+                    utils.escapeHtml(p.psu);
+            }
+            gpuPsuHtml += '</div>';
         }
 
         var softwareHtml = '';
@@ -233,6 +389,7 @@
                 ? '<div class="eq-meta"><i class="bi bi-cpu-fill"></i> ' +
                   utils.escapeHtml(p.cpu) + '</div>'
                 : '') +
+            gpuPsuHtml +
             '<div class="eq-meta"><i class="bi bi-globe"></i> IP: ' +
             ipHtml + '</div>' +
             (ramHtml
@@ -276,9 +433,7 @@
         if (printers.length === 0) {
             html += emptyState('bi-printer', 'Принтеров нет');
         } else {
-            printers.forEach(function(p) {
-                html += renderPrinter(p, pcs);
-            });
+            printers.forEach(function(p) { html += renderPrinter(p, pcs); });
         }
         html += '</div></div>';
         return html;
@@ -288,6 +443,14 @@
         var btns = '';
         if (Cabinet().canEdit()) {
             btns =
+                '<button class="btn btn-outline-primary" ' +
+                'onclick="showPrinterLifecycle(' + pr.id + ')" ' +
+                'title="Жизненный цикл">' +
+                '<i class="bi bi-clock-history"></i></button>' +
+                '<button class="btn btn-outline-info" ' +
+                'onclick="movePrinter(' + pr.id + ')" ' +
+                'title="Переместить в другой кабинет">' +
+                '<i class="bi bi-arrow-left-right"></i></button>' +
                 '<button class="btn btn-outline-dark" ' +
                 'onclick="showPrinterQR(' + pr.id + ')" title="QR-код">' +
                 '<i class="bi bi-qr-code"></i></button>' +
@@ -373,7 +536,7 @@
     }
 
     // ============================================================
-    // ПРОСМОТР ПК
+    // ПРОСМОТР ПК / ПРИНТЕРА
     // ============================================================
     function viewComputer(pcId) {
         var p = Cabinet().data.computers.find(function(x) { return x.id === pcId; });
@@ -381,36 +544,22 @@
             utils.showErrorMessage('ПК не найден');
             return;
         }
-
-        // Используем новый модуль карточки ПК
         if (window.App.ComputerCard &&
             typeof window.App.ComputerCard.show === 'function') {
             window.App.ComputerCard.show(p, Cabinet().data.cabinet);
         } else {
-            // Fallback — старая модалка (упрощённая)
-            utils.showErrorMessage(
-                'Модуль карточки ПК не загружен'
-            );
+            utils.showErrorMessage('Модуль карточки ПК не загружен');
         }
     }
 
-    // ============================================================
-    // ПРОСМОТР ПРИНТЕРА
-    // ============================================================
     function viewPrinter(prId) {
-        var pr = Cabinet().data.printers.find(function(x) {
-            return x.id === prId;
-        });
+        var pr = Cabinet().data.printers.find(function(x) { return x.id === prId; });
         if (!pr) return;
-
-        // Используем модуль карточки принтера
         if (window.App.PrinterCard &&
             typeof window.App.PrinterCard.show === 'function') {
             window.App.PrinterCard.show(pr, Cabinet().data.cabinet);
         } else {
-            utils.showErrorMessage(
-                'Модуль карточки принтера не загружен'
-            );
+            utils.showErrorMessage('Модуль карточки принтера не загружен');
         }
     }
 
@@ -594,6 +743,407 @@
     }
 
     // ============================================================
+    // КОПИРОВАНИЕ ПК
+    // ============================================================
+    function duplicateComputer(pcId) {
+        var cab = Cabinet();
+        if (!cab || !cab.data) return;
+
+        var src = cab.data.computers.find(function(p) { return p.id === pcId; });
+        if (!src) { utils.showErrorMessage('ПК не найден'); return; }
+
+        var baseName = (src.name || 'ПК').trim();
+        var suggestedName = baseName + ' (копия)';
+
+        Swal.fire({
+            title: '<i class="bi bi-files"></i> Копировать ПК',
+            html:
+                '<div class="text-start">' +
+                '<p class="text-muted small mb-3">' +
+                'Будут скопированы все характеристики ПК ' +
+                '(мат. плата, CPU, GPU, БП, ОЗУ, диски, мониторы, ПО). ' +
+                'Инвентарный номер НЕ копируется.</p>' +
+
+                '<div class="mb-2"><label class="form-label">Имя нового ПК</label>' +
+                '<input id="dup-name" class="form-control" value="' +
+                utils.escapeHtml(suggestedName) + '"></div>' +
+
+                '<div class="mb-2"><label class="form-label">IP-адрес</label>' +
+                '<div style="' + STYLE_IP_ROW + '">' +
+                '<input id="dup-ip" style="' + STYLE_IP_INPUT + '" ' +
+                'placeholder="Загрузка..." disabled>' +
+                '<button type="button" style="' + STYLE_IP_RELOAD + '" ' +
+                'id="dup-ip-reload" title="Подобрать заново">' +
+                '<i class="bi bi-arrow-clockwise"></i></button>' +
+                '</div>' +
+                '<small class="text-muted">Свободный IP в этом кабинете</small>' +
+                '</div>' +
+                '</div>',
+            width: 520,
+            showCancelButton: true,
+            confirmButtonText: '<i class="bi bi-files"></i> Скопировать',
+            cancelButtonText: 'Отмена',
+            confirmButtonColor: '#6c757d',
+            didOpen: function() {
+                function loadIp() {
+                    var $ip = $('#dup-ip');
+                    $ip.val('').prop('disabled', true)
+                        .attr('placeholder', 'Загрузка...');
+
+                    api.get('/api/cabinets/' + cab.currentId + '/next-ip')
+                        .then(function(res) {
+                            if (res && res.success) {
+                                $ip.val(res.next_ip)
+                                    .prop('disabled', false)
+                                    .attr('placeholder', '');
+                            } else {
+                                $ip.prop('disabled', false)
+                                    .attr('placeholder', '192.168.1.100');
+                            }
+                        })
+                        .catch(function() {
+                            $ip.prop('disabled', false)
+                                .attr('placeholder', '192.168.1.100');
+                        });
+                }
+                loadIp();
+
+                $('#dup-ip-reload').on('click', function(e) {
+                    e.preventDefault();
+                    loadIp();
+                });
+            },
+            preConfirm: function() {
+                var name = ($('#dup-name').val() || '').trim();
+                if (!name) {
+                    Swal.showValidationMessage('Введите имя');
+                    return false;
+                }
+                return {
+                    name: name,
+                    ip_address: ($('#dup-ip').val() || '').trim(),
+                };
+            },
+        }).then(function(r) {
+            if (!r.isConfirmed) return;
+
+            Swal.fire({
+                title: 'Создание копии...',
+                allowOutsideClick: false,
+                didOpen: function() { Swal.showLoading(); },
+            });
+
+            api.post('/api/computers/' + pcId + '/duplicate', r.value)
+                .then(function(res) {
+                    Swal.close();
+                    if (res.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Копия создана',
+                            html: '<div class="text-start">' +
+                                '<p><strong>Имя:</strong> ' +
+                                utils.escapeHtml(res.name) + '</p>' +
+                                '<p><strong>IP:</strong> ' +
+                                utils.escapeHtml(res.ip_address) + '</p>' +
+                                '</div>',
+                            timer: 2500,
+                            showConfirmButton: false,
+                        });
+                        Cabinet().reload();
+                    } else {
+                        utils.showErrorMessage(res.error);
+                    }
+                })
+                .catch(function(err) {
+                    Swal.close();
+                    utils.showErrorMessage(err.message || 'Ошибка копирования');
+                });
+        });
+    }
+
+    // ============================================================
+    // ПЕРЕМЕЩЕНИЕ ПК В ДРУГОЙ КАБИНЕТ
+    // ============================================================
+    function moveComputer(pcId) {
+        var cab = Cabinet();
+        if (!cab || !cab.data) return;
+
+        var src = cab.data.computers.find(function(p) { return p.id === pcId; });
+        if (!src) { utils.showErrorMessage('ПК не найден'); return; }
+
+        api.get('/api/cabinets')
+            .then(function(cabinets) {
+                var options = '<option value="">— выберите кабинет —</option>';
+                (cabinets || []).forEach(function(c) {
+                    if (c.id === src.cabinet_id) return;
+                    options += '<option value="' + c.id + '">' +
+                        utils.escapeHtml(c.cabinet_number +
+                            (c.description ? ' — ' + c.description : '')) +
+                        '</option>';
+                });
+
+                Swal.fire({
+                    title: '<i class="bi bi-arrow-left-right"></i> Переместить ПК',
+                    html:
+                        '<div class="text-start">' +
+                        '<p class="text-muted small mb-3">' +
+                        'ПК «<strong>' +
+                        utils.escapeHtml(src.name || '') +
+                        '</strong>» будет перемещён в выбранный кабинет. ' +
+                        'Подключённые USB-принтеры будут отвязаны.</p>' +
+
+                        '<div class="mb-2"><label class="form-label">' +
+                        'Новый кабинет *</label>' +
+                        '<select id="mv-cabinet" class="form-select">' +
+                        options + '</select></div>' +
+
+                        '<div class="mb-2"><label class="form-label">IP-адрес</label>' +
+                        '<div style="' + STYLE_IP_ROW + '">' +
+                        '<input id="mv-ip" style="' + STYLE_IP_INPUT + '" ' +
+                        'placeholder="Сначала выберите кабинет" disabled>' +
+                        '<button type="button" style="' + STYLE_IP_RELOAD + '" ' +
+                        'id="mv-ip-reload" title="Подобрать заново">' +
+                        '<i class="bi bi-arrow-clockwise"></i></button>' +
+                        '</div>' +
+                        '<small class="text-muted">Свободный IP в новом кабинете</small>' +
+                        '</div>' +
+                        '</div>',
+                    width: 520,
+                    showCancelButton: true,
+                    confirmButtonText: '<i class="bi bi-arrow-left-right"></i> Переместить',
+                    cancelButtonText: 'Отмена',
+                    confirmButtonColor: '#0ea5e9',
+                    didOpen: function() {
+                        var $cabSel = $('#mv-cabinet');
+                        var $ip = $('#mv-ip');
+
+                        function loadIp(cabinetId) {
+                            if (!cabinetId) {
+                                $ip.val('').prop('disabled', true)
+                                    .attr('placeholder', 'Сначала выберите кабинет');
+                                return;
+                            }
+                            $ip.val('').prop('disabled', true)
+                                .attr('placeholder', 'Загрузка...');
+                            api.get('/api/cabinets/' + cabinetId + '/next-ip')
+                                .then(function(res) {
+                                    if (res && res.success) {
+                                        $ip.val(res.next_ip)
+                                            .prop('disabled', false)
+                                            .attr('placeholder', '');
+                                    } else {
+                                        $ip.prop('disabled', false)
+                                            .attr('placeholder', '192.168.1.100');
+                                    }
+                                })
+                                .catch(function() {
+                                    $ip.prop('disabled', false)
+                                        .attr('placeholder', '192.168.1.100');
+                                });
+                        }
+
+                        $cabSel.on('change', function() {
+                            loadIp($(this).val());
+                        });
+
+                        $('#mv-ip-reload').on('click', function(e) {
+                            e.preventDefault();
+                            loadIp($cabSel.val());
+                        });
+                    },
+                    preConfirm: function() {
+                        var cabinetId = $('#mv-cabinet').val();
+                        if (!cabinetId) {
+                            Swal.showValidationMessage('Выберите кабинет');
+                            return false;
+                        }
+                        return {
+                            cabinet_id: parseInt(cabinetId, 10),
+                            ip_address: ($('#mv-ip').val() || '').trim(),
+                        };
+                    },
+                }).then(function(r) {
+                    if (!r.isConfirmed) return;
+
+                    Swal.fire({
+                        title: 'Перемещение...',
+                        allowOutsideClick: false,
+                        didOpen: function() { Swal.showLoading(); },
+                    });
+
+                    api.post('/api/computers/' + pcId + '/move', r.value)
+                        .then(function(res) {
+                            Swal.close();
+                            if (res.success) {
+                                utils.showSuccessMessage(
+                                    res.message || 'ПК перемещён'
+                                );
+                                Cabinet().reload();
+                            } else {
+                                utils.showErrorMessage(res.error);
+                            }
+                        })
+                        .catch(function(err) {
+                            Swal.close();
+                            utils.showErrorMessage(err.message || 'Ошибка');
+                        });
+                });
+            })
+            .catch(function() {
+                utils.showErrorMessage('Не удалось загрузить список кабинетов');
+            });
+    }
+
+    // ============================================================
+    // ПЕРЕМЕЩЕНИЕ ПРИНТЕРА В ДРУГОЙ КАБИНЕТ
+    // ============================================================
+    function movePrinter(printerId) {
+        var cab = Cabinet();
+        if (!cab || !cab.data) return;
+
+        var src = cab.data.printers.find(function(x) { return x.id === printerId; });
+        if (!src) { utils.showErrorMessage('Принтер не найден'); return; }
+
+        var connType = src.connection_type || 'network';
+        var isNetwork = (connType === 'network');
+
+        api.get('/api/cabinets')
+            .then(function(cabinets) {
+                var options = '<option value="">— выберите кабинет —</option>';
+                (cabinets || []).forEach(function(c) {
+                    if (c.id === src.cabinet_id) return;
+                    options += '<option value="' + c.id + '">' +
+                        utils.escapeHtml(c.cabinet_number +
+                            (c.description ? ' — ' + c.description : '')) +
+                        '</option>';
+                });
+
+                var ipBlockHtml = '';
+                if (isNetwork) {
+                    ipBlockHtml =
+                        '<div class="mb-2"><label class="form-label">' +
+                        'IP-адрес</label>' +
+                        '<div style="' + STYLE_IP_ROW + '">' +
+                        '<input id="mvp-ip" style="' + STYLE_IP_INPUT + '" ' +
+                        'value="' + utils.escapeHtml(src.ip_address || '') + '" ' +
+                        'placeholder="192.168.1.100">' +
+                        '<button type="button" style="' + STYLE_IP_RELOAD + '" ' +
+                        'id="mvp-ip-reload" title="Подобрать свободный">' +
+                        '<i class="bi bi-arrow-clockwise"></i>' +
+                        '</button>' +
+                        '</div>' +
+                        '<small class="text-muted">' +
+                        'Если не менять — останется текущий IP</small>' +
+                        '</div>';
+                }
+
+                var usbNote = !isNetwork
+                    ? '<div class="alert alert-info small mb-2">' +
+                      '<i class="bi bi-info-circle"></i> ' +
+                      'USB-принтер будет отвязан от текущего ПК.</div>'
+                    : '';
+
+                Swal.fire({
+                    title: '<i class="bi bi-arrow-left-right"></i> Переместить принтер',
+                    html:
+                        '<div class="text-start">' +
+                        '<p class="text-muted small mb-3">' +
+                        'Принтер «<strong>' +
+                        utils.escapeHtml(src.model || '') +
+                        '</strong>» будет перемещён в выбранный кабинет.</p>' +
+
+                        usbNote +
+
+                        '<div class="mb-2"><label class="form-label">' +
+                        'Новый кабинет *</label>' +
+                        '<select id="mvp-cabinet" class="form-select">' +
+                        options + '</select></div>' +
+
+                        ipBlockHtml +
+                        '</div>',
+                    width: 520,
+                    showCancelButton: true,
+                    confirmButtonText: '<i class="bi bi-arrow-left-right"></i> Переместить',
+                    cancelButtonText: 'Отмена',
+                    confirmButtonColor: '#0ea5e9',
+                    didOpen: function() {
+                        if (!isNetwork) return;
+
+                        var $cabSel = $('#mvp-cabinet');
+                        var $ip = $('#mvp-ip');
+
+                        $('#mvp-ip-reload').on('click', function(e) {
+                            e.preventDefault();
+                            var cabId = $cabSel.val();
+                            if (!cabId) {
+                                utils.showErrorMessage('Сначала выберите кабинет');
+                                return;
+                            }
+                            $ip.prop('disabled', true)
+                                .attr('placeholder', 'Загрузка...');
+                            api.get('/api/cabinets/' + cabId + '/next-ip')
+                                .then(function(res) {
+                                    if (res && res.success) {
+                                        $ip.val(res.next_ip)
+                                            .prop('disabled', false)
+                                            .attr('placeholder', '');
+                                    } else {
+                                        $ip.prop('disabled', false)
+                                            .attr('placeholder', '192.168.1.100');
+                                    }
+                                })
+                                .catch(function() {
+                                    $ip.prop('disabled', false)
+                                        .attr('placeholder', '192.168.1.100');
+                                });
+                        });
+                    },
+                    preConfirm: function() {
+                        var cabinetId = $('#mvp-cabinet').val();
+                        if (!cabinetId) {
+                            Swal.showValidationMessage('Выберите кабинет');
+                            return false;
+                        }
+                        return {
+                            cabinet_id: parseInt(cabinetId, 10),
+                            ip_address: isNetwork
+                                ? ($('#mvp-ip').val() || '').trim()
+                                : '',
+                        };
+                    },
+                }).then(function(r) {
+                    if (!r.isConfirmed) return;
+
+                    Swal.fire({
+                        title: 'Перемещение...',
+                        allowOutsideClick: false,
+                        didOpen: function() { Swal.showLoading(); },
+                    });
+
+                    api.post('/api/printers/' + printerId + '/move', r.value)
+                        .then(function(res) {
+                            Swal.close();
+                            if (res.success) {
+                                utils.showSuccessMessage(
+                                    res.message || 'Принтер перемещён'
+                                );
+                                Cabinet().reload();
+                            } else {
+                                utils.showErrorMessage(res.error);
+                            }
+                        })
+                        .catch(function(err) {
+                            Swal.close();
+                            utils.showErrorMessage(err.message || 'Ошибка');
+                        });
+                });
+            })
+            .catch(function() {
+                utils.showErrorMessage('Не удалось загрузить список кабинетов');
+            });
+    }
+
+    // ============================================================
     // CRUD: СЕТЬ
     // ============================================================
     function showAddNetwork() { editNetwork(null); }
@@ -699,6 +1249,7 @@
     function showAddComputer() { editComputer(null); }
 
     function editComputer(pcId) {
+        var isNew = !pcId;
         var p = pcId
             ? Cabinet().data.computers.find(function(x) { return x.id === pcId; })
             : {};
@@ -713,24 +1264,27 @@
         var software = (data.software || []).slice();
         var available = Cabinet().software || [];
 
+        // ---------- RAM-строка (только inline-стили) ----------
         function ramRowHtml(r) {
             var numVal = (r.size || '').replace(/\s*(GB|TB|MB)\s*$/i, '');
-            return '<div class="eq-ram-row">' +
-                '<input class="form-control form-control-sm eq-ram-size" ' +
-                'value="' + utils.escapeHtml(numVal) + '" placeholder="8" ' +
-                'type="number" min="1" max="999">' +
-                '<span class="eq-unit-label">GB</span>' +
-                '<select class="form-select form-select-sm eq-ram-type">' +
+            return '<div style="' + STYLE_RAM_ROW + '">' +
+                '<input class="eq-ram-size" type="number" min="1" max="999"' +
+                ' style="' + STYLE_RAM_INPUT + '" ' +
+                'value="' + utils.escapeHtml(numVal) + '" placeholder="8">' +
+                '<span style="' + STYLE_UNIT_LABEL + '">GB</span>' +
+                '<select class="eq-ram-type" style="' + STYLE_RAM_SELECT + '">' +
                 ['DDR3','DDR4','DDR5','LPDDR4','LPDDR5'].map(function(t) {
                     return '<option value="' + t + '"' +
                         (t === r.type ? ' selected' : '') + '>' + t + '</option>';
                 }).join('') +
-                '<button type="button" ' +
-                'class="btn btn-sm btn-outline-danger" ' +
-                'onclick="this.closest(\'.eq-ram-row\').remove()">' +
-                '<i class="bi bi-x"></i></button></div>';
+                '</select>' +
+                '<button type="button" class="eq-ram-remove" ' +
+                'style="' + STYLE_REMOVE_BTN + '">' +
+                '<i class="bi bi-x"></i></button>' +
+                '</div>';
         }
 
+        // ---------- Storage-строка (только inline-стили) ----------
         function storageRowHtml(s) {
             var val = (s.capacity || '').trim();
             var suffix = 'GB';
@@ -741,139 +1295,188 @@
                 val = val.replace(/\s*GB/i, '');
             }
 
-            return '<div class="eq-storage-row">' +
-                '<input class="form-control form-control-sm eq-storage-cap" ' +
-                'value="' + utils.escapeHtml(val) + '" placeholder="512" ' +
-                'type="number" min="1" max="9999">' +
-                '<select class="form-select form-select-sm eq-storage-unit">' +
+            return '<div style="' + STYLE_STORAGE_ROW + '">' +
+                '<input class="eq-storage-cap" type="number" min="1" max="9999"' +
+                ' style="' + STYLE_STORAGE_INPUT + '" ' +
+                'value="' + utils.escapeHtml(val) + '" placeholder="512">' +
+                '<select class="eq-storage-unit" ' +
+                'style="' + STYLE_STORAGE_SELECT + '">' +
                 '<option value="GB"' + (suffix === 'GB' ? ' selected' : '') +
                 '>GB</option>' +
                 '<option value="TB"' + (suffix === 'TB' ? ' selected' : '') +
                 '>TB</option></select>' +
-                '<select class="form-select form-select-sm eq-storage-type">' +
+                '<select class="eq-storage-type" ' +
+                'style="' + STYLE_STORAGE_SELECT + '">' +
                 ['SSD','HDD','NVMe','SSD M.2','eMMC'].map(function(t) {
                     return '<option value="' + t + '"' +
                         (t === s.type ? ' selected' : '') + '>' + t + '</option>';
                 }).join('') +
-                '<button type="button" ' +
-                'class="btn btn-sm btn-outline-danger" ' +
-                'onclick="this.closest(\'.eq-storage-row\').remove()">' +
-                '<i class="bi bi-x"></i></button></div>';
+                '</select>' +
+                '<button type="button" class="eq-storage-remove" ' +
+                'style="' + STYLE_REMOVE_BTN + '">' +
+                '<i class="bi bi-x"></i></button>' +
+                '</div>';
         }
 
+        // ---------- Список выбранного ПО ----------
         function selectedSoftwareList() {
             if (software.length === 0) {
-                return '<div class="text-muted small p-2">' +
+                return '<div style="padding:4px 8px;font-size:12px;color:#a1a1aa;font-style:italic;">' +
                     '— ничего не выбрано —</div>';
             }
             return software.map(function(s, i) {
-                return '<div class="d-flex justify-content-between ' +
-                    'align-items-center mb-1 eq-software-item">' +
-                    '<span><i class="bi bi-window"></i> ' +
+                return '<div style="display:flex;justify-content:space-between;' +
+                    'align-items:center;gap:8px;padding:4px 8px;' +
+                    'background:#fff;border:1px solid #e8e8ec;border-radius:6px;' +
+                    'margin-bottom:4px;font-size:13px;">' +
+                    '<span style="flex:1;min-width:0;word-break:break-word;">' +
+                    '<i class="bi bi-window" style="color:#6366f1;margin-right:4px;"></i>' +
                     utils.escapeHtml(s) + '</span>' +
-                    '<button type="button" ' +
-                    'class="btn btn-sm btn-outline-danger" ' +
-                    'onclick="removeSoftwareAt(' + i + ')">' +
-                    '<i class="bi bi-x"></i></button></div>';
+                    '<button type="button" class="eq-soft-remove" ' +
+                    'data-index="' + i + '" ' +
+                    'style="width:24px;height:24px;padding:0;border:none;' +
+                    'background:transparent;color:#ef4444;cursor:pointer;' +
+                    'display:inline-flex;align-items:center;justify-content:center;' +
+                    'border-radius:4px;">' +
+                    '<i class="bi bi-x-lg" style="font-size:11px;"></i></button>' +
+                    '</div>';
             }).join('');
         }
 
+        // ---------- Список доступного ПО (чекбоксы) ----------
         function availableSoftwareList() {
             if (available.length === 0) {
-                return '<div class="text-muted small p-2">' +
+                return '<div style="padding:8px;font-size:12px;color:#a1a1aa;font-style:italic;">' +
                     'В лицензиях кабинета нет ПО.</div>';
             }
             return available.map(function(a) {
-                var checked = (software.indexOf(a.name) !== -1)
-                    ? ' checked' : '';
+                var checked = (software.indexOf(a.name) !== -1) ? ' checked' : '';
                 var dataName = utils.escapeHtml(a.name);
-                return '<label class="eq-software-check">' +
-                    '<input type="checkbox" data-software-name="' +
-                    dataName + '" ' + checked + '>' +
-                    '<span>' + utils.escapeHtml(a.name) +
+                return '<label style="display:flex;align-items:center;gap:8px;' +
+                    'padding:5px 8px;border-radius:6px;cursor:pointer;' +
+                    'font-size:13px;margin-bottom:2px;">' +
+                    '<input type="checkbox" data-software-name="' + dataName +
+                    '"' + checked + ' ' +
+                    'style="width:16px;height:16px;flex-shrink:0;margin:0;cursor:pointer;">' +
+                    '<span style="flex:1;word-break:break-word;">' +
+                    utils.escapeHtml(a.name) +
                     (a.type
-                        ? ' <small class="text-muted">(' +
+                        ? ' <small style="color:#a1a1aa;">(' +
                           utils.escapeHtml(a.type) + ')</small>'
                         : '') +
                     '</span></label>';
             }).join('');
         }
 
+        // ---------- HTML модалки ----------
         var modalHtml =
-            '<div class="text-start eq-pc-form">' +
-            '<div class="row g-2">' +
-                '<div class="col-md-6">' +
-                '<label class="form-label">Название *</label>' +
-                '<input id="eq-pc-name" class="form-control" value="' +
-                utils.escapeHtml(data.name || '') + '"></div>' +
-                '<div class="col-md-6">' +
-                '<label class="form-label">Инвентарный номер</label>' +
-                '<input id="eq-pc-inv" class="form-control" value="' +
-                utils.escapeHtml(data.inventory_number || '') + '"></div>' +
-                '<div class="col-md-6">' +
-                '<label class="form-label">Материнская плата</label>' +
-                '<input id="eq-pc-mb" class="form-control" value="' +
-                utils.escapeHtml(data.motherboard || '') + '"></div>' +
-                '<div class="col-md-6">' +
-                '<label class="form-label">Сокет материнской платы</label>' +
-                '<input id="eq-pc-socket" class="form-control" value="' +
-                utils.escapeHtml(data.motherboard_socket || '') +
+            '<div class="text-start" style="width:100%;">' +
+
+            // ===== Верхняя сетка 2×N =====
+            '<div style="' + STYLE_GRID_2COL + '">' +
+
+                '<div>' +
+                '<label style="' + STYLE_FORM_LABEL + '">Название *</label>' +
+                '<input id="eq-pc-name" style="' + STYLE_FORM_CONTROL + '" ' +
+                'value="' + utils.escapeHtml(data.name || '') + '"></div>' +
+
+                '<div>' +
+                '<label style="' + STYLE_FORM_LABEL + '">Инвентарный номер</label>' +
+                '<input id="eq-pc-inv" style="' + STYLE_FORM_CONTROL + '" ' +
+                'value="' + utils.escapeHtml(data.inventory_number || '') + '"></div>' +
+
+                '<div>' +
+                '<label style="' + STYLE_FORM_LABEL + '">Материнская плата</label>' +
+                '<input id="eq-pc-mb" style="' + STYLE_FORM_CONTROL + '" ' +
+                'value="' + utils.escapeHtml(data.motherboard || '') + '"></div>' +
+
+                '<div>' +
+                '<label style="' + STYLE_FORM_LABEL + '">Сокет материнской платы</label>' +
+                '<input id="eq-pc-socket" style="' + STYLE_FORM_CONTROL + '" ' +
+                'value="' + utils.escapeHtml(data.motherboard_socket || '') +
                 '" list="socket-list">' +
                 '<datalist id="socket-list">' +
                 '<option value="LGA1151"><option value="LGA1200">' +
                 '<option value="LGA1700"><option value="AM4">' +
                 '<option value="AM5"></datalist></div>' +
-                '<div class="col-md-6">' +
-                '<label class="form-label">Процессор</label>' +
-                '<input id="eq-pc-cpu" class="form-control" value="' +
-                utils.escapeHtml(data.cpu || '') + '"></div>' +
-                '<div class="col-md-6"><label class="form-label">IP-адрес</label>' +
-                '<input id="eq-pc-ip" class="form-control" value="' +
-                utils.escapeHtml(data.ip_address || '') + '"></div>' +
+
+                '<div>' +
+                '<label style="' + STYLE_FORM_LABEL + '">Процессор (CPU)</label>' +
+                '<input id="eq-pc-cpu" style="' + STYLE_FORM_CONTROL + '" ' +
+                'value="' + utils.escapeHtml(data.cpu || '') + '"></div>' +
+
+                '<div>' +
+                '<label style="' + STYLE_FORM_LABEL + '">Видеокарта (GPU)</label>' +
+                '<input id="eq-pc-gpu" style="' + STYLE_FORM_CONTROL + '" ' +
+                'value="' + utils.escapeHtml(data.gpu || '') + '" ' +
+                'placeholder="Например: NVIDIA GTX 1660"></div>' +
+
+                '<div>' +
+                '<label style="' + STYLE_FORM_LABEL + '">Блок питания (БП)</label>' +
+                '<input id="eq-pc-psu" style="' + STYLE_FORM_CONTROL + '" ' +
+                'value="' + utils.escapeHtml(data.psu || '') + '" ' +
+                'placeholder="Например: 500W Chieftec"></div>' +
+
+                '<div>' +
+                '<label style="' + STYLE_FORM_LABEL + '">IP-адрес</label>' +
+                '<div style="' + STYLE_IP_ROW + '">' +
+                '<input id="eq-pc-ip" style="' + STYLE_IP_INPUT + '" ' +
+                'value="' + utils.escapeHtml(data.ip_address || '') + '" ' +
+                'placeholder="Автоподбор..."' +
+                (isNew ? ' disabled' : '') + '>' +
+                (isNew
+                    ? '<button type="button" style="' + STYLE_IP_RELOAD + '" ' +
+                      'id="eq-pc-ip-reload" title="Подобрать заново">' +
+                      '<i class="bi bi-arrow-clockwise"></i></button>'
+                    : '') +
+                '</div></div>' +
+
             '</div>' +
-            '<div class="eq-form-block mt-3">' +
-                '<label class="form-label">ОЗУ ' +
-                '<small class="text-muted">(в GB)</small></label>' +
-                '<div id="eq-ram-container" class="eq-list-container">' +
+
+            // ===== ОЗУ =====
+            '<div style="' + STYLE_FORM_BLOCK + '">' +
+                '<label style="' + STYLE_FORM_LABEL + '">ОЗУ (в GB)</label>' +
+                '<div id="eq-ram-container">' +
                 ram.map(ramRowHtml).join('') + '</div>' +
-                '<button type="button" ' +
-                'class="btn btn-sm btn-outline-primary w-100 mt-1" ' +
-                'onclick="addRamRow()">' +
+                '<button type="button" id="eq-add-ram" ' +
+                'style="' + STYLE_FULL_BTN + '">' +
                 '<i class="bi bi-plus"></i> Добавить планку</button>' +
             '</div>' +
-            '<div class="eq-form-block mt-3">' +
-                '<label class="form-label">Диски</label>' +
-                '<div id="eq-storage-container" class="eq-list-container">' +
+
+            // ===== Диски =====
+            '<div style="' + STYLE_FORM_BLOCK + '">' +
+                '<label style="' + STYLE_FORM_LABEL + '">Диски</label>' +
+                '<div id="eq-storage-container">' +
                 storage.map(storageRowHtml).join('') + '</div>' +
-                '<button type="button" ' +
-                'class="btn btn-sm btn-outline-primary w-100 mt-1" ' +
-                'onclick="addStorageRow()">' +
+                '<button type="button" id="eq-add-storage" ' +
+                'style="' + STYLE_FULL_BTN + '">' +
                 '<i class="bi bi-plus"></i> Добавить диск</button>' +
             '</div>' +
-            '<div class="eq-form-block mt-3">' +
-                '<label class="form-label">' +
-                '<i class="bi bi-window-stack"></i> Установленное ПО</label>' +
-                '<div id="eq-software-selected" class="eq-selected-box">' +
+
+            // ===== Установленное ПО (без ручного ввода) =====
+            '<div style="' + STYLE_FORM_BLOCK + '">' +
+                '<label style="' + STYLE_FORM_LABEL + '">Установленное ПО</label>' +
+                '<div id="eq-software-selected" ' +
+                'style="' + STYLE_SELECTED_BOX + '">' +
                 selectedSoftwareList() + '</div>' +
-                '<button type="button" ' +
-                'class="btn btn-sm btn-outline-primary w-100 my-2" ' +
-                'onclick="toggleAvailableSoftware()">' +
+                '<button type="button" id="eq-toggle-soft" ' +
+                'style="' + STYLE_TOGGLE_SOFT + '">' +
                 '<i class="bi bi-list-check"></i> ' +
-                '<span id="eq-toggle-soft-label">' +
-                'Показать доступные ПО</span></button>' +
-                '<div id="eq-software-available" class="eq-available-box" ' +
-                'style="display:none">' + availableSoftwareList() + '</div>' +
-                '<div class="input-group input-group-sm mt-2">' +
-                '<input id="eq-manual-soft" class="form-control" ' +
-                'placeholder="Или введите название вручную">' +
-                '<button type="button" class="btn btn-outline-primary" ' +
-                'onclick="addManualSoftware()">' +
-                '<i class="bi bi-plus"></i> Добавить</button></div>' +
+                '<span id="eq-toggle-soft-label">Показать доступные ПО</span>' +
+                '</button>' +
+                '<div id="eq-software-available" ' +
+                'style="display:none;' + STYLE_AVAILABLE_BOX + '">' +
+                availableSoftwareList() + '</div>' +
             '</div>' +
-            '<div class="eq-form-block mt-3">' +
-                '<label class="form-label">Примечание</label>' +
-                '<textarea id="eq-pc-notes" class="form-control" rows="2">' +
-                utils.escapeHtml(data.notes || '') + '</textarea></div>' +
+
+            // ===== Примечание =====
+            '<div style="' + STYLE_FORM_BLOCK + '">' +
+                '<label style="' + STYLE_FORM_LABEL + '">Примечание</label>' +
+                '<textarea id="eq-pc-notes" rows="2" ' +
+                'style="' + STYLE_FORM_TEXTAREA + '">' +
+                utils.escapeHtml(data.notes || '') + '</textarea>' +
+            '</div>' +
+
             '</div>';
 
         Swal.fire({
@@ -885,53 +1488,36 @@
             cancelButtonText: 'Отмена',
             confirmButtonColor: '#28a745',
             didOpen: function() {
-                window.addRamRow = function() {
-                    var c = document.getElementById('eq-ram-container');
-                    if (!c) return;
-                    var div = document.createElement('div');
-                    div.className = 'eq-ram-row';
-                    div.innerHTML =
-                        '<input class="form-control form-control-sm ' +
-                        'eq-ram-size" placeholder="8" type="number" ' +
-                        'min="1" max="999">' +
-                        '<span class="eq-unit-label">GB</span>' +
-                        '<select class="form-select form-select-sm ' +
-                        'eq-ram-type">' +
-                        '<option>DDR3</option>' +
-                        '<option selected>DDR4</option>' +
-                        '<option>DDR5</option></select>' +
-                        '<button type="button" ' +
-                        'class="btn btn-sm btn-outline-danger" ' +
-                        'onclick="this.closest(\'.eq-ram-row\').remove()">' +
-                        '<i class="bi bi-x"></i></button>';
-                    c.appendChild(div);
-                };
+                // ---------- Автоподстановка IP для нового ПК ----------
+                if (isNew) {
+                    var $ip = $('#eq-pc-ip');
+                    function loadIp() {
+                        $ip.val('').prop('disabled', true)
+                            .attr('placeholder', 'Загрузка...');
+                        api.get('/api/cabinets/' + Cabinet().currentId + '/next-ip')
+                            .then(function(res) {
+                                if (res && res.success) {
+                                    $ip.val(res.next_ip)
+                                        .prop('disabled', false)
+                                        .attr('placeholder', '');
+                                } else {
+                                    $ip.prop('disabled', false)
+                                        .attr('placeholder', '192.168.1.100');
+                                }
+                            })
+                            .catch(function() {
+                                $ip.prop('disabled', false)
+                                    .attr('placeholder', '192.168.1.100');
+                            });
+                    }
+                    loadIp();
+                    $('#eq-pc-ip-reload').on('click', function(e) {
+                        e.preventDefault();
+                        loadIp();
+                    });
+                }
 
-                window.addStorageRow = function() {
-                    var c = document.getElementById('eq-storage-container');
-                    if (!c) return;
-                    var div = document.createElement('div');
-                    div.className = 'eq-storage-row';
-                    div.innerHTML =
-                        '<input class="form-control form-control-sm ' +
-                        'eq-storage-cap" placeholder="512" type="number" ' +
-                        'min="1" max="9999">' +
-                        '<select class="form-select form-select-sm ' +
-                        'eq-storage-unit">' +
-                        '<option value="GB" selected>GB</option>' +
-                        '<option value="TB">TB</option></select>' +
-                        '<select class="form-select form-select-sm ' +
-                        'eq-storage-type">' +
-                        '<option selected>SSD</option>' +
-                        '<option>HDD</option>' +
-                        '<option>NVMe</option></select>' +
-                        '<button type="button" ' +
-                        'class="btn btn-sm btn-outline-danger" ' +
-                        'onclick="this.closest(\'.eq-storage-row\').remove()">' +
-                        '<i class="bi bi-x"></i></button>';
-                    c.appendChild(div);
-                };
-
+                // ---------- Обновление UI ПО ----------
                 function refreshSelectedSoftware() {
                     var cont = document.getElementById('eq-software-selected');
                     if (cont) cont.innerHTML = selectedSoftwareList();
@@ -940,70 +1526,112 @@
                 function refreshAvailableCheckboxes() {
                     var list = document.getElementById('eq-software-available');
                     if (!list) return;
-                    var checkboxes = list.querySelectorAll(
+                    list.querySelectorAll(
                         'input[type="checkbox"][data-software-name]'
-                    );
-                    checkboxes.forEach(function(cb) {
+                    ).forEach(function(cb) {
                         var n = cb.getAttribute('data-software-name');
                         cb.checked = (software.indexOf(n) !== -1);
                     });
                 }
 
-                window.removeSoftwareAt = function(idx) {
-                    software.splice(idx, 1);
-                    refreshSelectedSoftware();
-                    refreshAvailableCheckboxes();
-                };
+                // ---------- RAM: добавить ----------
+                $('#eq-add-ram').on('click', function(e) {
+                    e.preventDefault();
+                    var c = document.getElementById('eq-ram-container');
+                    if (!c) return;
+                    var div = document.createElement('div');
+                    div.style.cssText = STYLE_RAM_ROW;
+                    div.innerHTML =
+                        '<input class="eq-ram-size" type="number" ' +
+                        'min="1" max="999" placeholder="8" ' +
+                        'style="' + STYLE_RAM_INPUT + '">' +
+                        '<span style="' + STYLE_UNIT_LABEL + '">GB</span>' +
+                        '<select class="eq-ram-type" ' +
+                        'style="' + STYLE_RAM_SELECT + '">' +
+                        '<option>DDR3</option>' +
+                        '<option selected>DDR4</option>' +
+                        '<option>DDR5</option></select>' +
+                        '<button type="button" class="eq-ram-remove" ' +
+                        'style="' + STYLE_REMOVE_BTN + '">' +
+                        '<i class="bi bi-x"></i></button>';
+                    c.appendChild(div);
+                });
 
-                window.toggleAvailableSoftware = function() {
-                    var block = document.getElementById(
-                        'eq-software-available'
-                    );
-                    var label = document.getElementById(
-                        'eq-toggle-soft-label'
-                    );
+                // ---------- Storage: добавить ----------
+                $('#eq-add-storage').on('click', function(e) {
+                    e.preventDefault();
+                    var c = document.getElementById('eq-storage-container');
+                    if (!c) return;
+                    var div = document.createElement('div');
+                    div.style.cssText = STYLE_STORAGE_ROW;
+                    div.innerHTML =
+                        '<input class="eq-storage-cap" type="number" ' +
+                        'min="1" max="9999" placeholder="512" ' +
+                        'style="' + STYLE_STORAGE_INPUT + '">' +
+                        '<select class="eq-storage-unit" ' +
+                        'style="' + STYLE_STORAGE_SELECT + '">' +
+                        '<option value="GB" selected>GB</option>' +
+                        '<option value="TB">TB</option></select>' +
+                        '<select class="eq-storage-type" ' +
+                        'style="' + STYLE_STORAGE_SELECT + '">' +
+                        '<option selected>SSD</option>' +
+                        '<option>HDD</option>' +
+                        '<option>NVMe</option></select>' +
+                        '<button type="button" class="eq-storage-remove" ' +
+                        'style="' + STYLE_REMOVE_BTN + '">' +
+                        '<i class="bi bi-x"></i></button>';
+                    c.appendChild(div);
+                });
+
+                // ---------- Удаление RAM/Storage ----------
+                $(document).off('click.eqRamRemove')
+                    .on('click.eqRamRemove', '.eq-ram-remove', function(e) {
+                        e.preventDefault();
+                        $(this).parent().remove();
+                    });
+
+                $(document).off('click.eqStorageRemove')
+                    .on('click.eqStorageRemove', '.eq-storage-remove', function(e) {
+                        e.preventDefault();
+                        $(this).parent().remove();
+                    });
+
+                // ---------- ПО: toggle доступного ----------
+                $('#eq-toggle-soft').on('click', function(e) {
+                    e.preventDefault();
+                    var block = document.getElementById('eq-software-available');
+                    var label = document.getElementById('eq-toggle-soft-label');
                     if (!block) return;
                     if (block.style.display === 'none') {
                         block.style.display = 'block';
-                        if (label) {
-                            label.textContent = 'Скрыть доступные ПО';
-                        }
+                        if (label) label.textContent = 'Скрыть доступные ПО';
                     } else {
                         block.style.display = 'none';
-                        if (label) {
-                            label.textContent = 'Показать доступные ПО';
-                        }
+                        if (label) label.textContent = 'Показать доступные ПО';
                     }
-                };
+                });
 
-                var listEl = document.getElementById('eq-software-available');
-                if (listEl) {
-                    listEl.addEventListener('change', function(e) {
-                        var cb = e.target;
-                        if (!cb || cb.type !== 'checkbox') return;
+                // ---------- ПО: чекбоксы ----------
+                $('#eq-software-available').on('change', 'input[type="checkbox"]',
+                    function() {
+                        var cb = this;
                         var name = cb.getAttribute('data-software-name');
                         if (!name) return;
                         var idx = software.indexOf(name);
                         if (cb.checked && idx === -1) software.push(name);
-                        else if (!cb.checked && idx !== -1) {
-                            software.splice(idx, 1);
-                        }
+                        else if (!cb.checked && idx !== -1) software.splice(idx, 1);
                         refreshSelectedSoftware();
                     });
-                }
 
-                window.addManualSoftware = function() {
-                    var input = document.getElementById('eq-manual-soft');
-                    if (!input) return;
-                    var v = (input.value || '').trim();
-                    if (!v) return;
-                    if (software.indexOf(v) === -1) {
-                        software.push(v);
-                        input.value = '';
+                // ---------- ПО: удаление из выбранного ----------
+                $('#eq-software-selected').on('click', '.eq-soft-remove',
+                    function(e) {
+                        e.preventDefault();
+                        var i = parseInt($(this).attr('data-index'), 10);
+                        software.splice(i, 1);
                         refreshSelectedSoftware();
                         refreshAvailableCheckboxes();
-                    }
-                };
+                    });
             },
             preConfirm: function() {
                 var name = Cabinet().getTrimmed('eq-pc-name');
@@ -1013,12 +1641,12 @@
                 }
 
                 var ramArr = [];
-                document.querySelectorAll('#eq-ram-container .eq-ram-row')
-                    .forEach(function(row) {
-                        var sizeEl = row.querySelector('.eq-ram-size');
+                document.querySelectorAll('#eq-ram-container .eq-ram-size')
+                    .forEach(function(el) {
+                        var row = el.parentNode;
                         var typeEl = row.querySelector('.eq-ram-type');
-                        if (!sizeEl || !typeEl) return;
-                        var val = (sizeEl.value || '').trim();
+                        if (!typeEl) return;
+                        var val = (el.value || '').trim();
                         if (val) ramArr.push({
                             size: val + ' GB',
                             type: typeEl.value,
@@ -1027,13 +1655,13 @@
 
                 var storageArr = [];
                 document.querySelectorAll(
-                    '#eq-storage-container .eq-storage-row'
-                ).forEach(function(row) {
-                    var capEl = row.querySelector('.eq-storage-cap');
+                    '#eq-storage-container .eq-storage-cap'
+                ).forEach(function(el) {
+                    var row = el.parentNode;
                     var typeEl = row.querySelector('.eq-storage-type');
                     var unitEl = row.querySelector('.eq-storage-unit');
-                    if (!capEl || !typeEl) return;
-                    var cap = (capEl.value || '').trim();
+                    if (!typeEl) return;
+                    var cap = (el.value || '').trim();
                     var unit = unitEl ? unitEl.value : 'GB';
                     if (cap) storageArr.push({
                         capacity: cap + ' ' + unit,
@@ -1046,6 +1674,8 @@
                     motherboard: Cabinet().getTrimmed('eq-pc-mb'),
                     motherboard_socket: Cabinet().getTrimmed('eq-pc-socket'),
                     cpu: Cabinet().getTrimmed('eq-pc-cpu'),
+                    gpu: Cabinet().getTrimmed('eq-pc-gpu'),
+                    psu: Cabinet().getTrimmed('eq-pc-psu'),
                     inventory_number: Cabinet().getTrimmed('eq-pc-inv'),
                     ip_address: Cabinet().getTrimmed('eq-pc-ip'),
                     ram: ramArr,
@@ -1302,13 +1932,15 @@
     mod.renderComputersSection = Devices.renderComputersSection;
     mod.renderPrintersSection = Devices.renderPrintersSection;
 
-    // Public API для inline onclick
     window.showAddNetwork = showAddNetwork;
     window.editNetwork = editNetwork;
     window.deleteNetwork = deleteNetwork;
     window.showAddComputer = showAddComputer;
     window.editComputer = editComputer;
     window.deleteComputer = deleteComputer;
+    window.duplicateComputer = duplicateComputer;
+    window.moveComputer = moveComputer;
+    window.movePrinter = movePrinter;
     window.viewComputer = viewComputer;
     window.viewPrinter = viewPrinter;
     window.pingPc = pingPc;

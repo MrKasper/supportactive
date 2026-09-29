@@ -191,5 +191,5 @@ def register_context_processors(app):
     def inject_app_config():
         return dict(
             ENABLE_SSE=app.config.get('ENABLE_SSE', True),
-            APP_VERSION='3.0',
+            APP_VERSION='3.1',
         )

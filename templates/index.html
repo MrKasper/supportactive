@@ -35,6 +35,20 @@
                 <span>Кабинеты</span>
             </a>
 
+            <div class="nav-section-title">Календари</div>
+           <a class="nav-link nav-item" data-page="tasks-calendar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                <span>Календарь заявок</span>
+           </a>
+            <a class="nav-link nav-item" data-page="schedules" data-role="admin,tech">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <span>Расписания</span>
+            </a>
+            <a class="nav-link nav-item" data-page="maintenance" data-role="admin,tech">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="m9 16 2 2 4-4"/></svg>
+                <span>Календарь ТО</span>
+            </a>
+
             <div class="nav-section-title">Учёт</div>
             <a class="nav-link nav-item" data-page="cartridges" data-role="admin,tech">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>
@@ -44,19 +58,27 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7a2 2 0 0 1 2 2m4 0a6 6 0 0 1-7.743 5.743L11 17H9v2H7v2H4a1 1 0 0 1-1-1v-2.586a1 1 0 0 1 .293-.707l5.964-5.964A6 6 0 1 1 21 9z"/></svg>
                 <span>Лицензии</span>
             </a>
+            <a class="nav-link nav-item" data-page="inventory" data-role="admin,tech">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                <span>Инвентаризация</span>
+            </a>
             <a class="nav-link nav-item" data-page="users" data-role="admin">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                 <span>Пользователи</span>
             </a>
-
-            <div class="nav-section-title">Инструменты</div>
             <a class="nav-link nav-item" data-page="contacts" data-role="admin,tech">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></svg>
                 <span>Внешние контакты</span>
             </a>
+
+            <div class="nav-section-title">Инструменты</div>
             <a class="nav-link nav-item" data-page="directory" data-role="admin">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
                 <span>Справочник</span>
+            </a>
+            <a class="nav-link nav-item" data-page="tags" data-role="admin,tech">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 12 22l-9-9V3h10z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>
+                <span>Теги</span>
             </a>
             <a class="nav-link nav-item" data-page="report" data-role="admin">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
@@ -366,6 +388,11 @@
                 <button class="btn-ghost" id="btnDeleteTask"
                         style="display: none; color: var(--danger); border-color: var(--danger); margin-right: auto;"
                         onclick="deleteCurrentTask()">🗑️ Удалить заявку</button>
+                <button class="btn-ghost" id="btnTaskTags"
+                        style="margin-right: auto;"
+                        onclick="App.Tags.openTaskTagsModal(currentTaskId)">
+                    <i class="bi bi-tags"></i> Теги
+                </button>
                 <button class="btn-ghost" onclick="closeModal('viewTaskModal')">Отмена</button>
                 <button class="btn-ghost" id="btnTakeTask"
                         style="display: none; color: var(--accent); border-color: var(--accent);"
@@ -458,6 +485,14 @@
                         <div class="field">
                             <label>Описание работы *</label>
                             <textarea class="form-control" name="description" rows="4" placeholder="Подробно опишите проблему или задачу..." required></textarea>
+                        </div>
+                    </div>
+                    <div class="form-row full">
+                        <div class="field">
+                            <label>Теги</label>
+                            <div class="tag-picker" id="createTaskTagsPicker">
+                                <span class="text-muted small">Загрузка…</span>
+                            </div>
                         </div>
                     </div>
                 </form>
@@ -833,6 +868,19 @@
 <script src="{{ url_for('static', filename='js/printer_card.js') }}"></script>
 <script src="{{ url_for('static', filename='js/computer_card.js') }}"></script>
 <script src="{{ url_for('static', filename='js/cabinet_documents.js') }}"></script>
+
+<!-- Теги и расписания -->
+<script src="{{ url_for('static', filename='js/tags.js') }}"></script>
+<script src="{{ url_for('static', filename='js/schedules.js') }}"></script>
+
+<!-- Календарь заявок + Конструктор отчётов -->
+<script src="{{ url_for('static', filename='js/tasks_calendar.js') }}"></script>
+<script src="{{ url_for('static', filename='js/reports_builder.js') }}"></script>
+
+<!-- Жизненный цикл / ТО / Инвентаризация -->
+<script src="{{ url_for('static', filename='js/equipment_lifecycle.js') }}"></script>
+<script src="{{ url_for('static', filename='js/maintenance_calendar.js') }}"></script>
+<script src="{{ url_for('static', filename='js/inventory.js') }}"></script>
 
 <!-- Горячие клавиши / мобильный UX / webpush -->
 <script src="{{ url_for('static', filename='js/hotkeys.js') }}"></script>

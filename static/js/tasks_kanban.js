@@ -191,6 +191,15 @@
         if (t.cabinet) chips += '<span class="kanban-chip">📁 ' + escapeHtmlLocal(t.cabinet) + '</span>';
         if (t.work_type) chips += '<span class="kanban-chip">🏷️ ' + escapeHtmlLocal(t.work_type) + '</span>';
 
+        var tagsHtml = '';
+        if (t.tags && t.tags.length > 0 && window.App.Tags) {
+            tagsHtml = '<div class="kanban-card-tags">' +
+                t.tags.map(function(tag) {
+                    return window.App.Tags.renderChip(tag, { small: true });
+                }).join('') +
+                '</div>';
+        }
+
         var deadlineHtml = '';
         if (t.deadline) {
             var dlDate = window.formatDateOnly ? window.formatDateOnly(t.deadline) : t.deadline;
@@ -218,6 +227,7 @@
             '</div>' +
             '<div class="kanban-card-title">' + escapeHtmlLocal(title) + '</div>' +
             (chips ? '<div class="kanban-card-chips">' + chips + '</div>' : '') +
+            tagsHtml +
             deadlineHtml +
             '<div class="kanban-card-foot">' +
             '<span>' + escapeHtmlLocal(fromUser) + '</span>' +

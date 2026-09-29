@@ -1,7 +1,8 @@
 # equipment_printers.py
 """
 Принтеры кабинета + привязка к ПК + импорт из Картриджей + QR-код +
-замена принтера / картриджа + драйверы (просмотр, загрузка, удаление).
+замена принтера / картриджа + драйверы (просмотр, загрузка, удаление) +
+перемещение между кабинетами.
 
 При замене картриджа — синхронизация с модулем «Картриджи».
 В модуль «Картриджи» пишется ТОЛЬКО ДАТА (без времени).
@@ -173,7 +174,6 @@ def _scan_drivers(model):
             is_common = (group == '_common')
             file_slug = group if group and not is_common else ''
 
-            # Матчинг: общие или по токенам
             if not is_common and not _is_file_match(rel, tokens):
                 continue
 
@@ -182,7 +182,6 @@ def _scan_drivers(model):
             except OSError:
                 size = 0
 
-            # Удалять можно только файлы из папки текущего принтера
             can_delete = (
                 not is_common
                 and file_slug == current_slug
@@ -232,7 +231,6 @@ def _append_replacement_date(dates_str, new_date):
     if not dates_str:
         return new_date
     parts = [d.strip() for d in dates_str.split(',') if d.strip()]
-    # Защита от дубля (на случай повторной синхронизации за ту же дату)
     if new_date in parts:
         return ','.join(parts)
     parts.append(new_date)
@@ -260,11 +258,8 @@ def _sync_cartridge_replacement(tx, cabinet_number, printer_model,
     printer_model = printer_model.strip()
     new_cartridge = (new_cartridge or '').strip()
 
-    # Гарантируем формат 'YYYY-MM-DD' — на случай, если кто-то
-    # случайно передал 'YYYY-MM-DD HH:MM:SS'.
     replacement_date = (replacement_date or '').strip()[:10]
 
-    # 1. Точное совпадение cabinet + printer + cartridge
     existing = tx.query('''
         SELECT id, replacement_dates FROM cartridges
         WHERE cabinet = ? AND printer = ? AND cartridge = ?
@@ -281,7 +276,6 @@ def _sync_cartridge_replacement(tx, cabinet_number, printer_model,
         )
         return {'action': 'updated_dates', 'id': existing['id']}
 
-    # 2. Новая запись
     new_id = tx.execute('''
         INSERT INTO cartridges
             (cabinet, full_name, printer, cartridge,
@@ -299,7 +293,6 @@ def _sync_cartridge_replacement(tx, cabinet_number, printer_model,
 
 
 def _invalidate_cartridges_cache():
-    """Сброс кеша статистики картриджей, чтобы UI обновился сразу."""
     try:
         from extensions import cache
         cache.delete('cartridges_stats')
@@ -619,7 +612,6 @@ def replace_cartridge(printer_id):
         if not cartridge:
             return jsonify({'success': False, 'error': 'Укажите картридж'}), 400
 
-        # Данные кабинета — для синхронизации с модулем «Картриджи»
         cab = db.query(
             'SELECT cabinet_number, responsible_person '
             'FROM cabinets WHERE id = ?',
@@ -629,13 +621,12 @@ def replace_cartridge(printer_id):
         responsible = (cab['responsible_person'] if cab else '') or ''
 
         old_cartridge = (old['cartridge'] or '').strip()
-        now = now_str()                         # 'YYYY-MM-DD HH:MM:SS'
-        today = now.split(' ')[0]               # 'YYYY-MM-DD' (только дата)
+        now = now_str()
+        today = now.split(' ')[0]
 
         sync_info = {'action': 'skipped'}
 
         with db.transaction(immediate=True) as tx:
-            # 1. Обновляем сам принтер — служебная дата с временем
             tx.execute('''
                 UPDATE cabinet_printers
                 SET cartridge = ?, last_cartridge_replaced_at = ?,
@@ -643,7 +634,6 @@ def replace_cartridge(printer_id):
                 WHERE id = ?
             ''', [cartridge, now, now, printer_id])
 
-            # 2. Синхронизация с таблицей cartridges — ТОЛЬКО ДАТА
             try:
                 sync_info = _sync_cartridge_replacement(
                     tx,
@@ -654,13 +644,11 @@ def replace_cartridge(printer_id):
                     today,
                 )
             except Exception as sync_err:
-                # Не валим основную операцию из-за синхронизации
                 log.warning(
                     f'[CARTRIDGE] sync to cartridges failed: {sync_err}'
                 )
                 sync_info = {'action': 'error', 'reason': str(sync_err)}
 
-        # Сброс кеша статистики картриджей
         if sync_info.get('action') in ('created', 'updated_dates'):
             _invalidate_cartridges_cache()
 
@@ -693,13 +681,115 @@ def replace_cartridge(printer_id):
 
 
 # ============================================================
+# ПЕРЕМЕЩЕНИЕ В ДРУГОЙ КАБИНЕТ
+# ============================================================
+
+@bp.route('/api/printers/<int:printer_id>/move', methods=['POST'])
+@role_required(*EDITOR_ROLES)
+def move_printer(printer_id):
+    """
+    Перемещает принтер в другой кабинет.
+    Body: { cabinet_id: N, ip_address?: '...' }
+
+    Логика:
+      • если принтер USB — отвязываем от ПК
+      • для сетевого принтера можно задать новый IP
+      • sort_order выставляется в конце списка целевого кабинета
+    """
+    try:
+        old = db.query(
+            'SELECT * FROM cabinet_printers WHERE id = ?',
+            [printer_id], one=True,
+        )
+        if not old:
+            return jsonify({
+                'success': False, 'error': 'Принтер не найден'
+            }), 404
+
+        data = request.get_json(silent=True) or {}
+        try:
+            new_cabinet_id = int(data.get('cabinet_id'))
+        except (TypeError, ValueError):
+            return jsonify({
+                'success': False, 'error': 'Некорректный cabinet_id'
+            }), 400
+
+        if new_cabinet_id == old['cabinet_id']:
+            return jsonify({
+                'success': False,
+                'error': 'Принтер уже находится в этом кабинете',
+            }), 400
+
+        new_cab = db.query(
+            'SELECT id, cabinet_number FROM cabinets WHERE id = ?',
+            [new_cabinet_id], one=True,
+        )
+        if not new_cab:
+            return jsonify({
+                'success': False, 'error': 'Целевой кабинет не найден'
+            }), 404
+
+        conn_type = old['connection_type'] or CONN_NETWORK
+        new_ip = (data.get('ip_address') or '').strip()
+        if conn_type != CONN_NETWORK:
+            new_ip = ''
+            new_pc_id = None
+        else:
+            new_pc_id = None
+
+        order = next_sort_order('cabinet_printers', new_cabinet_id)
+        now = now_str()
+
+        with db.transaction(immediate=True) as tx:
+            tx.execute('''
+                UPDATE cabinet_printers
+                SET cabinet_id = ?, ip_address = ?,
+                    connected_to_pc_id = ?, sort_order = ?,
+                    updated_at = ?
+                WHERE id = ?
+            ''', [
+                new_cabinet_id,
+                new_ip,
+                new_pc_id,
+                order,
+                now,
+                printer_id,
+            ])
+
+        try:
+            from audit import log_action
+            log_action('update', 'cabinet_printers', printer_id, {
+                'action': 'move',
+                'from_cabinet': old['cabinet_id'],
+                'to_cabinet': new_cabinet_id,
+                'new_ip': new_ip,
+            })
+        except Exception:
+            pass
+
+        log.info(
+            f'[PRINTER] Принтер #{printer_id} перемещён '
+            f'из кабинета #{old["cabinet_id"]} в #{new_cabinet_id}'
+        )
+
+        return jsonify({
+            'success': True,
+            'cabinet_id': new_cabinet_id,
+            'ip_address': new_ip,
+            'message': f'Принтер перемещён в «{new_cab["cabinet_number"]}»',
+        })
+    except Exception as e:
+        log.exception('move_printer error')
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
 # ДРАЙВЕРЫ
 # ============================================================
 
 @bp.route('/api/printers/<int:printer_id>/drivers')
 @login_required
 def list_printer_drivers(printer_id):
-    """Список драйверов для принтера."""
     try:
         pr = db.query(
             'SELECT id, model FROM cabinet_printers WHERE id = ?',
@@ -724,7 +814,6 @@ def list_printer_drivers(printer_id):
 @bp.route('/api/printers/<int:printer_id>/drivers/download')
 @login_required
 def download_printer_driver(printer_id):
-    """Скачивание драйвера. Параметр path — относительный путь."""
     try:
         pr = db.query(
             'SELECT id, model FROM cabinet_printers WHERE id = ?',
@@ -741,7 +830,6 @@ def download_printer_driver(printer_id):
         if not full or not os.path.isfile(full):
             return jsonify({'error': 'Файл не найден'}), 404
 
-        # Проверка: файл действительно относится к этому принтеру
         rel_norm = rel_path.replace('\\', '/')
         parts = rel_norm.split('/')
         is_common = (len(parts) > 1 and parts[0] == '_common')
@@ -770,10 +858,6 @@ def download_printer_driver(printer_id):
 @bp.route('/api/printers/<int:printer_id>/drivers/upload', methods=['POST'])
 @role_required(*EDITOR_ROLES)
 def upload_printer_driver(printer_id):
-    """
-    Загрузка драйвера для принтера.
-    Файл кладётся в DRIVERS_FOLDER/<model_slug>/.
-    """
     try:
         pr = db.query(
             'SELECT id, model FROM cabinet_printers WHERE id = ?',
@@ -789,7 +873,6 @@ def upload_printer_driver(printer_id):
         if not file or not file.filename:
             return jsonify({'success': False, 'error': 'Файл не выбран'}), 400
 
-        # Проверка расширения
         original_name = file.filename
         ext = original_name.rsplit('.', 1)[-1].lower() if '.' in original_name else ''
         if not ext or ext not in _ALLOWED_DRIVER_EXT:
@@ -799,7 +882,6 @@ def upload_printer_driver(printer_id):
                          ', '.join(sorted(_ALLOWED_DRIVER_EXT)),
             }), 400
 
-        # Проверка размера
         file.seek(0, os.SEEK_END)
         size = file.tell()
         file.seek(0)
@@ -812,7 +894,6 @@ def upload_printer_driver(printer_id):
                 'error': f'Файл слишком большой (макс. {mb} МБ)',
             }), 413
 
-        # Куда кладём: DRIVERS_FOLDER/<model_slug>/
         slug = _model_slug(pr['model'] or '')
         target_dir = os.path.join(_get_drivers_folder(), slug)
         try:
@@ -824,13 +905,11 @@ def upload_printer_driver(printer_id):
                 'error': f'Не удалось создать папку: {e}',
             }), 500
 
-        # Безопасное имя
         from werkzeug.utils import secure_filename
         base_name = secure_filename(original_name)
         if not base_name:
             base_name = original_name
 
-        # Если файл с таким именем уже есть — добавим суффикс
         final_name = base_name
         target_path = os.path.join(target_dir, final_name)
         if os.path.exists(target_path):
@@ -880,11 +959,6 @@ def upload_printer_driver(printer_id):
 @bp.route('/api/printers/<int:printer_id>/drivers/delete', methods=['POST'])
 @role_required(*EDITOR_ROLES)
 def delete_printer_driver(printer_id):
-    """
-    Удаление драйвера. Параметр path в JSON-body.
-    Удалять можно только файлы из папки текущего принтера (по slug модели).
-    Файлы из _common защищены.
-    """
     try:
         pr = db.query(
             'SELECT id, model FROM cabinet_printers WHERE id = ?',
@@ -898,7 +972,6 @@ def delete_printer_driver(printer_id):
         if not rel_path:
             return jsonify({'success': False, 'error': 'Не указан путь'}), 400
 
-        # Защита от path traversal
         full = _resolve_safe_path(rel_path)
         if not full or not os.path.isfile(full):
             return jsonify({'success': False, 'error': 'Файл не найден'}), 404
@@ -934,7 +1007,6 @@ def delete_printer_driver(printer_id):
                 'error': f'Не удалось удалить файл: {e}',
             }), 500
 
-        # Если папка пустая — удаляем её
         try:
             dir_path = os.path.dirname(full)
             if os.path.isdir(dir_path) and not os.listdir(dir_path):

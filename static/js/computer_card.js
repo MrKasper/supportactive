@@ -1,5 +1,5 @@
 // static/js/computer_card.js
-// Карточка ПК: RAM/диски с историей замен + периферия + мониторы.
+// Карточка ПК: RAM/диски с историей замен + периферия + мониторы + ПО + ЖЦ.
 
 (function() {
     'use strict';
@@ -124,7 +124,6 @@
             return [v.model, v.inventory_number ? '(' + v.inventory_number + ')' : '']
                 .filter(Boolean).join(' ');
         }
-        // Периферия
         if (v.model) return v.model;
         return JSON.stringify(v);
     }
@@ -160,6 +159,7 @@
         var ramArr = normalizeArr(pc.ram);
         var storageArr = normalizeArr(pc.storage);
         var monitorsArr = normalizeArr(pc.monitors);
+        var softwareArr = normalizeArr(pc.software);
         var speakers = normalizeObj(pc.speakers);
         var webcam = normalizeObj(pc.webcam);
         var headphones = normalizeObj(pc.headphones);
@@ -204,6 +204,12 @@
         if (pc.cpu) {
             html += specRow('cpu', 'bi-cpu', 'Процессор', pc.cpu);
         }
+        if (pc.gpu) {
+            html += specRow('gpu', 'bi-gpu-card', 'Видеокарта', pc.gpu);
+        }
+        if (pc.psu) {
+            html += specRow('psu', 'bi-plug', 'Блок питания', pc.psu);
+        }
         if (pc.ip_address) {
             html += specRow('ip', 'bi-globe', 'IP-адрес',
                 '<code>' + esc(pc.ip_address) + '</code>');
@@ -219,6 +225,28 @@
                 esc(lastPing) + ')</span>' +
                 '</div>';
         html += '</div>';
+
+        // ---------- Жизненный цикл ----------
+        if (window.App.EquipmentLifecycle && editor) {
+            html += '<div class="cc-section" data-cc-section="lifecycle">' +
+                '<div class="cc-section-head">' +
+                '<span class="cc-section-title">' +
+                '<i class="bi bi-clock-history"></i> Жизненный цикл</span>' +
+                '<button type="button" class="cc-btn cc-btn-add" ' +
+                'data-cc-open-lifecycle="1">' +
+                '<i class="bi bi-box-arrow-in-right"></i> Открыть</button>' +
+                '</div>' +
+                '<div class="cc-section-body">' +
+                '<div class="cc-spec-row">' +
+                '<span class="cc-spec-icon"><i class="bi bi-info-circle"></i></span>' +
+                '<span class="cc-spec-label">Статус:</span>' +
+                '<span class="cc-spec-value">' +
+                (window.App.EquipmentLifecycle.statusBadge
+                    ? window.App.EquipmentLifecycle.statusBadge(pc.life_status || 'active')
+                    : '—') +
+                '</span></div>' +
+                '</div></div>';
+        }
 
         // ---------- ОЗУ ----------
         html += renderArraySection({
@@ -242,6 +270,9 @@
 
         // ---------- Мониторы ----------
         html += renderMonitorsSection(monitorsArr, editor);
+
+        // ---------- Установленное ПО ----------
+        html += renderSoftwareSection(softwareArr, editor);
 
         // ---------- Периферия ----------
         html += '<div class="cc-section" data-cc-section="peripherals">';
@@ -339,7 +370,6 @@
         }
         html += '</div>';
 
-        // История
         html += '<div class="cc-history-toggle" ' +
                 'data-cc-history="' + type + '">' +
                 '<i class="bi bi-clock-history"></i> ' +
@@ -413,7 +443,6 @@
         }
         html += '</div>';
 
-        // История
         html += '<div class="cc-history-toggle" ' +
                 'data-cc-history="monitors">' +
                 '<i class="bi bi-clock-history"></i> ' +
@@ -423,6 +452,45 @@
         html += '<div class="cc-history-body" style="display:none"></div>';
 
         html += '</div>';
+        return html;
+    }
+
+    // ============================================================
+    // СЕКЦИЯ УСТАНОВЛЕННОГО ПО (новая)
+    // ============================================================
+    function renderSoftwareSection(software, editor) {
+        var html = '<div class="cc-section" data-cc-section="software">';
+        html += '<div class="cc-section-head">';
+        html += '<span class="cc-section-title">' +
+                '<i class="bi bi-window-stack"></i> Установленное ПО ' +
+                (software.length > 0
+                    ? '<span class="badge bg-secondary">' + software.length + '</span>'
+                    : '') +
+                '</span>';
+        if (editor) {
+            html += '<button type="button" class="cc-btn cc-btn-add" ' +
+                    'data-cc-edit-software="1">' +
+                    '<i class="bi bi-pencil"></i> Редактировать</button>';
+        }
+        html += '</div>';
+        html += '<div class="cc-section-body">';
+
+        if (software.length === 0) {
+            html += '<div class="cc-empty">' +
+                    '<i class="bi bi-window"></i> ' +
+                    'ПО не указано</div>';
+        } else {
+            html += '<div class="cc-software-list">';
+            software.forEach(function(s) {
+                var name = typeof s === 'string' ? s : (s.name || '—');
+                html += '<span class="cc-software-chip">' +
+                        '<i class="bi bi-window"></i> ' +
+                        esc(name) + '</span>';
+            });
+            html += '</div>';
+        }
+
+        html += '</div></div>';
         return html;
     }
 
@@ -530,7 +598,7 @@
                     customClass: { popup: 'swal-computer-card' },
                     padding: 0,
                     didOpen: function() {
-                        initCardHandlers(pcId, pc);
+                        initCardHandlers(pcId, pc, cab);
                     },
                 });
             })
@@ -542,7 +610,7 @@
     // ============================================================
     // ОБРАБОТЧИКИ ВНУТРИ КАРТОЧКИ
     // ============================================================
-    function initCardHandlers(pcId, pc) {
+    function initCardHandlers(pcId, pc, cabinet) {
         var $root = $('.swal-computer-card');
 
         // ----- История: toggle -----
@@ -572,6 +640,19 @@
             } else {
                 $body.slideDown(180);
             }
+        });
+
+        // ----- Жизненный цикл: открыть -----
+        $root.on('click', '[data-cc-open-lifecycle]', function(e) {
+            e.stopPropagation();
+            if (!window.App.EquipmentLifecycle) return;
+            window.App.EquipmentLifecycle.openForComputer(pc, cabinet);
+        });
+
+        // ----- Установленное ПО: редактировать -----
+        $root.on('click', '[data-cc-edit-software]', function(e) {
+            e.stopPropagation();
+            openSoftwareEditor(pcId, pc);
         });
 
         // ----- Замена RAM/диска/монитора -----
@@ -619,6 +700,174 @@
         $root.on('click', '[data-cc-remove-periph]', function() {
             var key = $(this).data('cc-remove-periph');
             openRemovePeripheral(pcId, key);
+        });
+    }
+
+    // ============================================================
+    // МОДАЛКА РЕДАКТИРОВАНИЯ ПО
+    // ============================================================
+    function openSoftwareEditor(pcId, pc) {
+        var currentSoftware = normalizeArr(pc.software).map(function(s) {
+            return typeof s === 'string' ? s : (s.name || '');
+        }).filter(Boolean);
+
+        // Параллельно тянем ПО из лицензий кабинета
+        var cabId = pc.cabinet_id;
+        var availablePromise = cabId
+            ? api.get('/api/cabinets/' + cabId + '/available-software')
+                .catch(function() { return []; })
+            : Promise.resolve([]);
+
+        availablePromise.then(function(available) {
+            available = Array.isArray(available) ? available : [];
+
+            // Рабочая копия — строки, без дублей
+            var software = currentSoftware.slice();
+            var seen = {};
+            software = software.filter(function(s) {
+                if (seen[s]) return false;
+                seen[s] = true;
+                return true;
+            });
+
+            function buildList() {
+                if (software.length === 0) {
+                    return '<div class="text-muted small p-2">' +
+                           '— ничего не выбрано —</div>';
+                }
+                return software.map(function(s, i) {
+                    return '<div class="d-flex justify-content-between ' +
+                        'align-items-center mb-1 eq-software-item">' +
+                        '<span><i class="bi bi-window"></i> ' +
+                        esc(s) + '</span>' +
+                        '<button type="button" ' +
+                        'class="btn btn-sm btn-outline-danger js-sw-remove" ' +
+                        'data-index="' + i + '">' +
+                        '<i class="bi bi-x"></i></button></div>';
+                }).join('');
+            }
+
+            function buildAvailable() {
+                if (available.length === 0) {
+                    return '<div class="text-muted small p-2">' +
+                        'В лицензиях кабинета нет ПО.</div>';
+                }
+                return available.map(function(a) {
+                    var checked = (software.indexOf(a.name) !== -1)
+                        ? ' checked' : '';
+                    return '<label class="eq-software-check">' +
+                        '<input type="checkbox" ' +
+                        'data-software-name="' + esc(a.name) + '" ' +
+                        checked + '>' +
+                        '<span>' + esc(a.name) +
+                        (a.type
+                            ? ' <small class="text-muted">(' +
+                              esc(a.type) + ')</small>'
+                            : '') +
+                        '</span></label>';
+                }).join('');
+            }
+
+            var html =
+                '<div class="text-start">' +
+                '<div class="eq-form-block">' +
+                '<label class="form-label">' +
+                '<i class="bi bi-window-stack"></i> ' +
+                'Выбранное ПО</label>' +
+                '<div id="sw-selected" class="eq-selected-box">' +
+                buildList() + '</div>' +
+                '</div>' +
+
+                '<div class="eq-form-block mt-3">' +
+                '<label class="form-label">Доступно в лицензиях кабинета</label>' +
+                '<div id="sw-available" class="eq-available-box">' +
+                buildAvailable() + '</div>' +
+                '</div>' +
+
+                '<div class="eq-form-block mt-3">' +
+                '<label class="form-label">Добавить вручную</label>' +
+                '<div class="input-group input-group-sm">' +
+                '<input id="sw-manual" class="form-control" ' +
+                'placeholder="Например: Windows 10 Pro">' +
+                '<button type="button" class="btn btn-outline-primary" ' +
+                'id="sw-add-manual">' +
+                '<i class="bi bi-plus"></i> Добавить</button>' +
+                '</div>' +
+                '</div>' +
+                '</div>';
+
+            Swal.fire({
+                title: '<i class="bi bi-pencil-square"></i> ' +
+                       'Установленное ПО',
+                html: html,
+                width: 640,
+                showCancelButton: true,
+                confirmButtonText: 'Сохранить',
+                cancelButtonText: 'Отмена',
+                confirmButtonColor: '#28a745',
+                didOpen: function() {
+                    function refreshSelected() {
+                        $('#sw-selected').html(buildList());
+                    }
+                    function refreshAvailable() {
+                        $('#sw-available input[type="checkbox"]').each(function() {
+                            var n = $(this).attr('data-software-name');
+                            $(this).prop('checked', software.indexOf(n) !== -1);
+                        });
+                    }
+
+                    $('#sw-available').on('change', 'input[type="checkbox"]',
+                        function() {
+                            var name = $(this).attr('data-software-name');
+                            var idx = software.indexOf(name);
+                            if (this.checked && idx === -1) {
+                                software.push(name);
+                            } else if (!this.checked && idx !== -1) {
+                                software.splice(idx, 1);
+                            }
+                            refreshSelected();
+                        });
+
+                    $('#sw-selected').on('click', '.js-sw-remove', function(e) {
+                        e.preventDefault();
+                        var i = parseInt($(this).attr('data-index'), 10);
+                        software.splice(i, 1);
+                        refreshSelected();
+                        refreshAvailable();
+                    });
+
+                    $('#sw-add-manual').on('click', function(e) {
+                        e.preventDefault();
+                        var v = ($('#sw-manual').val() || '').trim();
+                        if (!v) return;
+                        if (software.indexOf(v) === -1) {
+                            software.push(v);
+                            $('#sw-manual').val('');
+                            refreshSelected();
+                            refreshAvailable();
+                        }
+                    });
+                },
+                preConfirm: function() {
+                    return software.slice();
+                },
+            }).then(function(r) {
+                if (!r.isConfirmed) return;
+
+                api.put('/api/computers/' + pcId + '/software',
+                        { software: r.value })
+                    .then(function(res) {
+                        if (res.success) {
+                            utils.showSuccessMessage('ПО сохранено');
+                            reloadAndReopen(pcId);
+                        } else {
+                            utils.showErrorMessage(res.error);
+                        }
+                    })
+                    .catch(function(err) {
+                        utils.showErrorMessage(err.message || 'Ошибка');
+                    });
+            });
         });
     }
 

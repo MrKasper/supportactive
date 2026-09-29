@@ -81,6 +81,32 @@ def _is_transition_allowed(from_status, to_status, role):
 
 
 # ============================================================
+# ХЕЛПЕР: привязка тегов к заявке
+# ============================================================
+def _apply_tags(tx, task_id, tag_ids, now_str):
+    """
+    Заменяет теги заявки. Требует открытой транзакции tx.
+    tag_ids — список (может содержать строки).
+    """
+    tx.execute('DELETE FROM task_tags WHERE task_id = ?', [task_id])
+    for tid in tag_ids or []:
+        try:
+            tid_int = int(tid)
+        except (TypeError, ValueError):
+            continue
+        valid = tx.query(
+            'SELECT id FROM tags WHERE id = ? AND deleted_at IS NULL',
+            [tid_int], one=True,
+        )
+        if not valid:
+            continue
+        tx.execute('''
+            INSERT OR IGNORE INTO task_tags (task_id, tag_id, created_at)
+            VALUES (?, ?, ?)
+        ''', [task_id, tid_int, now_str])
+
+
+# ============================================================
 # ДЕТАЛИ ЗАЯВКИ
 # ============================================================
 
@@ -116,10 +142,23 @@ def get_task(task_id):
             [task_id], one=True,
         )['c']
 
+        # Теги заявки
+        tag_rows = db.query('''
+            SELECT t.id, t.name, t.color
+            FROM task_tags tt
+            JOIN tags t ON t.id = tt.tag_id
+            WHERE tt.task_id = ? AND t.deleted_at IS NULL
+            ORDER BY t.name
+        ''', [task_id])
+
         result = dict(task)
         result['history'] = [dict(h) for h in history]
         result['attachments_count'] = att_count
         result['comments_count'] = com_count
+        result['tags'] = [
+            {'id': t['id'], 'name': t['name'], 'color': t['color']}
+            for t in tag_rows
+        ]
         return jsonify(result)
     except Exception as e:
         log.exception('Ошибка получения заявки')
@@ -176,6 +215,8 @@ def create_task():
         else:
             assistant = (data.get('assistant') or '').strip()
 
+        now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
         try:
             with db.transaction(immediate=True) as tx:
                 task_id = tx.execute('''
@@ -193,9 +234,12 @@ def create_task():
                     data.get('priority', 'Средний'),
                     executor, assistant, STATUS_NEW,
                     session['user_id'],
-                    datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                    now_str,
                     duration_minutes,
                 ])
+
+                # Привязка тегов
+                _apply_tags(tx, task_id, data.get('tag_ids') or [], now_str)
         except sqlite3.IntegrityError:
             return jsonify({
                 'success': False,
@@ -210,6 +254,7 @@ def create_task():
             'description': data['description'][:100],
             'cabinet': data.get('cabinet', ''),
             'executor': executor,
+            'tags': len(data.get('tag_ids') or []),
         })
 
         notify_new_task(
@@ -284,6 +329,11 @@ def update_task(task_id):
                 data.get('priority', old['priority']),
                 task_id,
             ])
+
+            # Обновление тегов (если переданы)
+            if 'tag_ids' in data:
+                now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                _apply_tags(tx, task_id, data.get('tag_ids') or [], now_str)
 
         log_action('update', 'task', task_id, {'changes': len(changes)})
         invalidate_task_caches()
@@ -565,6 +615,7 @@ def delete_task(task_id):
             tx.execute('DELETE FROM task_history WHERE task_id = ?', [task_id])
             tx.execute('DELETE FROM task_comments WHERE task_id = ?', [task_id])
             tx.execute('DELETE FROM task_attachments WHERE task_id = ?', [task_id])
+            tx.execute('DELETE FROM task_tags WHERE task_id = ?', [task_id])
             tx.execute('DELETE FROM tasks WHERE id = ?', [task_id])
 
         invalidate_task_caches()

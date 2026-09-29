@@ -30,6 +30,30 @@
     };
 
     // ============================================================
+    // ЗАГОЛОВКИ СТРАНИЦ (topbar)
+    // ============================================================
+    var PAGE_TITLES = {
+        'tasks':           'Заявки',
+        'cabinets-manage': 'Кабинеты',
+        'cartridges':      'Картриджи',
+        'licenses':        'Лицензии',
+        'users':           'Пользователи',
+        'contacts':        'Внешние контакты',
+        'directory':       'Справочник',
+        'tags':            'Теги',
+        'schedules':       'Расписания',
+        'maintenance':     'Календарь ТО',
+        'inventory':       'Инвентаризация',
+        'tasks-calendar':  'Календарь заявок',
+        'report':          'Конструктор отчётов',
+    };
+
+    function setTopbarTitle(pageName) {
+        var t = PAGE_TITLES[pageName] || 'Support Active';
+        $('#topbarTitleText').text(t);
+    }
+
+    // ============================================================
     // ИНИЦИАЛИЗАЦИЯ
     // ============================================================
     function init() {
@@ -235,6 +259,9 @@
             return;
         }
 
+        // Обновляем заголовок topbar
+        setTopbarTitle(pageName);
+
         $('.sidebar .nav-link').removeClass('active');
         $('.sidebar .nav-link[data-page="' + pageName + '"]').addClass('active');
 
@@ -291,6 +318,11 @@
             'directory': window.App.Directory,
             'cabinets-manage': window.App.CabinetsManage,
             'report': window.App.Reports,
+            'tags': window.App.Tags,
+            'schedules': window.App.Schedules,
+            'maintenance': window.App.Maintenance,
+            'inventory': window.App.Inventory,
+            'tasks-calendar': window.App.TasksCalendar,
         };
 
         var module = moduleMap[pageName];
@@ -341,9 +373,11 @@
     mod.loadPage = loadPage;
     mod.refreshData = refreshData;
     mod.setupInterfaceByRole = setupInterfaceByRole;
+    mod.setTopbarTitle = setTopbarTitle;
 
     window.loadPage = loadPage;
     window.refreshData = refreshData;
+    window.setTopbarTitle = setTopbarTitle;
 
     $(document).ready(function() {
         init();

@@ -195,6 +195,10 @@ def _register_blueprints(app):
     from comments import comments_bp
     from dashboard import dashboard_bp
 
+    # ---------- Теги и расписания ----------
+    from tags import tags_bp
+    from schedules import schedules_bp
+
     # ---------- Публичные страницы для QR ----------
     from public_qr import public_qr_bp
 
@@ -215,6 +219,15 @@ def _register_blueprints(app):
     from equipment_computers import bp as equipment_computers_bp
     from equipment_printers import bp as equipment_printers_bp
     from equipment_documents import bp as equipment_documents_bp
+
+    # ---------- Жизненный цикл / ТО / Инвентаризация ----------
+    from equipment_lifecycle import bp as equipment_lifecycle_bp
+    from maintenance_calendar import bp as maintenance_calendar_bp
+    from inventory import bp as inventory_bp
+
+    # ---------- Календарь заявок + Конструктор отчётов ----------
+    from tasks_calendar import tasks_calendar_bp
+    from reports_builder import reports_builder_bp
 
     all_blueprints = (
         # Ядро
@@ -243,6 +256,10 @@ def _register_blueprints(app):
         comments_bp,
         dashboard_bp,
 
+        # Теги и расписания
+        tags_bp,
+        schedules_bp,
+
         # QR
         public_qr_bp,
 
@@ -263,6 +280,15 @@ def _register_blueprints(app):
         equipment_computers_bp,
         equipment_printers_bp,
         equipment_documents_bp,
+
+        # Жизненный цикл / ТО / Инвентаризация
+        equipment_lifecycle_bp,
+        maintenance_calendar_bp,
+        inventory_bp,
+
+        # Календарь заявок + Конструктор отчётов
+        tasks_calendar_bp,
+        reports_builder_bp,
     )
 
     for bp in all_blueprints:
@@ -281,7 +307,7 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
 
     log.info('=' * 60)
-    log.info('Support Active System v3.0')
+    log.info('Support Active System v3.1')
     log.info(f'Режим: {"DEBUG" if debug_mode else "PRODUCTION"}')
     log.info(f'Сервер: http://{host}:{port}')
     log.info(f'Сессии: {app.config.get("SESSION_TYPE", "filesystem")}')

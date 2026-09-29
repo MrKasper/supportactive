@@ -30,6 +30,32 @@ _ALLOWED_SORT_FIELDS = (
 
 
 # ============================================================
+# ХЕЛПЕР: теги для списка задач
+# ============================================================
+def _load_tags_map(task_ids):
+    """Возвращает {task_id: [ {id, name, color}, ... ]}."""
+    if not task_ids:
+        return {}
+    placeholders = ','.join('?' * len(task_ids))
+    rows = db.query(f'''
+        SELECT tt.task_id, t.id, t.name, t.color
+        FROM task_tags tt
+        JOIN tags t ON t.id = tt.tag_id
+        WHERE tt.task_id IN ({placeholders})
+          AND t.deleted_at IS NULL
+        ORDER BY t.name
+    ''', task_ids)
+    tags_map = {}
+    for r in rows:
+        tags_map.setdefault(r['task_id'], []).append({
+            'id': r['id'],
+            'name': r['name'],
+            'color': r['color'],
+        })
+    return tags_map
+
+
+# ============================================================
 # СТАТИСТИКА
 # ============================================================
 
@@ -138,6 +164,7 @@ def get_tasks():
         search = request.args.get('search', '').strip()
         created_by = request.args.get('created_by', '').strip()
         for_technician = request.args.get('for_technician', '').strip()
+        tags_filter = request.args.get('tags', '').strip()
         sort_by = request.args.get('sort_by', 'created_date').strip()
         sort_order = request.args.get('sort_order', 'DESC').strip().upper()
 
@@ -180,10 +207,24 @@ def get_tasks():
             where += ' AND created_by = ?'
             params.append(created_by)
 
+        # ---------- Фильтр по тегам ----------
+        if tags_filter:
+            tag_ids = []
+            for x in tags_filter.split(','):
+                x = x.strip()
+                if x.isdigit():
+                    tag_ids.append(int(x))
+            if tag_ids:
+                placeholders = ','.join('?' * len(tag_ids))
+                where += (
+                    f' AND id IN ('
+                    f'SELECT task_id FROM task_tags '
+                    f'WHERE tag_id IN ({placeholders})'
+                    f')'
+                )
+                params.extend(tag_ids)
+
         # ---------- Специальный фильтр для Техника ----------
-        # Техник видит:
-        #   • свои заявки (executor = он)
-        #   • «Новое» без назначенного исполнителя (чтобы мог взять)
         if for_technician:
             where += (
                 " AND (executor = ?"
@@ -207,6 +248,10 @@ def get_tasks():
             params + [per_page, offset],
         )
 
+        # ---------- Подгружаем теги одним запросом ----------
+        task_ids = [t['id'] for t in rows]
+        tags_map = _load_tags_map(task_ids)
+
         tasks_list = []
         for task in rows:
             td = dict(task)
@@ -223,6 +268,8 @@ def get_tasks():
                     td['is_overdue'] = False
             else:
                 td['is_overdue'] = False
+
+            td['tags'] = tags_map.get(td['id'], [])
             tasks_list.append(td)
 
         return jsonify({
@@ -299,16 +346,21 @@ def get_tasks_kanban():
             STATUS_COMPLETED,
         ])
 
-        # ---------- Объединяем, убираем дубли ----------
+        # ---------- Объединяем, убираем дубли, подгружаем теги ----------
+        all_tasks = list(new_tasks) + list(my_tasks)
+        all_ids = [t['id'] for t in all_tasks]
+        tags_map = _load_tags_map(all_ids)
+
         seen = set()
         result = []
 
-        for t in list(new_tasks) + list(my_tasks):
+        for t in all_tasks:
             if t['id'] in seen:
                 continue
             seen.add(t['id'])
 
             d = dict(t)
+            d['tags'] = tags_map.get(d['id'], [])
 
             if (
                 d['status'] not in (STATUS_COMPLETED, STATUS_CANCELLED)
@@ -368,6 +420,18 @@ def get_filters():
                 'ORDER BY full_name'
             )
         ]
+        tags = [
+            {
+                'id': r['id'],
+                'name': r['name'],
+                'color': r['color'],
+            }
+            for r in db.query('''
+                SELECT id, name, color FROM tags
+                WHERE deleted_at IS NULL
+                ORDER BY name
+            ''')
+        ]
 
         return jsonify({
             'work_types': work_types,
@@ -375,6 +439,7 @@ def get_filters():
             'statuses': statuses,
             'priorities': priorities,
             'users': users,
+            'tags': tags,
         })
     except Exception as e:
         log.exception('Ошибка получения фильтров')
