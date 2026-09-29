@@ -2,110 +2,157 @@
 /* Переменные темы + базовые стили */
 
 :root {
-    /* Основные цвета */
-    --primary-color: #4e73df;
-    --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    /* --- Цвета (light) --- */
+    --bg: #f7f7f9;
+    --surface: #ffffff;
+    --surface-2: #f4f4f5;
+    --surface-3: #e9e9ec;
+    --border: #e8e8ec;
+    --border-strong: #d4d4d8;
+    --text: #18181b;
+    --text-muted: #71717a;
+    --text-subtle: #a1a1aa;
+    --accent: #6366f1;
+    --accent-2: #8b5cf6;
+    --accent-soft: #eef2ff;
+    --success: #10b981;
+    --success-soft: #ecfdf5;
+    --warning: #f59e0b;
+    --warning-soft: #fffbeb;
+    --danger: #ef4444;
+    --danger-soft: #fef2f2;
 
-    /* Размеры */
-    --sidebar-width: 220px;
-    --mobile-bottom-nav-height: 60px;
+    /* --- Тени --- */
+    --shadow-xs: 0 1px 2px rgba(0,0,0,0.03);
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.03);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.06);
+    --shadow-lg: 0 12px 32px rgba(0,0,0,0.08);
+    --shadow-xl: 0 24px 64px rgba(0,0,0,0.15);
 
-    /* Светлая тема */
-    --bg-color: #f8f9fc;
-    --bg-elevated: #ffffff;
-    --card-bg: #ffffff;
-    --text-color: #333333;
-    --text-muted: #858796;
-    --border-color: #e3e6f0;
-    --table-header-bg: #f8f9fc;
-    --hover-bg: #f8f9fc;
-    --shadow-sm: 0 2px 8px rgba(0,0,0,0.05);
-    --shadow-md: 0 4px 15px rgba(0,0,0,0.08);
-    --shadow-lg: 0 10px 40px rgba(0,0,0,0.15);
+    /* --- Размеры --- */
+    --sidebar-w: 260px;
+    --mobile-bottom-nav-height: 64px;
 
-    /* Статусы заявок */
-    --status-new-bg: #e3f2fd;
-    --status-new-color: #1565c0;
-    --status-progress-bg: #fff3e0;
-    --status-progress-color: #e65100;
-    --status-completed-bg: #e8f5e9;
-    --status-completed-color: #2e7d32;
-    --status-cancelled-bg: #ffebee;
-    --status-cancelled-color: #c62828;
+    /* --- Алиасы (обратная совместимость со старыми модулями) --- */
+    --primary-color: var(--accent);
+    --primary-gradient: linear-gradient(135deg, var(--accent), var(--accent-2));
+    --bg-color: var(--bg);
+    --bg-elevated: var(--surface);
+    --card-bg: var(--surface);
+    --text-color: var(--text);
+    --border-color: var(--border);
+    --hover-bg: var(--surface-2);
+    --table-header-bg: var(--surface-2);
+    --sidebar-width: var(--sidebar-w);
 
-    /* Просроченные/скоро */
-    --danger-bg: #f8d7da;
-    --danger-color: #721c24;
-    --warning-bg: #fff3cd;
-    --warning-color: #856404;
+    /* --- Статусы --- */
+    --status-new-bg: var(--accent-soft);
+    --status-new-color: var(--accent);
+    --status-progress-bg: var(--warning-soft);
+    --status-progress-color: #b45309;
+    --status-completed-bg: var(--success-soft);
+    --status-completed-color: #047857;
+    --status-cancelled-bg: var(--surface-3);
+    --status-cancelled-color: var(--text-muted);
+
+    --danger-bg: var(--danger-soft);
+    --danger-color: #b91c1c;
+    --warning-bg: var(--warning-soft);
+    --warning-color: #92400e;
 }
 
-/* 🌙 Мягкая тёмная тема (GitHub Dark / VS Code Dark по мотивам) */
 [data-theme="dark"] {
-    --bg-color: #1c1c22;
-    --bg-elevated: #232330;
-    --card-bg: #26262e;
-    --text-color: #d0d0d8;
-    --text-muted: #8f8fa0;
-    --border-color: #383842;
-    --table-header-bg: #2c2c36;
-    --hover-bg: #2f2f3a;
-    --shadow-sm: 0 2px 8px rgba(0,0,0,0.3);
-    --shadow-md: 0 4px 15px rgba(0,0,0,0.4);
-    --shadow-lg: 0 10px 40px rgba(0,0,0,0.5);
+    --bg: #0a0a0f;
+    --surface: #14141a;
+    --surface-2: #1c1c24;
+    --surface-3: #26262f;
+    --border: #27272f;
+    --border-strong: #3f3f46;
+    --text: #fafafa;
+    --text-muted: #a1a1aa;
+    --text-subtle: #71717a;
+    --accent-soft: rgba(99,102,241,0.15);
+    --success-soft: rgba(16,185,129,0.15);
+    --warning-soft: rgba(245,158,11,0.15);
+    --danger-soft: rgba(239,68,68,0.15);
 
-    --status-new-bg: #1e3a5f;
-    --status-new-color: #8bb8e8;
-    --status-progress-bg: #4a3418;
-    --status-progress-color: #f0b667;
-    --status-completed-bg: #1e4a2e;
-    --status-completed-color: #7fd39a;
-    --status-cancelled-bg: #4a1e28;
-    --status-cancelled-color: #e88a98;
+    --bg-color: var(--bg);
+    --bg-elevated: var(--surface);
+    --card-bg: var(--surface);
+    --text-color: var(--text);
+    --border-color: var(--border);
+    --hover-bg: var(--surface-2);
+    --table-header-bg: var(--surface-2);
 
-    --danger-bg: #3d1a1a;
-    --danger-color: #ff6b6b;
-    --warning-bg: #3d351a;
-    --warning-color: #ffd93d;
+    --status-new-bg: var(--accent-soft);
+    --status-new-color: var(--accent);
+    --status-progress-bg: var(--warning-soft);
+    --status-progress-color: #fcd34d;
+    --status-completed-bg: var(--success-soft);
+    --status-completed-color: #6ee7b7;
+    --status-cancelled-bg: var(--surface-3);
+    --status-cancelled-color: var(--text-muted);
 }
 
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
+/* ============================================================
+   БАЗА
+   ============================================================ */
+* { margin: 0; padding: 0; box-sizing: border-box; }
 
-html, body {
-    height: 100%;
-}
+html, body { height: 100%; }
 
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: var(--bg-color);
-    color: var(--text-color);
+    font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: var(--bg);
+    color: var(--text);
     font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
     overflow-x: hidden;
     -webkit-tap-highlight-color: transparent;
     transition: background-color 0.3s, color 0.3s;
 }
 
+button { font-family: inherit; }
+.hidden { display: none !important; }
+
 /* Скроллбары */
-::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-}
-::-webkit-scrollbar-track {
-    background: var(--bg-color);
-    border-radius: 4px;
-}
-::-webkit-scrollbar-thumb {
-    background: #888;
-    border-radius: 4px;
-}
-::-webkit-scrollbar-thumb:hover {
-    background: #555;
-}
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--bg); border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #555; }
 
 /* Заголовки */
-h1, h2, h3, h4, h5, h6 { color: var(--text-color); }
+h1, h2, h3, h4, h5, h6 { color: var(--text); }
 .text-muted { color: var(--text-muted) !important; }
+/* ============================================================
+   ЗАГОЛОВКИ (эмуляция Bootstrap-размеров, Bootstrap CSS убран)
+   ============================================================ */
+h1 { font-size: 2.5rem;   font-weight: 500; line-height: 1.2; }
+h2 { font-size: 2rem;     font-weight: 500; line-height: 1.2; }
+h3 { font-size: 1.75rem;  font-weight: 500; line-height: 1.2; }
+h4 { font-size: 1.5rem;   font-weight: 500; line-height: 1.2; }
+h5 { font-size: 1.25rem;  font-weight: 500; line-height: 1.2; }
+h6 { font-size: 1rem;     font-weight: 600; line-height: 1.3; }
+
+h1, h2, h3, h4, h5, h6 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    color: var(--text);
+}
+
+/* Утилитарные классы */
+.h1 { font-size: 2.5rem;   font-weight: 500; }
+.h2 { font-size: 2rem;     font-weight: 500; }
+.h3 { font-size: 1.75rem;  font-weight: 500; }
+.h4 { font-size: 1.5rem;   font-weight: 500; }
+.h5 { font-size: 1.25rem;  font-weight: 500; }
+.h6 { font-size: 1rem;     font-weight: 600; }
+
+/* Заголовки в шапках карточек / модалок — чуть жирнее */
+.card-header h6,
+.modal-head h2,
+.modal-header h6 {
+    font-weight: 600;
+}

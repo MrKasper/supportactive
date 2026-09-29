@@ -1,8 +1,19 @@
 # excel.py
 """
 Отчёты и экспорт: XLSX (openpyxl) и PDF (weasyprint).
+
+⚠️ WeasyPrint требует нативных библиотек:
+   • Linux:  apt install libpango-1.0-0 libpangoft2-1.0-0 libcairo2 libgdk-pixbuf-2.0-0
+   • Windows: GTK3 Runtime (https://github.com/tschoonj/GTK-for-Windows-Runtime-Installer)
+              + добавить C:\\GTK3\\bin в PATH.
+
+Если библиотеки не установлены, PDF-эндпоинт возвращает понятную
+JSON-ошибку вместо 500-й со стектрейсом. На фронте в этом случае
+используется диалог печати браузера («Сохранить как PDF»).
 """
-from flask import Blueprint, request, jsonify, session, send_file, Response, render_template
+from flask import (
+    Blueprint, request, jsonify, session, send_file, Response, render_template,
+)
 from database import Database
 from datetime import datetime
 from utils import login_required, role_required
@@ -249,7 +260,11 @@ def export_tasks_excel():
 
 
 # ============================================================
-# ЭКСПОРТ ЗАЯВОК В PDF
+# ЭКСПОРТ ЗАЯВОК В PDF (weasyprint)
+#
+# ⚠️ Требует нативных библиотек (GTK / Pango / Cairo).
+# Если их нет — отдаём понятную JSON-ошибку вместо 500-й.
+# На фронте для этого случая используется печать через браузер.
 # ============================================================
 
 @excel_bp.route('/api/report/tasks/pdf')
@@ -257,28 +272,48 @@ def export_tasks_excel():
 def export_tasks_pdf():
     """Экспорт заявок в PDF (A4, альбомная ориентация)."""
     try:
+        # --- Проверка WeasyPrint + нативных библиотек ---
         try:
             from weasyprint import HTML
         except ImportError:
             return jsonify({
                 'error': 'weasyprint не установлен. '
-                         'pip install weasyprint',
+                         'Установите: pip install weasyprint',
+            }), 500
+        except OSError as gtk_err:
+            # Например: cannot load library 'gobject-2.0-0'
+            log.warning(f'WeasyPrint: GTK не найден — {gtk_err}')
+            return jsonify({
+                'error': 'Для PDF-экспорта требуется GTK-библиотека. '
+                         'Windows: установите GTK3 Runtime и добавьте bin в PATH. '
+                         'Linux: apt install libpango-1.0-0 libpangoft2-1.0-0 '
+                         'libcairo2 libgdk-pixbuf-2.0-0. '
+                         'Альтернатива: используйте «Печать» и сохраните PDF '
+                         'через браузер.',
             }), 500
 
         query, params = _build_tasks_query(request.args)
         tasks = db.query(query, params)
 
-        html = render_template(
-            'tasks_pdf.html',
-            tasks=tasks,
-            generated=datetime.now().strftime('%d.%m.%Y %H:%M'),
-            total=len(tasks),
-        )
-
-        pdf_bytes = HTML(
-            string=html,
-            base_url=request.url_root,
-        ).write_pdf()
+        # Пробуем отрисовать — если библиотеки сломаны, поймаем OSError
+        try:
+            html = render_template(
+                'tasks_pdf.html',
+                tasks=tasks,
+                generated=datetime.now().strftime('%d.%m.%Y %H:%M'),
+                total=len(tasks),
+            )
+            pdf_bytes = HTML(
+                string=html,
+                base_url=request.url_root,
+            ).write_pdf()
+        except OSError as gtk_err:
+            log.warning(f'WeasyPrint: рендеринг упал — {gtk_err}')
+            return jsonify({
+                'error': 'Для PDF-экспорта требуется GTK-библиотека '
+                         '(не удалось отрисовать PDF). '
+                         'Используйте «Печать» и сохраните PDF через браузер.',
+            }), 500
 
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         filename = f'tasks_{timestamp}.pdf'

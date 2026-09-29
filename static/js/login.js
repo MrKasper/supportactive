@@ -53,7 +53,7 @@
                 } else {
                     $('#userAvatar').css({
                         'background-image': 'none',
-                        'background': 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        'background': 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
                         'color': 'white'
                     });
                 }
@@ -65,44 +65,127 @@
 
     // ============= КАРТОЧКА ПОЛЬЗОВАТЕЛЯ =============
     function showUserCard() {
+        if (typeof window.openModal === 'function') {
+            window.openModal('modalProfile');
+        }
+        renderProfileModal();
+    }
+
+    function renderProfileModal() {
         fetch('/api/current_user')
             .then(function(r) { return r.json(); })
-            .then(function(data) {
-                var avatarHtml;
-                if (data.avatar && data.avatar.indexOf('uploads/') === 0) {
-                    avatarHtml = '<div class="avatar-circle mx-auto mb-3" ' +
-                        'style="width:80px;height:80px;font-size:32px;' +
-                        'background-image:url(/' + data.avatar + ');' +
-                        'background-size:cover;background-position:center;color:transparent">' +
-                        utils.escapeHtml((data.full_name || '?').charAt(0)) + '</div>';
-                } else {
-                    avatarHtml = '<div class="avatar-circle mx-auto mb-3" ' +
-                        'style="width:80px;height:80px;font-size:32px">' +
-                        utils.escapeHtml((data.full_name || '?').charAt(0)) + '</div>';
+            .then(function(u) {
+                if (!u || u.error) {
+                    if (window.App.Toasts) {
+                        window.App.Toasts.error('Ошибка',
+                            (u && u.error) || 'Не удалось загрузить профиль');
+                    }
+                    return;
                 }
 
-                var html = '<div class="text-center">' + avatarHtml +
-                    '<h4>' + utils.escapeHtml(data.full_name) + '</h4>' +
-                    '<p>' + utils.escapeHtml(data.role) + '</p><hr>' +
-                    '<p><i class="bi bi-building"></i> ' + utils.escapeHtml(data.department || '-') + '</p>' +
-                    '<p><i class="bi bi-envelope"></i> ' + utils.escapeHtml(data.email || '-') + '</p>' +
-                    '<p><i class="bi bi-phone"></i> ' + utils.escapeHtml(data.phone || '-') + '</p>' +
-                    '</div>';
+                var fullName = u.full_name || '—';
+                var initial = fullName.charAt(0).toUpperCase();
+                var avatar = u.avatar || '';
+                var $av = $('#profileAvatar');
 
-                Swal.fire({
-                    title: 'Карточка пользователя',
-                    html: html,
-                    confirmButtonText: 'Закрыть',
-                    showCancelButton: data.role === 'Администратор',
-                    cancelButtonText: '<i class="bi bi-pencil-square"></i> Редактировать',
-                    cancelButtonColor: '#28a745'
-                }).then(function(result) {
-                    if (result.dismiss === Swal.DismissReason.cancel &&
-                        typeof editUserProfile === 'function') {
-                        editUserProfile();
-                    }
-                });
+                if (avatar && avatar.indexOf('uploads/') === 0) {
+                    // Загруженный файл — background-image, буква скрыта
+                    $av.attr('style',
+                        'background-image: url(/' + avatar + ');' +
+                        'background-size: cover;' +
+                        'background-position: center;' +
+                        'color: transparent;'
+                    ).text(initial);
+                } else {
+                    // Цветной аватар — снимаем inline-стили,
+                    // работает CSS-класс .profile-avatar (градиент + буква)
+                    $av.removeAttr('style').text(initial);
+                }
+
+                $('#profileName').text(fullName);
+                $('#profileRole').text(u.role || '—');
+                $('#profileLogin').text(u.login || '—');
+                $('#profileEmail').text(u.email || '—');
+                $('#profilePhone').text(u.phone || '—');
+                $('#profileDepartment').text(u.department || '—');
+
+                // Статистика по заявкам
+                fetch('/api/statistics')
+                    .then(function(r) { return r.json(); })
+                    .then(function(s) {
+                        if (s && !s.error) {
+                            $('#profileTotal').text(s.user_total || 0);
+                            $('#profileCompleted').text(s.user_completed || 0);
+                        }
+                    })
+                    .catch(function() {
+                        $('#profileTotal').text('—');
+                        $('#profileCompleted').text('—');
+                    });
+            })
+            .catch(function(err) {
+                console.error('[login] renderProfileModal error:', err);
             });
+    }
+
+    // ============= СИНХРОНИЗАЦИЯ САЙДБАР-ЮЗЕРА =============
+    // login.js заполняет #userName / #userAvatar / #userRole в user-card.
+    // В сайдбаре ID другие (#userNameSidebar и т.д.) — копируем через
+    // MutationObserver, не трогая основной код.
+    function syncSidebarUser() {
+        var name = ($('#userName').text() || '').trim();
+        var role = ($('#userRole').text() || '').trim();
+        var avatarEl = document.getElementById('userAvatar');
+
+        var $nameS = $('#userNameSidebar');
+        var $roleS = $('#userRoleSidebar');
+        var $avatarS = $('#userAvatarSidebar');
+
+        if ($nameS.length && name) $nameS.text(name);
+        if ($roleS.length && role) $roleS.text(role);
+
+        if ($avatarS.length) {
+            var initial = name ? name.charAt(0).toUpperCase() : '?';
+            $avatarS.text(initial);
+
+            if (avatarEl) {
+                var bgImg = avatarEl.style.backgroundImage || '';
+                if (bgImg && bgImg !== 'none') {
+                    $avatarS.css({
+                        'background-image': bgImg,
+                        'background-size': 'cover',
+                        'background-position': 'center',
+                        'color': 'transparent'
+                    });
+                }
+            }
+        }
+    }
+
+    function observeUserCard() {
+        var mainName = document.getElementById('userName');
+        if (!mainName) return;
+
+        var observer = new MutationObserver(syncSidebarUser);
+        observer.observe(mainName, {
+            childList: true, characterData: true, subtree: true
+        });
+
+        var role = document.getElementById('userRole');
+        if (role) {
+            observer.observe(role, {
+                childList: true, characterData: true, subtree: true
+            });
+        }
+        var avatar = document.getElementById('userAvatar');
+        if (avatar) {
+            observer.observe(avatar, {
+                attributes: true,
+                attributeFilter: ['style', 'class']
+            });
+        }
+
+        syncSidebarUser();
     }
 
     // ============= СМЕНА ПОЛЬЗОВАТЕЛЯ =============
@@ -150,6 +233,10 @@
     window.showUserCard = showUserCard;
     window.changeUser = changeUser;
     window.checkAuth = checkAuth;
+
+    $(document).ready(function() {
+        observeUserCard();
+    });
 
     console.log('[login] Загружено');
 })();

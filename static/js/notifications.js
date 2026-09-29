@@ -1,7 +1,5 @@
 // static/js/notifications.js
 // Уведомления пользователя с группировкой по заявке.
-// Toast-уведомления идут через App.Toasts (не через SweetAlert2),
-// чтобы не закрывать открытые модалки.
 
 (function() {
     'use strict';
@@ -23,15 +21,10 @@
         api.get('/api/notifications/unread-count')
             .then(function(data) {
                 if (!data || data.error) return;
-
                 var count = data.unread_count || 0;
                 var $badge = $('#notificationBadge');
-
-                if (count > 0) {
-                    $badge.text(count).show();
-                } else {
-                    $badge.hide();
-                }
+                if (count > 0) $badge.text(count).show();
+                else $badge.hide();
             })
             .catch(function(error) {
                 console.error('[notifications] unread error:', error);
@@ -45,16 +38,10 @@
         return api.get('/api/notifications')
             .then(function(data) {
                 if (!data || data.error) return null;
-
                 var count = data.unread_count || 0;
                 var $badge = $('#notificationBadge');
-
-                if (count > 0) {
-                    $badge.text(count).show();
-                } else {
-                    $badge.hide();
-                }
-
+                if (count > 0) $badge.text(count).show();
+                else $badge.hide();
                 return data;
             })
             .catch(function(error) {
@@ -84,125 +71,87 @@
     }
 
     // ============================================================
-    // МОДАЛКА СО СПИСКОМ УВЕДОМЛЕНИЙ
+    // МОДАЛКА УВЕДОМЛЕНИЙ (новая — используем #modalNotifications)
     // ============================================================
     function show() {
-        loadAll().then(function(data) {
-            if (!data) return;
+        if (typeof window.openModal === 'function') {
+            window.openModal('modalNotifications');
+        }
+        renderList();
+    }
 
-            var notifications = data.notifications || [];
-            var unreadCount = data.unread_count || 0;
+    function renderList() {
+        var $body = $('#modalNotificationsBody');
+        if (!$body.length) return;
 
-            var html = '';
+        $body.html('<div class="text-center py-4">' +
+            '<div class="spinner-border spinner-border-sm"></div></div>');
 
-            // Верхняя панель
-            if (notifications.length > 0) {
-                html += '<div class="d-flex justify-content-between ' +
-                    'align-items-center mb-3 pb-2 border-bottom ' +
-                    'flex-wrap gap-2">';
-                html += '<div class="d-flex gap-2 flex-wrap">';
-                html += '<span class="badge bg-secondary">Всего: ' +
-                    notifications.length + '</span>';
-                if (unreadCount > 0) {
-                    html += '<span class="badge bg-danger">Непрочитанных: ' +
-                        unreadCount + '</span>';
-                } else {
-                    html += '<span class="badge bg-success">Все прочитаны</span>';
+        fetch('/api/notifications')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                var list = (data && data.notifications) || [];
+                var unread = (data && data.unread_count) || 0;
+
+                var $cnt = $('#notificationsCount');
+                if ($cnt.length) {
+                    if (unread > 0) $cnt.text(unread + ' новых').show();
+                    else $cnt.hide();
                 }
-                html += '</div>';
-                if (unreadCount > 0) {
-                    html += '<button class="btn btn-sm btn-outline-primary" ' +
-                        'onclick="markAllNotificationsRead()">' +
-                        '<i class="bi bi-check-all"></i> ' +
-                        'Отметить все как прочитанные</button>';
+
+                if (list.length === 0) {
+                    $body.html('<div class="text-center py-4 text-muted">' +
+                        '<i class="bi bi-bell-slash" style="font-size:2rem;opacity:.4"></i>' +
+                        '<p class="mt-2 mb-0">Нет уведомлений</p></div>');
+                    return;
                 }
-                html += '</div>';
-            }
 
-            html += '<div class="list-group" ' +
-                'style="max-height: 60vh; overflow-y: auto;">';
+                var ICONS = {
+                    new_task:       { icon: 'bi-plus-circle',  color: 'var(--accent)', bg: 'var(--accent-soft)' },
+                    task_taken:     { icon: 'bi-play-circle',  color: '#b45309',        bg: 'var(--warning-soft)' },
+                    task_completed: { icon: 'bi-check-circle', color: '#047857',        bg: 'var(--success-soft)' },
+                    new_comment:    { icon: 'bi-chat-dots',    color: '#0c7489',        bg: 'rgba(23,162,184,.15)' },
+                    mention:        { icon: 'bi-at',           color: 'var(--accent)',  bg: 'var(--accent-soft)' }
+                };
 
-            if (notifications.length === 0) {
-                html += '<div class="list-group-item text-center ' +
-                    'text-muted py-4">';
-                html += '<i class="bi bi-bell-slash" ' +
-                    'style="font-size: 2rem;"></i>';
-                html += '<p class="mb-0 mt-2">Нет уведомлений</p>';
-                html += '</div>';
-            } else {
-                notifications.forEach(function(n) {
-                    var iconInfo = getIcon(n.notification_type);
+                var html = '';
+                list.forEach(function(n) {
+                    var ic = ICONS[n.notification_type] || {
+                        icon: 'bi-bell',
+                        color: 'var(--text-muted)',
+                        bg: 'var(--surface-2)'
+                    };
                     var isUnread = !n.is_read;
-                    var evtCount = n.count || 1;
-                    var hasMultiple = evtCount > 1;
+                    var cnt = n.count || 1;
 
-                    var classes = 'list-group-item d-flex align-items-start';
-                    if (isUnread) classes += ' bg-light';
-
-                    html += '<div class="' + classes + '" ' +
-                        'style="cursor: pointer;" ' +
-                        'onclick="markNotificationRead(' + n.id + ')">';
-
-                    // Иконка
-                    html += '<div style="flex-shrink: 0; margin-right: 12px;">';
-                    html += '<div style="width: 40px; height: 40px; ' +
-                        'border-radius: 50%; background: ' + iconInfo.bg + '; ' +
-                        'display: flex; align-items: center; ' +
-                        'justify-content: center;">';
-                    html += '<i class="' + iconInfo.cls + '" ' +
-                        'style="font-size: 1.2rem;"></i>';
-                    html += '</div></div>';
-
-                    // Основной контент
-                    html += '<div class="flex-grow-1" style="min-width: 0;">';
-                    html += '<div class="d-flex justify-content-between ' +
-                        'align-items-start gap-2 flex-wrap">';
-                    html += '<div style="min-width: 0; flex: 1;">';
-                    html += '<strong>' +
+                    html += '<div class="notification-item' +
+                        (isUnread ? ' unread' : '') + '" ' +
+                        'onclick="onNotificationClick(' + n.id + ', ' +
+                        (n.task_id || 0) + ')">';
+                    html += '<div class="notif-icon" style="background:' + ic.bg +
+                        ';color:' + ic.color + '"><i class="bi ' + ic.icon + '"></i></div>';
+                    html += '<div class="notif-body">';
+                    html += '<div class="notif-title">' +
                         utils.escapeHtml(n.title || 'Уведомление');
-
-                    if (hasMultiple) {
-                        html += ' <span class="badge bg-primary" ' +
-                            'style="font-size: 0.7em; vertical-align: middle;">' +
-                            '×' + evtCount + '</span>';
-                    }
-
-                    html += '</strong>';
-
-                    if (n.task_id) {
-                        html += ' <span class="text-muted small">· ' +
-                            'заявка №' + n.task_id + '</span>';
+                    if (cnt > 1) {
+                        html += ' <span class="badge badge-new" ' +
+                            'style="font-size:9px;">×' + cnt + '</span>';
                     }
                     html += '</div>';
-
-                    if (isUnread) {
-                        html += '<span class="badge bg-primary rounded-circle" ' +
-                            'style="width: 10px; height: 10px; padding: 0;">' +
-                            '</span>';
-                    }
+                    html += '<div class="notif-text">' +
+                        utils.escapeHtml(n.message || '') + '</div>';
+                    html += '<div class="notif-time">' +
+                        utils.formatDate(n.created_date) + '</div>';
                     html += '</div>';
-
-                    html += '<p class="mb-1 small" ' +
-                        'style="color: var(--text-color); ' +
-                        'word-break: break-word;">' +
-                        utils.escapeHtml(n.message || '') + '</p>';
-                    html += '<small class="text-muted">' +
-                        utils.formatDate(n.created_date) + '</small>';
-                    html += '</div>';
+                    if (isUnread) html += '<div class="notif-dot"></div>';
                     html += '</div>';
                 });
-            }
-
-            html += '</div>';
-
-            Swal.fire({
-                title: 'Уведомления',
-                html: html,
-                showConfirmButton: false,
-                showCloseButton: true,
-                customClass: { popup: 'swal-wide' },
+                $body.html(html);
+            })
+            .catch(function() {
+                $body.html('<div class="text-center py-4 text-danger">' +
+                    'Ошибка загрузки</div>');
             });
-        });
     }
 
     // ============================================================
@@ -213,7 +162,7 @@
             .then(function(data) {
                 if (data.success) {
                     loadUnreadCount();
-                    show();  // перерисовать модалку
+                    renderList();  // перерисовать модалку
                 }
             })
             .catch(function(err) {
@@ -229,9 +178,9 @@
             .then(function(data) {
                 if (data.success) {
                     loadUnreadCount();
-                    Swal.close();
-
-                    // Toast — не модалка, чтобы не мешать
+                    if (typeof window.closeModal === 'function') {
+                        window.closeModal('modalNotifications');
+                    }
                     if (window.App.Toasts) {
                         window.App.Toasts.success(
                             'Все уведомления прочитаны', '', { duration: 2000 }
@@ -275,6 +224,22 @@
     window.showNotifications = show;
     window.markNotificationRead = markRead;
     window.markAllNotificationsRead = markAllRead;
+
+    // Обработчик клика по уведомлению (переехало из redesign.js)
+    window.onNotificationClick = function(id, taskId) {
+        fetch('/api/notifications/' + id + '/read', { method: 'POST' })
+            .then(function() {
+                if (window.App && window.App.Notifications) {
+                    window.App.Notifications.loadUnreadCount();
+                }
+                if (typeof window.closeModal === 'function') {
+                    window.closeModal('modalNotifications');
+                }
+                if (taskId && typeof window.viewTask === 'function') {
+                    setTimeout(function() { window.viewTask(taskId); }, 200);
+                }
+            });
+    };
 
     console.log('[notifications] Загружено');
 })();

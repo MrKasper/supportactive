@@ -1,5 +1,5 @@
 // static/js/excel.js
-// Отчёты: сводная таблица + XLSX + PDF + печать
+// Отчёты: сводная таблица + XLSX + PDF (через диалог печати браузера) + печать
 
 (function() {
     'use strict';
@@ -9,8 +9,6 @@
         return;
     }
 
-    // ⚠️ ВАЖНО: mod — это модуль (Reports), api — обёртка App.api.
-    // Нельзя смешивать: register() возвращает объект модуля, а не api.js.
     var mod = window.App.register('Reports');
     var api = window.App.api;
     var utils = window.App.utils;
@@ -240,28 +238,146 @@
     }
 
     // ============================================================
-    // ЭКСПОРТ В PDF
+    // ЭКСПОРТ В PDF — через диалог печати браузера
+    //
+    // WeasyPrint на Windows требует GTK (gobject-2.0-0), поэтому
+    // мы открываем печатную HTML-версию отчёта в новой вкладке.
+    // Пользователь сам выбирает «Сохранить как PDF» в диалоге.
     // ============================================================
     function exportToPDF() {
         Swal.fire({
-            title: 'Экспорт в PDF',
-            text: 'Скачать файл с текущими заявками?',
-            icon: 'question',
+            title: 'Сохранить в PDF',
+            html:
+                '<div class="text-start small">' +
+                '<p>Откроется печатная версия отчёта. В диалоге печати ' +
+                'выберите <strong>«Сохранить как PDF»</strong> ' +
+                '(Microsoft Print to PDF / Сохранить как PDF).</p>' +
+                '</div>',
+            icon: 'info',
             showCancelButton: true,
-            confirmButtonText: '<i class="bi bi-download"></i> Скачать',
+            confirmButtonText: '<i class="bi bi-printer"></i> Открыть отчёт',
             cancelButtonText: 'Отмена',
-            confirmButtonColor: '#dc3545',
+            confirmButtonColor: '#0d6efd',
         }).then(function(result) {
             if (!result.isConfirmed) return;
 
             var params = buildFilterParams();
-            window.location.href = '/api/report/tasks/pdf?' +
-                                    params.toString();
+
+            api.get('/api/report/tasks/print?' + params.toString())
+                .then(function(data) {
+                    if (data.error) {
+                        utils.showErrorMessage(data.error);
+                        return;
+                    }
+
+                    var w = window.open('', '_blank',
+                        'width=1200,height=800');
+                    w.document.write(
+                        '<html><head><title>Отчёт по задачам</title>'
+                    );
+                    w.document.write('<style>');
+                    w.document.write(
+                        'body{font-family:Arial,sans-serif;padding:20px;' +
+                        'color:#222}'
+                    );
+                    w.document.write(
+                        'h2{color:#333;border-bottom:2px solid #6366f1;' +
+                        'padding-bottom:10px}'
+                    );
+                    w.document.write(
+                        'table{width:100%;border-collapse:collapse;' +
+                        'margin-top:20px;font-size:12px}'
+                    );
+                    w.document.write(
+                        'th,td{border:1px solid #ddd;padding:8px;' +
+                        'text-align:left;vertical-align:top}'
+                    );
+                    w.document.write(
+                        'th{background-color:#6366f1;color:white;' +
+                        'font-weight:600}'
+                    );
+                    w.document.write(
+                        'tr:nth-child(even){background-color:#f9f9f9}'
+                    );
+                    w.document.write('.header-info{margin-bottom:20px}');
+                    w.document.write(
+                        '@media print{@page{size:A4 landscape;margin:10mm}}'
+                    );
+                    w.document.write('@media print{button{display:none}}');
+                    w.document.write('</style></head><body>');
+                    w.document.write('<h2>Отчёт по задачам</h2>');
+                    w.document.write('<div class="header-info">');
+                    w.document.write(
+                        '<p><strong>Дата формирования:</strong> ' +
+                        (data.export_date || '') + '</p>'
+                    );
+                    w.document.write(
+                        '<p><strong>Всего заявок:</strong> ' +
+                        (data.total || 0) + '</p>'
+                    );
+                    w.document.write('</div>');
+                    w.document.write('<table><thead><tr>');
+                    w.document.write(
+                        '<th>№</th><th>Дата создания</th><th>Срок</th>' +
+                        '<th>От кого</th><th>Кабинет</th><th>Описание</th>' +
+                        '<th>Тип работы</th><th>Статус</th>' +
+                        '<th>Приоритет</th><th>Исполнитель</th>' +
+                        '<th>Помощник</th>'
+                    );
+                    w.document.write('</tr></thead><tbody>');
+
+                    (data.tasks || []).forEach(function(task, index) {
+                        w.document.write('<tr>');
+                        w.document.write('<td>' + (index + 1) + '</td>');
+                        w.document.write('<td>' +
+                            (task.created_date || '') + '</td>');
+                        w.document.write('<td>' +
+                            (task.deadline || '') + '</td>');
+                        w.document.write('<td>' +
+                            utils.escapeHtml(task.from_user || '') + '</td>');
+                        w.document.write('<td>' +
+                            utils.escapeHtml(task.cabinet || '') + '</td>');
+                        w.document.write('<td>' +
+                            utils.escapeHtml(task.description || '') + '</td>');
+                        w.document.write('<td>' +
+                            utils.escapeHtml(task.work_type || '') + '</td>');
+                        w.document.write('<td>' +
+                            utils.escapeHtml(task.status || '') + '</td>');
+                        w.document.write('<td>' +
+                            utils.escapeHtml(task.priority || '') + '</td>');
+                        w.document.write('<td>' +
+                            utils.escapeHtml(task.executor || '') + '</td>');
+                        w.document.write('<td>' +
+                            utils.escapeHtml(task.assistant || '') + '</td>');
+                        w.document.write('</tr>');
+                    });
+
+                    w.document.write('</tbody></table>');
+                    w.document.write(
+                        '<br><button onclick="window.print()" ' +
+                        'style="padding:10px 20px;font-size:16px;' +
+                        'cursor:pointer;background:#6366f1;color:white;' +
+                        'border:none;border-radius:6px;">' +
+                        'Открыть диалог печати</button>'
+                    );
+                    w.document.write('</body></html>');
+                    w.document.close();
+
+                    // Открываем диалог печати сразу
+                    setTimeout(function() {
+                        try { w.focus(); w.print(); } catch (e) {}
+                    }, 400);
+                })
+                .catch(function() {
+                    utils.showErrorMessage(
+                        'Ошибка загрузки данных для печати'
+                    );
+                });
         });
     }
 
     // ============================================================
-    // ПЕЧАТЬ
+    // ПЕЧАТЬ (без диалога — открывает вкладку с кнопкой «Распечатать»)
     // ============================================================
     function printReport() {
         Swal.fire({
@@ -375,7 +491,36 @@
     }
 
     // ============================================================
-    // ЭКСПОРТ
+    // SELECT EXPORT / DO EXPORT FROM MODAL (переехало из redesign.js)
+    // ============================================================
+    function selectExport(el) {
+        document.querySelectorAll('.export-option').forEach(function(o) {
+            o.classList.remove('active');
+        });
+        if (el) el.classList.add('active');
+    }
+
+    window.selectExport = selectExport;
+
+    window.doExportFromModal = function() {
+        var $active = $('.export-option.active');
+        var fmt = $active.data('format') || 'xlsx';
+        if (typeof window.closeModal === 'function') {
+            window.closeModal('modalExport');
+        }
+        if (fmt === 'xlsx' && typeof window.exportToExcel === 'function') {
+            window.exportToExcel();
+        } else if (fmt === 'pdf' && typeof window.exportToPDF === 'function') {
+            window.exportToPDF();
+        } else if (fmt === 'print' && typeof window.printReport === 'function') {
+            window.printReport();
+        } else if (typeof window.loadReportPage === 'function') {
+            window.loadPage('report');
+        }
+    };
+
+    // ============================================================
+    // ЭКСПОРТ В WINDOW
     // ============================================================
     mod.load = loadReportPage;
     mod.exportExcel = exportToExcel;

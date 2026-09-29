@@ -1,9 +1,5 @@
 // static/js/tasks.js
 // Список заявок, фильтры, пагинация, серверный поиск, создание, контекстное меню.
-//
-// Особенность для Техника:
-//   вместо параметра `user` используется `for_technician` —
-//   бэкенд возвращает только «мои» заявки + «Новое без исполнителя».
 
 (function() {
     'use strict';
@@ -38,9 +34,9 @@
                     utils.animateNumber('#statCompleted', data.user_completed || 0);
                     utils.animateNumber('#statNewProgress', data.user_in_progress || 0);
                     utils.animateNumber('#statTotal', data.user_total || 0);
-                    $('#statCompleted').closest('.stats-card').find('.stats-label').text('Мои выполнено');
-                    $('#statNewProgress').closest('.stats-card').find('.stats-label').text('Мои в работе');
-                    $('#statTotal').closest('.stats-card').find('.stats-label').text('Мои всего');
+                    $('#statCompleted').closest('.stat-box').find('.stat-box-label').text('Мои выполнено');
+                    $('#statNewProgress').closest('.stat-box').find('.stat-box-label').text('Мои в работе');
+                    $('#statTotal').closest('.stat-box').find('.stat-box-label').text('Мои всего');
                 } else {
                     utils.animateNumber('#statCompleted', data.completed || 0);
                     utils.animateNumber('#statNewProgress', data.new_or_progress || 0);
@@ -93,6 +89,17 @@
     }
 
     // ============================================================
+    // ФИЛЬТРЫ (переехало из redesign.js) — открыть/закрыть панель
+    // ============================================================
+    function toggleFilters() {
+        var panel = document.getElementById('filtersPanel');
+        if (!panel) return;
+        panel.style.display = (panel.style.display === 'none' || !panel.style.display)
+            ? 'block'
+            : 'none';
+    }
+
+    // ============================================================
     // СПИСОК
     // ============================================================
     function loadTasks(page) {
@@ -107,8 +114,6 @@
         var role = window.currentUserRole;
 
         if (role === 'Техник') {
-            // 🆕 Техник — используем for_technician вместо user.
-            // Бэкенд вернёт «мои» + «Новое без исполнителя».
             var userName = window.currentUserFullName || $('#userName').text().trim();
             if (userName && userName !== 'Неизвестно') {
                 params.append('for_technician', userName);
@@ -134,7 +139,6 @@
             }
 
         } else {
-            // Администратор / другие — видят всё
             var wt2 = $('#filterWorkType').val();
             var cb2 = $('#filterCabinet').val();
             var st2 = $('#filterStatus').val();
@@ -173,6 +177,9 @@
                 renderTasksTable(data.items || []);
                 state.currentTotalPages = data.pages || 1;
                 renderPagination(data);
+
+                // Обновляем счётчик в заголовке
+                $('#tasksTotalCount').text(data.total || 0);
             })
             .catch(function(err) {
                 console.error('[tasks] load error:', err);
@@ -392,7 +399,9 @@
             .then(function(r) { return r.json(); })
             .then(function(result) {
                 if (result.success) {
-                    $('#createTaskModal').modal('hide');
+                    if (typeof window.closeModal === 'function') {
+                        window.closeModal('createTaskModal');
+                    }
                     Swal.fire({
                         icon: 'success',
                         title: 'Заявка создана!',
@@ -400,7 +409,7 @@
                         timer: 2000,
                         showConfirmButton: false,
                     });
-                    api.refreshData();
+                    refreshData();
                 } else {
                     Swal.fire({
                         icon: 'error',
@@ -451,7 +460,7 @@
                 timer: 1500,
                 showConfirmButton: false,
             });
-            api.refreshData();
+            refreshData();
         });
     }
 
@@ -461,6 +470,18 @@
         } else {
             state.selectedTasks.delete(taskId.toString());
             $('#selectAll').prop('checked', false);
+        }
+        updateBulkBar();
+    }
+
+    function updateBulkBar() {
+        var n = state.selectedTasks.size;
+        var $bar = $('#bulkBar');
+        if (n > 0) {
+            $bar.addClass('active');
+            $('#bulkCount').text(n + ' ' + utils.pluralize(n, 'заявка', 'заявки', 'заявок') + ' выбрано');
+        } else {
+            $bar.removeClass('active');
         }
     }
 
@@ -534,6 +555,7 @@
                     state.selectedTasks.delete($(this).val().toString());
                 }
             });
+            updateBulkBar();
         });
 
         $(document).on('click', function(event) {
@@ -627,17 +649,13 @@
                     $('input[name="from_user"]').val(data.full_name);
                 }
                 if (data.role === 'Пользователь') {
-                    $('select[name="executor"]')
-                        .closest('.col-md-6').hide();
-                    $('select[name="assistant"]')
-                        .closest('.col-md-6').hide();
+                    $('select[name="executor"]').closest('.field').hide();
+                    $('select[name="assistant"]').closest('.field').hide();
                     $('select[name="executor"]').val('');
                     $('select[name="assistant"]').val('');
                 } else {
-                    $('select[name="executor"]')
-                        .closest('.col-md-6').show();
-                    $('select[name="assistant"]')
-                        .closest('.col-md-6').show();
+                    $('select[name="executor"]').closest('.field').show();
+                    $('select[name="assistant"]').closest('.field').show();
                     loadExecutorsForForm();
                 }
             });
@@ -652,7 +670,11 @@
                  pad(tomorrow.getMinutes());
         $('input[name="deadline"]').val(dt);
 
-        $('#createTaskModal').modal('show');
+        if (typeof window.openModal === 'function') {
+            window.openModal('createTaskModal');
+        } else {
+            $('#createTaskModal').modal('show');
+        }
     }
 
     function setupCabinetSearch() {
@@ -712,6 +734,7 @@
     api.setupContextMenu = setupContextMenu;
     api.setupCabinetSearch = setupCabinetSearch;
     api.showCreateTaskModal = showCreateTaskModal;
+    api.toggleFilters = toggleFilters;
 
     window.loadStatistics = loadStatistics;
     window.loadFilters = loadFilters;
@@ -726,6 +749,7 @@
     window.setupContextMenu = setupContextMenu;
     window.setupCabinetSearch = setupCabinetSearch;
     window.showCreateTaskModal = showCreateTaskModal;
+    window.toggleFilters = toggleFilters;
 
     console.log('[tasks] Загружено');
 })();

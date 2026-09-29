@@ -2,328 +2,409 @@
 {% extends "base.html" %}
 
 {% block head_extra %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/tasks.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/kanban.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/modal-redesign.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/hotkeys.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/mobile-ux.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/equipment.css') }}">
 {% endblock %}
 
 {% block content %}
-<!-- Боковое меню -->
-<div class="sidebar">
-    <div class="sidebar-header">
-        <div class="logo-wrapper-sidebar">
-            <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo"
-                 style="max-width: 70px; height: auto;"
-                 onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-            <i class="bi bi-headset" style="font-size: 2.5rem; color: #667eea; display: none;"></i>
+<div class="app-shell">
+
+    <!-- ============================================================ -->
+    <!-- SIDEBAR                                                       -->
+    <!-- ============================================================ -->
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <div class="brand-mark">🎧</div>
+            <div class="brand-text">
+                <h3>Support Active</h3>
+                <small>v{{ APP_VERSION }}</small>
+            </div>
         </div>
-        <h4 class="mt-2">Support Active</h4>
-        <small class="text-white-50">v{{ APP_VERSION }}</small>
-    </div>
 
-    <div class="sidebar-menu">
-        <nav class="nav flex-column">
-            <a class="nav-link" href="/dashboard" data-page="dashboard"
-               data-role="admin">
-                <i class="bi bi-graph-up"></i>
-                <span>Дашборд</span>
-            </a>
-
-            <a class="nav-link active" href="#" data-page="tasks"
-               onclick="loadPage('tasks'); return false;">
-                <i class="bi bi-list-check"></i>
+        <nav class="sidebar-nav">
+            <div class="nav-section-title">Основное</div>
+            <a class="nav-link nav-item active" data-page="tasks">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
                 <span>Заявки</span>
             </a>
-
-            <a class="nav-link" href="#" data-page="cabinets-manage"
-               data-role="admin,tech"
-               onclick="loadPage('cabinets-manage'); return false;">
-                <i class="bi bi-door-closed"></i>
-                <span>Управление кабинетами</span>
+            <a class="nav-link nav-item" href="/dashboard" data-page="dashboard" data-role="admin">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+                <span>Дашборд</span>
+            </a>
+            <a class="nav-link nav-item" data-page="cabinets-manage" data-role="admin,tech">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l7-4 7 4v14"/></svg>
+                <span>Кабинеты</span>
             </a>
 
-            <a class="nav-link" href="#" data-page="users"
-               data-role="admin"
-               onclick="loadPage('users'); return false;">
-                <i class="bi bi-people"></i>
+            <div class="nav-section-title">Учёт</div>
+            <a class="nav-link nav-item" data-page="cartridges" data-role="admin,tech">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>
+                <span>Картриджи</span>
+            </a>
+            <a class="nav-link nav-item" data-page="licenses" data-role="admin,tech">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7a2 2 0 0 1 2 2m4 0a6 6 0 0 1-7.743 5.743L11 17H9v2H7v2H4a1 1 0 0 1-1-1v-2.586a1 1 0 0 1 .293-.707l5.964-5.964A6 6 0 1 1 21 9z"/></svg>
+                <span>Лицензии</span>
+            </a>
+            <a class="nav-link nav-item" data-page="users" data-role="admin">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                 <span>Пользователи</span>
             </a>
 
-            <a class="nav-link" href="#" data-page="cartridges"
-               data-role="admin,tech"
-               onclick="loadPage('cartridges'); return false;">
-                <i class="bi bi-printer"></i>
-                <span>Картриджи</span>
-            </a>
-
-            <a class="nav-link" href="#" data-page="licenses"
-               data-role="admin,tech"
-               onclick="loadPage('licenses'); return false;">
-                <i class="bi bi-key"></i>
-                <span>Лицензии</span>
-            </a>
-
-            <a class="nav-link" href="#" data-page="contacts"
-               data-role="admin,tech"
-               onclick="loadPage('contacts'); return false;">
-                <i class="bi bi-person-lines-fill"></i>
+            <div class="nav-section-title">Инструменты</div>
+            <a class="nav-link nav-item" data-page="contacts" data-role="admin,tech">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></svg>
                 <span>Внешние контакты</span>
             </a>
-
-            <a class="nav-link" href="#" data-page="directory"
-               data-role="admin"
-               onclick="loadPage('directory'); return false;">
-                <i class="bi bi-book"></i>
+            <a class="nav-link nav-item" data-page="directory" data-role="admin">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
                 <span>Справочник</span>
             </a>
-
-            <a class="nav-link" href="#" data-page="report"
-               data-role="admin"
-               onclick="loadPage('report'); return false;">
-                <i class="bi bi-file-text"></i>
-                <span>Отчет по задачам</span>
+            <a class="nav-link nav-item" data-page="report" data-role="admin">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+                <span>Отчёты</span>
             </a>
         </nav>
-    </div>
-</div>
 
-<!-- Основной контент -->
-<div class="main-content">
-    <!-- Карточка пользователя -->
-    <div class="user-card">
-        <div class="row align-items-center">
-            <div class="col-lg-3 col-md-4 col-12 mb-3 mb-md-0">
-                <div class="d-flex align-items-center justify-content-center justify-content-md-start">
-                    <div class="avatar-circle" id="userAvatar"></div>
-                    <div>
-                        <h5 class="mb-1" id="userName"></h5>
-                        <p class="mb-0 text-muted">
-                            <i class="bi bi-person-badge"></i>
-                            <span id="userRole"></span>
-                        </p>
-                        <small class="text-muted" id="userDepartment"></small>
+        <div class="sidebar-footer">
+            <div class="sidebar-user" onclick="showUserCard()">
+                <div class="sidebar-user-avatar" id="userAvatarSidebar">?</div>
+                <div class="sidebar-user-info">
+                    <div class="sidebar-user-name" id="userNameSidebar">—</div>
+                    <div class="sidebar-user-role" id="userRoleSidebar">—</div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ============================================================ -->
+    <!-- MAIN                                                          -->
+    <!-- ============================================================ -->
+    <main class="main">
+        <div class="topbar">
+            <h1 class="topbar-title">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                <span id="topbarTitleText">Заявки</span>
+            </h1>
+            <div class="topbar-actions">
+                <button class="icon-btn" title="Обновить (R)" onclick="refreshData()">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>
+                </button>
+                <button class="icon-btn" title="Уведомления (B)" onclick="showNotifications()">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+                    <span class="icon-btn-badge" id="notificationBadge" style="display:none;">0</span>
+                </button>
+                <button class="icon-btn" id="pushToggleBtn" title="Push-уведомления" onclick="togglePushNotifications()">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+                </button>
+                <button class="icon-btn" id="themeToggleBtn" title="Сменить тему (T)" onclick="toggleTheme()">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+                </button>
+                <button class="icon-btn" title="Командная палитра (Ctrl+K)" onclick="openCommandPalette()">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3H6a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3z"/></svg>
+                </button>
+                <button class="icon-btn" title="Горячие клавиши (?)" onclick="showHotkeysHelp()">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                </button>
+                <button class="btn-primary" onclick="showCreateTaskModal()">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                    Создать заявку
+                </button>
+            </div>
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- TASKS BLOCK                                                   -->
+        <!-- ============================================================ -->
+        <section id="tasksBlock">
+
+            <!-- USER CARD -->
+            <div class="user-card">
+                <div class="user-info">
+                    <div class="user-avatar" id="userAvatar">?</div>
+                    <div class="user-info-text">
+                        <div class="user-info-name" id="userName">—</div>
+                        <div class="user-info-role">
+                            <span class="role-pill" id="userRole">—</span>
+                        </div>
+                        <div class="user-info-dept" id="userDepartment">—</div>
+                    </div>
+                </div>
+
+                <div class="user-card-actions">
+                    <button class="btn-ghost" onclick="showUserCard()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        Профиль
+                    </button>
+                    <button class="btn-ghost" onclick="window.location.href='/logout'">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5M21 12H9"/></svg>
+                        Выйти
+                    </button>
+                </div>
+
+                <div class="user-stats">
+                    <div class="stat-box success">
+                        <div class="stat-box-value" id="statCompleted">0</div>
+                        <div class="stat-box-label">Выполнено</div>
+                    </div>
+                    <div class="stat-box warning">
+                        <div class="stat-box-value" id="statNewProgress">0</div>
+                        <div class="stat-box-label">В работе</div>
+                    </div>
+                    <div class="stat-box accent">
+                        <div class="stat-box-value" id="statTotal">0</div>
+                        <div class="stat-box-label">Всего</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-box-value" id="statMyCompleted">0</div>
+                        <div class="stat-box-label">Мои</div>
                     </div>
                 </div>
             </div>
-            <div class="col-lg-3 col-md-4 col-12 mb-3 mb-md-0">
-                <div class="d-flex gap-2 flex-wrap justify-content-center justify-content-md-start">
-                    <button class="btn btn-outline-primary btn-sm" onclick="showUserCard()" title="Карточка">
-                        <i class="bi bi-person-badge"></i>
-                        <span class="d-none d-md-inline">Карточка</span>
+
+            <!-- TOOLBAR -->
+            <div class="toolbar">
+                <div class="toolbar-left">
+                    <div class="search-input">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                        <input type="text" id="taskSearchInput" placeholder="Поиск по описанию, ФИО, кабинету…">
+                    </div>
+
+                    <!-- Переключатель Таблица / Канбан -->
+                    <div class="segmented" id="viewSwitcher">
+                        <button type="button" class="active" data-view="table" onclick="switchView('table')">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>
+                            Таблица
+                        </button>
+                        <button type="button" data-view="kanban" onclick="switchView('kanban')">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="11" rx="1"/></svg>
+                            Канбан
+                        </button>
+                    </div>
+                </div>
+
+                <div class="toolbar-right">
+                    <div class="dropdown">
+                        <button class="btn-ghost" onclick="toggleDropdown('ddBulk', event)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 11l3 3 8-8"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                            Массовые
+                        </button>
+                        <div class="dropdown-menu hidden" id="ddBulk">
+                            <div class="dropdown-item" onclick="bulkClose(); closeDropdown('ddBulk')">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>
+                                Закрыть выбранные
+                            </div>
+                            <div class="dropdown-item" onclick="bulkAssign(); closeDropdown('ddBulk')">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="7" r="4"/><path d="M5.5 21v-2a4 4 0 0 1 4-4h5a4 4 0 0 1 4 4v2"/></svg>
+                                Назначить исполнителя
+                            </div>
+                            <div class="dropdown-item" onclick="bulkPriority(); closeDropdown('ddBulk')">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/></svg>
+                                Изменить приоритет
+                            </div>
+                            <div class="dropdown-divider"></div>
+                            <div class="dropdown-item danger" onclick="bulkDelete(); closeDropdown('ddBulk')">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                                Удалить (только админ)
+                            </div>
+                        </div>
+                    </div>
+                    <button class="btn-ghost" onclick="toggleFilters()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                        Фильтры
                     </button>
-                    <button class="btn btn-outline-secondary btn-sm" onclick="changeUser()" title="Сменить пользователя (Ctrl+Q)">
-                        <i class="bi bi-arrow-repeat"></i>
-                        <span class="d-none d-md-inline">Сменить</span>
-                    </button>
-                    <button class="btn btn-outline-info btn-sm position-relative" onclick="showNotifications()" title="Уведомления (B)">
-                        <i class="bi bi-bell"></i>
-                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
-                              id="notificationBadge" style="display: none;">0</span>
-                    </button>
-                    <button class="btn btn-outline-info btn-sm" id="pushToggleBtn"
-                            onclick="togglePushNotifications()" title="Push-уведомления">
-                        <i class="bi bi-bell-slash"></i>
-                    </button>
-                    <button class="btn btn-outline-warning btn-sm" id="themeToggleBtn"
-                            onclick="toggleTheme()" title="Сменить тему (T)">
-                        <i class="bi bi-circle-half"></i>
-                    </button>
-                    <button class="btn btn-outline-secondary btn-sm" onclick="openCommandPalette()"
-                            title="Командная палитра (Ctrl+K)">
-                        <i class="bi bi-command"></i>
+                    <button class="btn-ghost" onclick="openModal('modalExport')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                        Экспорт
                     </button>
                 </div>
             </div>
-            <div class="col-lg-6 col-md-4 col-12">
-                <div class="row g-2">
-                    <div class="col-3">
-                        <div class="stats-card">
-                            <div class="stats-number" id="statCompleted">0</div>
-                            <div class="stats-label">Выполнено</div>
+
+            <!-- FILTERS PANEL -->
+            <div class="filters-panel" id="filtersPanel" style="display: none;">
+                <div class="filters-grid">
+                    <div class="field">
+                        <label>Тип работы</label>
+                        <select id="filterWorkType"><option value="">Все типы</option></select>
+                    </div>
+                    <div class="field">
+                        <label>Кабинет</label>
+                        <select id="filterCabinet"><option value="">Все кабинеты</option></select>
+                    </div>
+                    <div class="field">
+                        <label>Статус</label>
+                        <select id="filterStatus"><option value="">Все статусы</option></select>
+                    </div>
+                    <div class="field" id="filterUserBlock">
+                        <label>Пользователь</label>
+                        <select id="filterUser"><option value="">Все</option></select>
+                    </div>
+                    <div class="field">
+                        <label>Срок</label>
+                        <input type="date" id="filterDate">
+                    </div>
+                </div>
+                <div class="filters-footer">
+                    <div class="filter-chips"></div>
+                    <button class="btn-ghost" style="font-size: 12px;" onclick="clearFilters()">Сбросить</button>
+                </div>
+            </div>
+
+            <!-- BULK BAR -->
+            <div class="bulk-bar" id="bulkBar">
+                <span class="bulk-count" id="bulkCount">0 заявок выбрано</span>
+                <div class="bulk-actions">
+                    <button class="bulk-btn" onclick="bulkClose()">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>
+                        Закрыть
+                    </button>
+                    <button class="bulk-btn" onclick="bulkAssign()">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="7" r="4"/><path d="M5.5 21v-2a4 4 0 0 1 4-4h5a4 4 0 0 1 4 4v2"/></svg>
+                        Назначить
+                    </button>
+                    <button class="bulk-btn danger" onclick="bulkDelete()">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                        Удалить
+                    </button>
+                </div>
+            </div>
+
+            <!-- TABLE VIEW -->
+            <div class="table-wrap table-container" id="tableView">
+                <div class="table-head">
+                    <div class="table-head-title">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--accent);"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                        Список заявок
+                        <span class="table-head-count" id="tasksTotalCount">0</span>
+                    </div>
+                </div>
+
+                <div class="table-scroll">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th style="width: 40px;"><input type="checkbox" class="checkbox" id="selectAll"></th>
+                                <th>Дата</th>
+                                <th>Срок</th>
+                                <th>От кого</th>
+                                <th>Кабинет</th>
+                                <th>Описание</th>
+                                <th>Тип</th>
+                                <th>Статус</th>
+                                <th>Приоритет</th>
+                                <th>Исполнитель</th>
+                                <th>Помощник</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tasksTableBody">
+                            <tr>
+                                <td colspan="11" class="text-center py-4">
+                                    <div class="spinner-border" role="status"></div>
+                                    <p class="mt-2 text-muted">Загрузка...</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div id="tasksPagination" class="pagination"></div>
+            </div>
+        </section>
+
+        <!-- KANBAN BLOCK для Техника (заполняется tasks_kanban.js) -->
+        <section id="kanbanBlock" style="display: none;"></section>
+
+        <!-- KANBAN BLOCK для Админа/Разработчика (заполняется tasks_kanban.js) -->
+        <section id="adminKanbanBlock" style="display: none;"></section>
+
+        <!-- OTHER PAGES BLOCK (users, cartridges, licenses, ...) -->
+        <section id="otherPagesBlock" style="display: none;"></section>
+    </main>
+
+    <!-- ============================================================ -->
+    <!-- MOBILE BOTTOM NAV                                             -->
+    <!-- ============================================================ -->
+    <nav class="mobile-bottom-nav">
+        <div class="nav-item active" data-page="tasks" onclick="loadPage('tasks')">
+            <i class="bi bi-list-check"></i>
+            <span>Заявки</span>
+        </div>
+        <div class="nav-item" data-page="users" onclick="loadPage('users')">
+            <i class="bi bi-people"></i>
+            <span>Пользователи</span>
+        </div>
+        <div class="nav-item" data-page="cartridges" onclick="loadPage('cartridges')">
+            <i class="bi bi-printer"></i>
+            <span>Картриджи</span>
+        </div>
+        <div class="nav-item" data-page="licenses" onclick="loadPage('licenses')">
+            <i class="bi bi-key"></i>
+            <span>Лицензии</span>
+        </div>
+        <div class="nav-item" data-page="notifications" onclick="showNotifications()">
+            <i class="bi bi-bell"></i>
+            <span>Уведомления</span>
+        </div>
+    </nav>
+
+    <!-- ============================================================ -->
+    <!-- MODAL: VIEW TASK                                              -->
+    <!-- ============================================================ -->
+    <div class="modal-backdrop" id="viewTaskModal">
+        <div class="modal large">
+            <div class="modal-head">
+                <div class="task-modal-head-inner">
+                    <div class="task-num" id="taskModalNumber">#0</div>
+                    <div style="flex: 1; min-width: 0;">
+                        <h2 class="task-modal-title" id="taskModalTitle">Загрузка...</h2>
+                        <div class="task-modal-meta">
+                            <span id="taskModalMetaDate">—</span>
+                            <span id="taskModalMetaStatus">—</span>
                         </div>
                     </div>
-                    <div class="col-3">
-                        <div class="stats-card">
-                            <div class="stats-number" id="statNewProgress">0</div>
-                            <div class="stats-label">В работе</div>
-                        </div>
-                    </div>
-                    <div class="col-3">
-                        <div class="stats-card">
-                            <div class="stats-number" id="statTotal">0</div>
-                            <div class="stats-label">Всего</div>
-                        </div>
-                    </div>
-                    <div class="col-3">
-                        <div class="stats-card">
-                            <div class="stats-number" id="statMyCompleted">0</div>
-                            <div class="stats-label">Мои заявки</div>
-                        </div>
-                    </div>
+                </div>
+                <button class="modal-close" onclick="closeModal('viewTaskModal')">×</button>
+            </div>
+            <div class="modal-body" id="taskDetails"></div>
+            <div class="modal-foot" style="justify-content: space-between;">
+                <button class="btn-ghost" id="btnDeleteTask" style="display: none; color: var(--danger); border-color: var(--danger);"
+                        onclick="deleteCurrentTask()">🗑️ Удалить заявку</button>
+                <div style="display: flex; gap: 8px; margin-left: auto;">
+                    <button class="btn-ghost" onclick="closeModal('viewTaskModal')">Отмена</button>
+                    <button class="btn-ghost" id="btnTakeTask" style="display: none; color: var(--accent); border-color: var(--accent);"
+                            onclick="takeTask()">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                        Взять в работу
+                    </button>
+                    <button class="btn-primary" id="btnCloseTask" onclick="closeCurrentTask()">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>
+                        Закрыть заявку
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Блок с заявками (табличный вид) -->
-    <div id="tasksBlock">
-        <div class="filters-section">
-            <div class="row g-2">
-                <div class="col-lg-2 col-md-3 col-sm-4 col-6">
-                    <label class="form-label">Поиск <kbd>F</kbd></label>
-                    <input type="text" class="form-control" id="taskSearchInput"
-                           placeholder="Описание, ФИО, кабинет...">
-                </div>
-                <div class="col-lg-2 col-md-3 col-sm-4 col-6">
-                    <label class="form-label">Тип работы</label>
-                    <select class="form-select" id="filterWorkType">
-                        <option value="">Все типы</option>
-                    </select>
-                </div>
-                <div class="col-lg-2 col-md-3 col-sm-4 col-6">
-                    <label class="form-label">Кабинет</label>
-                    <select class="form-select" id="filterCabinet">
-                        <option value="">Все кабинеты</option>
-                    </select>
-                </div>
-                <div class="col-lg-2 col-md-3 col-sm-4 col-6">
-                    <label class="form-label">Статус</label>
-                    <select class="form-select" id="filterStatus">
-                        <option value="">Все статусы</option>
-                    </select>
-                </div>
-                <div class="col-lg-2 col-md-3 col-sm-4 col-6" id="filterUserBlock">
-                    <label class="form-label">Пользователь</label>
-                    <select class="form-select" id="filterUser">
-                        <option value="">Все</option>
-                    </select>
-                </div>
-                <div class="col-lg-2 col-md-3 col-sm-4 col-6">
-                    <label class="form-label">Срок</label>
-                    <input type="date" class="form-control" id="filterDate" onchange="loadTasks(1)">
-                </div>
-                <div class="col-12">
-                    <div class="d-flex gap-2 flex-wrap mt-2">
-                        <div class="btn-group btn-group-sm">
-                            <button type="button" class="btn btn-outline-primary dropdown-toggle"
-                                    data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="bi bi-check2-square"></i> Массовые действия
-                            </button>
-                            <ul class="dropdown-menu">
-                                <li><a class="dropdown-item" href="#" onclick="bulkClose(); return false;">
-                                    <i class="bi bi-x-circle"></i> Закрыть выбранные</a></li>
-                                <li><a class="dropdown-item" href="#" onclick="bulkAssign(); return false;">
-                                    <i class="bi bi-person-check"></i> Назначить исполнителя</a></li>
-                                <li><a class="dropdown-item" href="#" onclick="bulkPriority(); return false;">
-                                    <i class="bi bi-flag"></i> Изменить приоритет</a></li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item text-danger" href="#" onclick="bulkDelete(); return false;">
-                                    <i class="bi bi-trash"></i> Удалить (только админ)</a></li>
-                            </ul>
-                        </div>
-                        <button class="btn btn-success btn-sm" onclick="showCreateTaskModal()" title="Создать заявку (N)">
-                            <i class="bi bi-plus-circle"></i> Создать
-                        </button>
-                        <button class="btn btn-primary btn-sm" onclick="refreshData()" title="Обновить (R)">
-                            <i class="bi bi-arrow-clockwise"></i> Обновить
-                        </button>
-                        <button class="btn btn-outline-secondary btn-sm ms-auto" onclick="showHotkeysHelp()"
-                                title="Горячие клавиши (?)">
-                            <i class="bi bi-question-circle"></i>
-                            <span class="d-none d-md-inline">Клавиши</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="table-container">
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th><input type="checkbox" id="selectAll"></th>
-                            <th>Дата</th>
-                            <th>Срок</th>
-                            <th>От кого</th>
-                            <th>Кабинет</th>
-                            <th>Описание</th>
-                            <th>Тип</th>
-                            <th>Статус</th>
-                            <th>Приоритет</th>
-                            <th>Исполнитель</th>
-                            <th>Помощник</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tasksTableBody">
-                        <tr>
-                            <td colspan="11" class="text-center py-4">
-                                <div class="spinner-border text-primary" role="status"></div>
-                                <p class="mt-2 text-muted">Загрузка...</p>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <div id="tasksPagination" class="mt-3"></div>
-        </div>
-    </div>
-
-    <!-- Блок с Kanban-доской (для Техника) -->
-    <div id="kanbanBlock" style="display: none;"></div>
-
-    <div id="otherPagesBlock" style="display: none;"></div>
-</div>
-
-<!-- Мобильная нижняя навигация -->
-<div class="mobile-bottom-nav" id="mobileBottomNav">
-    <div class="nav-item active" onclick="loadPage('tasks')">
-        <i class="bi bi-list-check"></i>
-        <span>Заявки</span>
-    </div>
-    <div class="nav-item" onclick="loadPage('users')">
-        <i class="bi bi-people"></i>
-        <span>Пользователи</span>
-    </div>
-    <div class="nav-item" onclick="loadPage('cartridges')">
-        <i class="bi bi-printer"></i>
-        <span>Картриджи</span>
-    </div>
-    <div class="nav-item" onclick="loadPage('licenses')">
-        <i class="bi bi-key"></i>
-        <span>Лицензии</span>
-    </div>
-    <div class="nav-item" onclick="showNotifications()">
-        <i class="bi bi-bell"></i>
-        <span>Уведомления</span>
-    </div>
-</div>
-
-<!-- ========== Модальное окно создания заявки ========== -->
-<div class="modal fade" id="createTaskModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">   <!-- createTaskModal -->
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">
-                    <i class="bi bi-plus-circle"></i> Новая заявка
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+    <!-- ============================================================ -->
+    <!-- MODAL: CREATE TASK                                            -->
+    <!-- ============================================================ -->
+    <div class="modal-backdrop" id="createTaskModal">
+        <div class="modal large">
+            <div class="modal-head">
+                <h2>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+                    Новая заявка
+                </h2>
+                <button class="modal-close" onclick="closeModal('createTaskModal')">×</button>
             </div>
             <div class="modal-body">
                 <form id="createTaskForm">
-                    <div class="m-form-row">
-                        <div class="m-field">
-                            <label class="form-label">Тип работы *</label>
+                    <div class="form-row">
+                        <div class="field">
+                            <label>Тип работы *</label>
                             <select class="form-select" name="work_type" required>
                                 <option value="">Выберите тип работы</option>
                             </select>
                         </div>
-                        <div class="m-field">
-                            <label class="form-label">Приоритет</label>
+                        <div class="field">
+                            <label>Приоритет</label>
                             <select class="form-select" name="priority">
                                 <option value="Средний" selected>Средний</option>
                                 <option value="Высокий">Высокий</option>
@@ -331,15 +412,13 @@
                             </select>
                         </div>
                     </div>
-
-                    <div class="m-form-row">
-                        <div class="m-field">
-                            <label class="form-label">Срок выполнения *</label>
-                            <input type="datetime-local" class="form-control"
-                                   name="deadline" required>
+                    <div class="form-row">
+                        <div class="field">
+                            <label>Срок выполнения *</label>
+                            <input type="datetime-local" class="form-control" name="deadline" required>
                         </div>
-                        <div class="m-field">
-                            <label class="form-label">Длительность</label>
+                        <div class="field">
+                            <label>Длительность</label>
                             <select class="form-select" name="duration_minutes">
                                 <option value="15">15 минут</option>
                                 <option value="30">30 минут</option>
@@ -350,256 +429,283 @@
                             </select>
                         </div>
                     </div>
-
-                    <div class="m-form-row">
-                        <div class="m-field">
-                            <label class="form-label">От кого (ФИО) *</label>
-                            <input type="text" class="form-control" name="from_user"
-                                   placeholder="Например: Иванов И.И." required>
+                    <div class="form-row">
+                        <div class="field">
+                            <label>От кого (ФИО) *</label>
+                            <input type="text" class="form-control" name="from_user" placeholder="Например: Иванов И.И." required>
                         </div>
-                        <div class="m-field">
-                            <label class="form-label">Кабинет *</label>
-                            <select class="form-select" name="cabinet"
-                                    id="cabinetSelect" required>
+                        <div class="field">
+                            <label>Кабинет *</label>
+                            <select class="form-select" name="cabinet" id="cabinetSelect" required>
                                 <option value="">Выберите кабинет</option>
                             </select>
                         </div>
                     </div>
-
-                    <div class="m-form-row">
-                        <div class="m-field">
-                            <label class="form-label">Исполнитель</label>
-                            <select class="form-select" name="executor"
-                                    id="executorSelect">
+                    <div class="form-row">
+                        <div class="field">
+                            <label>Исполнитель</label>
+                            <select class="form-select" name="executor" id="executorSelect">
                                 <option value="">Выберите исполнителя</option>
                             </select>
                         </div>
-                        <div class="m-field">
-                            <label class="form-label">Помощник</label>
-                            <select class="form-select" name="assistant"
-                                    id="assistantSelect">
+                        <div class="field">
+                            <label>Помощник</label>
+                            <select class="form-select" name="assistant" id="assistantSelect">
                                 <option value="">Выберите помощника</option>
                             </select>
                         </div>
                     </div>
-
-                    <div class="m-form-row m-full">
-                        <div class="m-field">
-                            <label class="form-label">Описание работы *</label>
-                            <textarea class="form-control" name="description" rows="4"
-                                      placeholder="Подробно опишите проблему или задачу..."
-                                      required></textarea>
+                    <div class="form-row full">
+                        <div class="field">
+                            <label>Описание работы *</label>
+                            <textarea class="form-control" name="description" rows="4" placeholder="Подробно опишите проблему или задачу..." required></textarea>
                         </div>
                     </div>
                 </form>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="m-btn" data-bs-dismiss="modal">
-                    Отмена
-                </button>
-                <button type="button" class="m-btn m-btn-primary" onclick="createTask()">
-                    <i class="bi bi-check-circle"></i> Создать заявку
+            <div class="modal-foot">
+                <button class="btn-ghost" onclick="closeModal('createTaskModal')">Отмена</button>
+                <button class="btn-primary" onclick="createTask()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>
+                    Создать заявку
                 </button>
             </div>
         </div>
     </div>
-</div>
 
-<!-- ========== Модальное окно просмотра заявки ========== -->
-<div class="modal fade" id="viewTaskModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">   <!-- viewTaskModal -->
-        <div class="modal-content">
-            <div class="modal-header">
-                <div class="task-modal-head-inner">
-                    <div class="task-num" id="taskModalNumber">#0</div>
-                    <div style="flex: 1; min-width: 0;">
-                        <h5 class="task-modal-title" id="taskModalTitle">Заявка</h5>
-                        <div class="task-modal-meta" id="taskModalMeta">
-                            <span id="taskModalMetaDate">—</span>
-                            <span class="status-badge status-new" id="taskModalMetaStatus">—</span>
-                        </div>
+    <!-- ============================================================ -->
+    <!-- MODAL: NOTIFICATIONS                                          -->
+    <!-- ============================================================ -->
+    <div class="modal-backdrop" id="modalNotifications">
+        <div class="modal">
+            <div class="modal-head">
+                <h2>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+                    Уведомления
+                    <span class="badge badge-new" id="notificationsCount" style="font-size: 11px; display: none;">0</span>
+                </h2>
+                <button class="modal-close" onclick="closeModal('modalNotifications')">×</button>
+            </div>
+            <div class="modal-body" id="modalNotificationsBody" style="padding: 8px;">
+                <div class="text-center py-4">
+                    <div class="spinner-border spinner-border-sm"></div>
+                </div>
+            </div>
+            <div class="modal-foot">
+                <button class="btn-ghost" onclick="markAllNotificationsRead()">Отметить прочитанными</button>
+                <button class="btn-primary" onclick="closeModal('modalNotifications')">Понятно</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- MODAL: EXPORT                                                 -->
+    <!-- ============================================================ -->
+    <div class="modal-backdrop" id="modalExport">
+        <div class="modal">
+            <div class="modal-head">
+                <h2>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                    Экспорт данных
+                </h2>
+                <button class="modal-close" onclick="closeModal('modalExport')">×</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+                    Выберите формат экспорта. Данные будут отфильтрованы по текущим параметрам списка.
+                </p>
+                <div class="export-options">
+                    <div class="export-option active" data-format="xlsx" onclick="selectExport(this)">
+                        <div class="export-icon" style="color: #10b981;">📊</div>
+                        <div class="export-name">Excel</div>
+                        <div class="export-desc">XLSX с формулами</div>
+                    </div>
+                    <div class="export-option" data-format="pdf" onclick="selectExport(this)">
+                        <div class="export-icon" style="color: #ef4444;">📄</div>
+                        <div class="export-name">PDF</div>
+                        <div class="export-desc">Печатная версия</div>
+                    </div>
+                    <div class="export-option" data-format="print" onclick="selectExport(this)">
+                        <div class="export-icon" style="color: var(--accent);">🖨️</div>
+                        <div class="export-name">Печать</div>
+                        <div class="export-desc">HTML-версия</div>
                     </div>
                 </div>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
-            </div>
-            <div class="modal-body" id="taskDetails"></div>
-            <div class="modal-footer">
-                <button type="button" class="m-btn m-btn-danger"
-                        id="btnDeleteTask" onclick="deleteCurrentTask()"
-                        style="display: none;">
-                    <i class="bi bi-trash"></i> Удалить заявку
-                </button>
-                <div class="ms-auto d-flex gap-2 flex-wrap">
-                    <button type="button" class="m-btn" data-bs-dismiss="modal">
-                        Отмена
-                    </button>
-                    <button type="button" class="m-btn m-btn-take"
-                            id="btnTakeTask" onclick="takeTask()"
-                            style="display: none;">
-                        <i class="bi bi-play-circle"></i> Взять в работу
-                    </button>
-                    <button type="button" class="m-btn m-btn-primary"
-                            id="btnCloseTask" onclick="closeCurrentTask()">
-                        <i class="bi bi-check-circle"></i> Закрыть заявку
-                    </button>
+                <div class="field">
+                    <label>Что включить</label>
+                    <select id="exportScope">
+                        <option value="filtered">Только отфильтрованные заявки</option>
+                        <option value="all">Все заявки</option>
+                    </select>
                 </div>
+            </div>
+            <div class="modal-foot">
+                <button class="btn-ghost" onclick="closeModal('modalExport')">Отмена</button>
+                <button class="btn-primary" onclick="doExportFromModal()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                    Скачать
+                </button>
             </div>
         </div>
     </div>
-</div>
 
-<!-- ========== Модальное окно редактирования пользователя ========== -->
-<div class="modal fade" id="editUserModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title">
-                    <i class="bi bi-pencil-square"></i> Редактирование пользователя
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+    <!-- ============================================================ -->
+    <!-- MODAL: EDIT USER                                              -->
+    <!-- ============================================================ -->
+    <div class="modal-backdrop" id="editUserModal">
+        <div class="modal">
+            <div class="modal-head">
+                <h2>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+                    <span id="editUserModalTitle">Редактировать пользователя</span>
+                </h2>
+                <button class="modal-close" onclick="closeModal('editUserModal')">×</button>
             </div>
             <div class="modal-body">
                 <form id="editUserForm" enctype="multipart/form-data">
-                    <div class="text-center mb-4">
-                        <div class="position-relative d-inline-block">
-                            <div class="avatar-circle mx-auto" id="editUserAvatar"
-                                 style="width: 100px; height: 100px; font-size: 40px; cursor: pointer;"
-                                 onclick="document.getElementById('avatarFileInput').click()">
-                            </div>
-                            <button type="button" class="btn btn-sm btn-light position-absolute bottom-0 end-0 rounded-circle"
-                                    style="width: 35px; height: 35px;"
-                                    onclick="document.getElementById('avatarFileInput').click()"
-                                    title="Загрузить фото">
-                                <i class="bi bi-camera-fill"></i>
-                            </button>
+
+                    <input type="hidden" name="avatar" id="avatarInput" value="">
+                    <input type="file" id="avatarFileInput" name="avatar_file"
+                           accept="image/*" style="display: none;"
+                           onchange="previewAvatarFile(this)">
+
+                    <div class="edit-user-grid">
+
+                        <div class="field">
+                            <label class="form-label">ФИО *</label>
+                            <input type="text" class="form-control" name="full_name"
+                                   id="editFullName" placeholder="Иванов Иван Иванович" required>
                         </div>
-                        <input type="file" id="avatarFileInput" name="avatar_file"
-                               accept="image/*" style="display: none;"
-                               onchange="previewAvatarFile(this)">
-                        <input type="hidden" name="avatar" id="avatarInput" value="">
+
+                        <div class="field" id="editLoginField">
+                            <label class="form-label">Логин *</label>
+                            <input type="text" class="form-control" name="login"
+                                   id="editLogin" placeholder="admin" minlength="3">
+                        </div>
+
+                        <div class="field">
+                            <label class="form-label">Роль</label>
+                            <select class="form-select" name="role" id="editRole">
+                                <option value="Администратор">Администратор</option>
+                                <option value="Техник">Техник</option>
+                                <option value="Пользователь">Пользователь</option>
+                                <option value="Разработчик">Разработчик</option>
+                            </select>
+                        </div>
+
+                        <div class="field" id="editPasswordField">
+                            <label class="form-label">
+                                Пароль
+                                <small class="text-muted" style="text-transform:none;font-weight:400;letter-spacing:0;">
+                                    (оставьте пустым, чтобы не менять)
+                                </small>
+                            </label>
+                            <input type="password" class="form-control" name="password"
+                                   id="editPassword" placeholder="••••••" minlength="6">
+                        </div>
+
+                        <div class="field">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" name="email"
+                                   id="editEmail" placeholder="user@company.ru">
+                        </div>
+
+                        <div class="field">
+                            <label class="form-label">Телефон</label>
+                            <input type="text" class="form-control" name="phone"
+                                   id="editPhone" placeholder="+7 (999) 123-45-67">
+                        </div>
+
+                        <div class="field">
+                            <label class="form-label">Отдел</label>
+                            <input type="text" class="form-control" name="department"
+                                   id="editDepartment" placeholder="IT отдел">
+                        </div>
+
+                        <div class="field" id="statusToggleField" style="display: none;">
+                            <label class="form-label">Статус</label>
+                            <label class="edit-user-status-switch">
+                                <input class="form-check-input" type="checkbox"
+                                       id="editIsActive" checked>
+                                <span>Учетная запись активна</span>
+                            </label>
+                        </div>
                     </div>
 
-                    <div class="mb-3">
+                    <!-- Аватар — collapsible секция -->
+                    <div class="edit-user-avatar-toggle">
+                        <button type="button" class="edit-user-avatar-toggle-btn"
+                                onclick="toggleAvatarSection()">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                            <span id="avatarToggleLabel">Сменить аватар</span>
+                            <i class="bi bi-chevron-down" id="avatarToggleArrow"
+                               style="margin-left:auto; transition:transform .2s;"></i>
+                        </button>
+                    </div>
+
+                    <div id="avatarSection" style="display: none;">
+                        <div class="text-center mb-3" style="margin-top: 16px;">
+                            <div class="avatar-circle mx-auto" id="editUserAvatar"
+                                 style="width: 80px; height: 80px; font-size: 32px; cursor: pointer;"
+                                 onclick="document.getElementById('avatarFileInput').click()"
+                                 title="Загрузить фото"></div>
+                        </div>
                         <label class="form-label">Или выберите цветной аватар</label>
                         <div class="d-flex flex-wrap gap-2" id="avatarSelector"></div>
                     </div>
 
-                    <hr>
-
-                    <div class="mb-3">
-                        <label class="form-label">ФИО *</label>
-                        <input type="text" class="form-control" name="full_name" id="editFullName"
-                               placeholder="Введите ФИО" required>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">Роль</label>
-                        <select class="form-select" name="role" id="editRole">
-                            <option value="Администратор">Администратор</option>
-                            <option value="Техник">Техник</option>
-                            <option value="Пользователь">Пользователь</option>
-                            <option value="Разработчик">Разработчик</option>
-                        </select>
-                    </div>
-
-                    <div id="loginPasswordFields" style="display: none;">
-                        <div class="mb-3">
-                            <label class="form-label">Логин *</label>
-                            <input type="text" class="form-control" name="login" id="editLogin"
-                                   placeholder="Введите логин" minlength="3">
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Пароль *</label>
-                            <input type="text" class="form-control" name="password" id="editPassword"
-                                   placeholder="Введите пароль" minlength="6">
-                        </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">Email</label>
-                        <input type="email" class="form-control" name="email" id="editEmail"
-                               placeholder="Введите email">
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">Телефон</label>
-                        <input type="text" class="form-control" name="phone" id="editPhone"
-                               placeholder="Введите телефон">
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">Отдел</label>
-                        <input type="text" class="form-control" name="department" id="editDepartment"
-                               placeholder="Введите отдел">
-                    </div>
-
-                    <div id="statusToggleField" class="mb-3" style="display: none;">
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="editIsActive" checked>
-                            <label class="form-check-label" for="editIsActive">
-                                Учетная запись активна
-                            </label>
-                        </div>
-                    </div>
                 </form>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <i class="bi bi-x-circle"></i> Отмена
-                </button>
-                <button type="button" class="btn btn-primary" onclick="saveUserProfile()">
-                    <i class="bi bi-check-circle"></i> Сохранить
+            <div class="modal-foot">
+                <button class="btn-ghost" onclick="closeModal('editUserModal')">Отмена</button>
+                <button class="btn-primary" onclick="saveUserProfile()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>
+                    Сохранить
                 </button>
             </div>
         </div>
     </div>
-</div>
 
-<!-- ========== Модальное окно управления кабинетом ========== -->
-<div class="modal fade" id="cabinetEditModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="cabinetModalTitle">
-                    <i class="bi bi-door-closed"></i> Кабинет
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+    <!-- ============================================================ -->
+    <!-- MODAL: CABINET EDIT                                           -->
+    <!-- ============================================================ -->
+    <div class="modal-backdrop" id="cabinetEditModal">
+        <div class="modal">
+            <div class="modal-head">
+                <h2 id="cabinetModalTitle">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l7-4 7 4v14"/></svg>
+                    Кабинет
+                </h2>
+                <button class="modal-close" onclick="closeModal('cabinetEditModal')">×</button>
             </div>
             <div class="modal-body">
                 <form id="cabinetForm">
                     <input type="hidden" id="cabinetId">
                     <div class="mb-3">
                         <label class="form-label">Номер кабинета *</label>
-                        <input type="text" class="form-control" id="cabinetNumber" required
-                               placeholder="Например: Кабинет 601">
+                        <input type="text" class="form-control" id="cabinetNumber" required>
                     </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Этаж</label>
-                            <input type="text" class="form-control" id="cabinetFloor"
-                                   placeholder="Например: 6 этаж">
+                    <div class="form-row">
+                        <div class="field">
+                            <label>Этаж</label>
+                            <input type="text" class="form-control" id="cabinetFloor">
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Корпус</label>
-                            <input type="text" class="form-control" id="cabinetBuilding"
-                                   placeholder="Например: Корпус В">
+                        <div class="field">
+                            <label>Корпус</label>
+                            <input type="text" class="form-control" id="cabinetBuilding">
                         </div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Описание / назначение</label>
-                        <input type="text" class="form-control" id="cabinetDescription"
-                               placeholder="Например: Бухгалтерия">
+                        <input type="text" class="form-control" id="cabinetDescription">
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Ответственный</label>
-                        <input type="text" class="form-control" id="cabinetResponsible"
-                               placeholder="ФИО ответственного">
+                        <input type="text" class="form-control" id="cabinetResponsible">
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Телефон</label>
-                        <input type="text" class="form-control" id="cabinetPhone"
-                               placeholder="+7-999-123-45-67">
+                        <input type="text" class="form-control" id="cabinetPhone">
                     </div>
                     <div class="form-check form-switch" id="cabinetActiveField">
                         <input class="form-check-input" type="checkbox" id="cabinetIsActive" checked>
@@ -607,28 +713,99 @@
                     </div>
                 </form>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <i class="bi bi-x-circle"></i> Отмена
-                </button>
-                <button type="button" class="btn btn-primary" onclick="saveCabinet()">
-                    <i class="bi bi-check-circle"></i> Сохранить
+            <div class="modal-foot">
+                <button class="btn-ghost" onclick="closeModal('cabinetEditModal')">Отмена</button>
+                <button class="btn-primary" onclick="saveCabinet()">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- MODAL: PROFILE                                                -->
+    <!-- ============================================================ -->
+    <div class="modal-backdrop" id="modalProfile">
+        <div class="modal">
+            <div class="modal-head">
+                <h2>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7" r="4"/><path d="M5.5 21v-2a4 4 0 0 1 4-4h5a4 4 0 0 1 4 4v2"/></svg>
+                    Профиль
+                </h2>
+                <button class="modal-close" onclick="closeModal('modalProfile')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="profile-header">
+                    <div class="profile-avatar" id="profileAvatar">?</div>
+                    <div class="profile-name" id="profileName">—</div>
+                    <div class="profile-role">
+                        <span class="role-pill" id="profileRole">—</span>
+                    </div>
+                </div>
+                <div class="profile-info-grid">
+                    <div class="profile-info-item">
+                        <div class="label">Логин</div>
+                        <div class="value" id="profileLogin">—</div>
+                    </div>
+                    <div class="profile-info-item">
+                        <div class="label">Email</div>
+                        <div class="value" id="profileEmail">—</div>
+                    </div>
+                    <div class="profile-info-item">
+                        <div class="label">Телефон</div>
+                        <div class="value" id="profilePhone">—</div>
+                    </div>
+                    <div class="profile-info-item">
+                        <div class="label">Отдел</div>
+                        <div class="value" id="profileDepartment">—</div>
+                    </div>
+                    <div class="profile-info-item">
+                        <div class="label">Всего заявок</div>
+                        <div class="value" id="profileTotal">0</div>
+                    </div>
+                    <div class="profile-info-item">
+                        <div class="label">Выполнено</div>
+                        <div class="value" id="profileCompleted">0</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-foot">
+                <button class="btn-ghost" onclick="closeModal('modalProfile')">Закрыть</button>
+                <button class="btn-primary"
+                        onclick="closeModal('modalProfile'); editUserProfile();">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+                    Редактировать
                 </button>
             </div>
         </div>
     </div>
-</div>
 
+    <!-- TOAST CONTAINER -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- COMMAND PALETTE -->
+    <div class="hk-overlay" id="hkOverlay">
+        <div class="hk-palette" role="dialog" aria-label="Командная палитра">
+            <input type="text" id="hkInput" class="hk-palette-input" placeholder="Введите команду или раздел..." autocomplete="off">
+            <div class="hk-palette-results" id="hkResults"></div>
+            <div class="hk-palette-footer">
+                <div class="hk-kbd-hint"><kbd>↑</kbd><kbd>↓</kbd> навигация</div>
+                <div class="hk-kbd-hint"><kbd>Enter</kbd> открыть</div>
+                <div class="hk-kbd-hint"><kbd>Esc</kbd> закрыть</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FAB -->
+    <button type="button" class="mux-fab" id="muxFab" aria-label="Создать заявку">
+        <i class="bi bi-plus-lg"></i>
+    </button>
+
+</div>
 {% endblock %}
 
 {% block scripts %}
-<!-- 🎯 Ядро -->
-<script src="{{ url_for('static', filename='js/core.js') }}"></script>
-<script src="{{ url_for('static', filename='js/utils.js') }}"></script>
-
-<!-- Модули -->
-<script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+<!-- Пользователь / уведомления / тема -->
 <script src="{{ url_for('static', filename='js/login.js') }}"></script>
+<script src="{{ url_for('static', filename='js/theme.js') }}"></script>
 <script src="{{ url_for('static', filename='js/notifications.js') }}"></script>
 <script src="{{ url_for('static', filename='js/notifications_sse.js') }}"></script>
 
@@ -642,19 +819,14 @@
 
 <!-- Разделы -->
 <script src="{{ url_for('static', filename='js/users.js') }}"></script>
-
-<!-- Картриджи -->
 <script src="{{ url_for('static', filename='js/cartridges/cartridges_chart.js') }}"></script>
 <script src="{{ url_for('static', filename='js/cartridges/cartridges_form.js') }}"></script>
 <script src="{{ url_for('static', filename='js/cartridges/cartridges_list.js') }}"></script>
-
 <script src="{{ url_for('static', filename='js/licenses.js') }}"></script>
 <script src="{{ url_for('static', filename='js/contacts.js') }}"></script>
 <script src="{{ url_for('static', filename='js/directory.js') }}"></script>
 <script src="{{ url_for('static', filename='js/cabinets_manage.js') }}"></script>
 <script src="{{ url_for('static', filename='js/excel.js') }}"></script>
-<script src="{{ url_for('static', filename='js/audit.js') }}"></script>
-<script src="{{ url_for('static', filename='js/webpush.js') }}"></script>
 
 <!-- Оборудование кабинета -->
 <script src="{{ url_for('static', filename='js/cabinet_core.js') }}"></script>
@@ -663,10 +835,11 @@
 <script src="{{ url_for('static', filename='js/computer_card.js') }}"></script>
 <script src="{{ url_for('static', filename='js/cabinet_documents.js') }}"></script>
 
-<!-- Горячие клавиши и мобильный UX -->
+<!-- Горячие клавиши / мобильный UX / webpush -->
 <script src="{{ url_for('static', filename='js/hotkeys.js') }}"></script>
 <script src="{{ url_for('static', filename='js/mobile_ux.js') }}"></script>
+<script src="{{ url_for('static', filename='js/webpush.js') }}"></script>
 
-<!-- 🎯 Инициализатор — ВСЕГДА ПОСЛЕДНИЙ -->
+<!-- Инициализатор — ВСЕГДА ПОСЛЕДНИЙ -->
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 {% endblock %}

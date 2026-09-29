@@ -288,35 +288,44 @@
             var role = window.currentUserRole;
 
             if (role === 'Техник') {
-                // Техник: его вид (Kanban/Таблица) управляется внутри TasksKanban
+                // Первый вход: init() сам создаст тулбар и покажет нужный блок
                 if ($('#tasksToolbar').length === 0 &&
                     window.App.TasksKanban &&
                     window.App.TasksKanban.init) {
                     window.App.TasksKanban.init();
-                } else if (window.App.TasksKanban &&
-                           window.App.TasksKanban.load) {
-                    // Если уже на таблице — не трогаем
-                    if (window.App.TasksKanban.getViewMode &&
-                        window.App.TasksKanban.getViewMode() === 'table') {
+                } else if (window.App.TasksKanban) {
+                    // 🆕 Определяем текущий режим и ЯВНО показываем нужный блок,
+                    //    иначе после возврата с другой вкладки он остаётся hidden
+                    var mode = window.App.TasksKanban.getViewMode
+                        ? window.App.TasksKanban.getViewMode()
+                        : 'kanban';
+
+                    if (mode === 'table') {
                         $('#tasksBlock').show();
                         $('#kanbanBlock').hide();
-                        if (window.App.Tasks &&
-                            window.App.Tasks.loadTasks) {
+                        if (window.App.Tasks && window.App.Tasks.loadTasks) {
                             window.App.Tasks.loadTasks(1);
                         }
                     } else {
-                        window.App.TasksKanban.load();
+                        // kanban
+                        $('#tasksBlock').hide();
+                        $('#kanbanBlock').show();
+                        if (window.App.TasksKanban.load) {
+                            window.App.TasksKanban.load();
+                        }
                     }
                 }
-            } else {
-                $('#kanbanBlock').hide();
-                $('#tasksBlock').show();
                 $('#otherPagesBlock').hide();
-                if (window.App.Tasks && window.App.Tasks.loadTasks) {
-                    window.App.Tasks.loadTasks(1);
-                }
+                return;
             }
+
+            // Остальные роли (Пользователь / Администратор / прочие)
+            $('#kanbanBlock').hide();
+            $('#tasksBlock').show();
             $('#otherPagesBlock').hide();
+            if (window.App.Tasks && window.App.Tasks.loadTasks) {
+                window.App.Tasks.loadTasks(1);
+            }
             return;
         }
 

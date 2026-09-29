@@ -89,7 +89,7 @@
             });
     }
 
-    // ============= КАРТОЧКА =============
+    // ============= КАРТОЧКА ПОЛЬЗОВАТЕЛЯ (просмотр) =============
     function showUserCardById(userId) {
         fetch('/api/users/' + userId)
             .then(function(r) { return r.json(); })
@@ -141,48 +141,32 @@
         ])
             .then(function(results) {
                 var data = results[0];
-                var cred = results[1];
-
                 if (data.error) { utils.showErrorMessage(data.error); return; }
 
+                // Заголовок
+                $('#editUserModalTitle').text('Редактировать пользователя');
+
+                // Заполняем поля
                 $('#editFullName').val(data.full_name || '');
                 $('#editRole').val(data.role || 'Пользователь');
                 $('#editEmail').val(data.email || '');
                 $('#editPhone').val(data.phone || '');
                 $('#editDepartment').val(data.department || '');
                 $('#editLogin').val(data.login || '');
-                $('#editIsActive').prop('checked', data.is_active);
+                $('#editPassword').val('');
+                $('#editIsActive').prop('checked', !!data.is_active);
 
-                // Подставляем поле пароля: плейсхолдер + кнопка сброса
-                var passwordHtml =
-                    '<div class="input-group">' +
-                    '<input type="password" class="form-control" name="password" id="editPassword" ' +
-                    'placeholder="•••••• (оставьте пустым, чтобы не менять)" minlength="6">' +
-                    '<button class="btn btn-outline-secondary" type="button" ' +
-                    'onclick="togglePasswordVisibility(\'editPassword\', \'editPasswordEye\')" title="Показать/скрыть">' +
-                    '<i class="bi bi-eye" id="editPasswordEye"></i></button>' +
-                    '<button class="btn btn-outline-warning" type="button" ' +
-                    'onclick="resetUserPassword(' + userId + ')" title="Сгенерировать новый пароль">' +
-                    '<i class="bi bi-arrow-clockwise"></i></button>' +
-                    '</div>' +
-                    '<small class="text-muted">Пароль хранится в виде необратимого хеша. ' +
-                    'Для получения нового нажмите 🔄.</small>';
-
-                // Ищем контейнер поля пароля и заменяем содержимое
-                var $pwdField = $('#editPassword');
-                if ($pwdField.length > 0) {
-                    var $wrapper = $pwdField.closest('.mb-3');
-                    if ($wrapper.length > 0) {
-                        $wrapper.html('<label class="form-label">Пароль</label>' + passwordHtml);
-                    }
-                }
-
-                $('#editUserForm').data('user-id', userId);
-                $('#editUserForm').data('edit-mode', 'admin');
-
-                $('#loginPasswordFields').show();
+                // Показываем логин и пароль
+                $('#editLoginField').show();
+                $('#editPasswordField').show();
                 $('#statusToggleField').show();
 
+                // Пароль-поле: очищаем placeholder, оставляем как есть
+                $('#editPassword').attr('type', 'password')
+                    .attr('placeholder', '••••••')
+                    .attr('autocomplete', 'new-password');
+
+                // Аватар
                 $('#avatarFileInput').val('');
                 $('#editUserForm').data('avatar-file', null);
                 $('#editUserForm').data('avatar-is-file', false);
@@ -195,13 +179,24 @@
                         'background-size': 'cover',
                         'background-position': 'center',
                         'color': 'transparent'
-                    });
+                    }).text((data.full_name || '?').charAt(0).toUpperCase());
                 } else {
                     updateAvatarPreview(avatar, data.full_name);
                 }
 
                 generateAvatarSelector(avatar, data.full_name);
-                $('#editUserModal').modal('show');
+
+                // Закрываем секцию аватара
+                closeAvatarSection();
+
+                $('#editUserForm').data('user-id', userId);
+                $('#editUserForm').data('edit-mode', 'admin');
+
+                if (typeof window.openModal === 'function') {
+                    window.openModal('editUserModal');
+                } else {
+                    $('#editUserModal').modal('show');
+                }
             });
     }
 
@@ -257,7 +252,6 @@
                 if (!data.success) { utils.showErrorMessage(data.error || 'Ошибка'); return; }
                 var creds = data.credentials;
 
-                // Пароль недоступен — предлагаем сбросить
                 if (!creds.available || !creds.password) {
                     Swal.fire({
                         icon: 'warning',
@@ -368,6 +362,9 @@
 
     // ============= ФОРМА СОЗДАНИЯ =============
     function showAddUserModal() {
+        $('#editUserModalTitle').text('Добавить пользователя');
+
+        // Пустые поля
         $('#editFullName').val('');
         $('#editRole').val('Пользователь');
         $('#editEmail').val('');
@@ -377,12 +374,15 @@
         $('#editPassword').val('');
         $('#editIsActive').prop('checked', true);
 
-        $('#editUserForm').data('user-id', null);
-        $('#editUserForm').data('edit-mode', 'create');
-
-        $('#loginPasswordFields').show();
+        // Показываем логин и пароль (обязательные при создании)
+        $('#editLoginField').show();
+        $('#editPasswordField').show();
+        $('#editPassword').attr('type', 'text')
+            .attr('placeholder', 'Введите пароль')
+            .attr('autocomplete', 'new-password');
         $('#statusToggleField').hide();
 
+        // Аватар
         $('#avatarFileInput').val('');
         $('#editUserForm').data('avatar-file', null);
         $('#editUserForm').data('avatar-is-file', false);
@@ -392,10 +392,20 @@
             'background-image': 'none',
             'background-color': '#858796',
             'color': 'white'
-        }).html('<i class="bi bi-person" style="font-size: 40px;"></i>');
+        }).html('<i class="bi bi-person" style="font-size: 32px;"></i>');
 
         generateAvatarSelectorForNewUser();
-        $('#editUserModal').modal('show');
+
+        closeAvatarSection();
+
+        $('#editUserForm').data('user-id', null);
+        $('#editUserForm').data('edit-mode', 'create');
+
+        if (typeof window.openModal === 'function') {
+            window.openModal('editUserModal');
+        } else {
+            $('#editUserModal').modal('show');
+        }
     }
 
     // ============= АВАТАРЫ =============
@@ -424,7 +434,7 @@
             'background-image': 'none',
             'background-color': color,
             'color': 'white'
-        }).html('<i class="bi bi-person" style="font-size: 40px;"></i>');
+        }).html('<i class="bi bi-person" style="font-size: 32px;"></i>');
         $('#avatarSelector .avatar-option').removeClass('border-primary').addClass('border-light');
         if (el) { el.classList.remove('border-light'); el.classList.add('border-primary'); }
     }
@@ -494,23 +504,45 @@
         }
     }
 
+    // ============= TOGGLE АВАТАР-СЕКЦИИ ============
+    function toggleAvatarSection() {
+        var $section = $('#avatarSection');
+        var $btn = $('.edit-user-avatar-toggle-btn');
+
+        if ($section.is(':visible')) {
+            closeAvatarSection();
+        } else {
+            $section.slideDown(180);
+            $btn.addClass('open');
+            $('#avatarToggleLabel').text('Скрыть аватар');
+        }
+    }
+
+    function closeAvatarSection() {
+        $('#avatarSection').hide();
+        $('.edit-user-avatar-toggle-btn').removeClass('open');
+        $('#avatarToggleLabel').text('Сменить аватар');
+    }
+
     // ============= ПРОФИЛЬ СЕБЯ =============
     function editUserProfile() {
         fetch('/api/current_user').then(function(r) { return r.json(); }).then(function(data) {
+            $('#editUserModalTitle').text('Редактировать профиль');
+
             $('#editFullName').val(data.full_name || '');
             $('#editRole').val(data.role || 'Пользователь');
             $('#editEmail').val(data.email || '');
             $('#editPhone').val(data.phone || '');
             $('#editDepartment').val(data.department || '');
-            $('#editLogin').val(data.login || '');
-            $('#editPassword').val('');
             $('#avatarInput').val(data.avatar || '');
+
+            // Скрываем логин/пароль и статус — своё не меняем через эту форму
+            $('#editLoginField').hide();
+            $('#editPasswordField').hide();
+            $('#statusToggleField').hide();
 
             $('#editUserForm').data('user-id', data.id);
             $('#editUserForm').data('edit-mode', 'self');
-
-            $('#loginPasswordFields').hide();
-            $('#statusToggleField').hide();
 
             $('#avatarFileInput').val('');
             $('#editUserForm').data('avatar-file', null);
@@ -523,12 +555,19 @@
                     'background-size': 'cover',
                     'background-position': 'center',
                     'color': 'transparent'
-                });
+                }).text((data.full_name || '?').charAt(0).toUpperCase());
             } else {
                 updateAvatarPreview(avatar, data.full_name);
             }
             generateAvatarSelector(avatar, data.full_name);
-            $('#editUserModal').modal('show');
+
+            closeAvatarSection();
+
+            if (typeof window.openModal === 'function') {
+                window.openModal('editUserModal');
+            } else {
+                $('#editUserModal').modal('show');
+            }
         });
     }
 
@@ -560,7 +599,7 @@
                 .then(function(r) { return r.json(); })
                 .then(function(result) {
                     if (result.success) {
-                        $('#editUserModal').modal('hide');
+                        if (typeof window.closeModal === 'function') window.closeModal('editUserModal');
                         Swal.fire({ icon: 'success', title: 'Пользователь создан!', timer: 2000, showConfirmButton: false });
                         if (typeof loadFilters === 'function') loadFilters();
                         loadUsersPage();
@@ -597,7 +636,7 @@
             .then(function(r) { return r.json(); })
             .then(function(result) {
                 if (result.success) {
-                    $('#editUserModal').modal('hide');
+                    if (typeof window.closeModal === 'function') window.closeModal('editUserModal');
                     Swal.fire({ icon: 'success', title: 'Сохранено!', timer: 2000, showConfirmButton: false });
                     if (typeof loadUserInfo === 'function') loadUserInfo();
                     if ($('#otherPagesBlock').is(':visible')) loadUsersPage();
@@ -705,6 +744,7 @@
     api.remove = deleteUser;
     api.showImport = showImportUsersModal;
     api.togglePasswordVisibility = togglePasswordVisibility;
+    api.toggleAvatarSection = toggleAvatarSection;
 
     window.loadUsersPage = loadUsersPage;
     window.showUserCardById = showUserCardById;
@@ -718,10 +758,11 @@
     window.deleteUser = deleteUser;
     window.showImportUsersModal = showImportUsersModal;
     window.togglePasswordVisibility = togglePasswordVisibility;
+    window.toggleAvatarSection = toggleAvatarSection;
 
     window.selectAvatarForNewUser = selectAvatarForNewUser;
     window.selectAvatar = selectAvatar;
     window.previewAvatarFile = previewAvatarFile;
 
-    console.log('[users] Загружено (без ID)');
+    console.log('[users] Загружено');
 })();

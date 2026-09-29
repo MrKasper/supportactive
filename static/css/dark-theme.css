@@ -1,180 +1,131 @@
 /* static/css/dark-theme.css */
-/* Дополнительная стилизация для тёмной темы:
-   SweetAlert2, Bootstrap-компоненты, иконки, календарь */
+/* Переопределения для тёмной темы. Идёт ПОСЛЕ components.css,
+   чтобы перебивать цветные шапки и тени. */
 
-/* ============ SIDEBAR ============ */
+/* ==== Sidebar ==== */
 [data-theme="dark"] .sidebar {
-    background: linear-gradient(180deg, #2a3054 0%, #1e2340 100%);
+    background: linear-gradient(180deg, #1e1b4b 0%, #18163a 100%);
 }
 
-/* ============ BUTTONS ============ */
-[data-theme="dark"] .btn-primary {
-    background: linear-gradient(135deg, #4a5aa8 0%, #5c3f8a 100%);
+/* ==== Кнопки ==== */
+[data-theme="dark"] .btn-primary,
+[data-theme="dark"] .btn.btn-primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    box-shadow: 0 4px 12px rgba(99,102,241,0.35);
 }
-[data-theme="dark"] .btn-primary:hover {
-    box-shadow: 0 4px 15px rgba(74,90,168,0.35);
-}
-[data-theme="dark"] .btn-success {
-    background: linear-gradient(135deg, #2d7a3e 0%, #1f8a6c 100%);
-}
-[data-theme="dark"] .btn-success:hover {
-    box-shadow: 0 4px 15px rgba(45,122,62,0.35);
-}
-[data-theme="dark"] .btn-danger {
-    background: linear-gradient(135deg, #a12d3a 0%, #b85a1a 100%);
-}
-[data-theme="dark"] .btn-danger:hover {
-    box-shadow: 0 4px 15px rgba(161,45,58,0.35);
-}
-[data-theme="dark"] .avatar-circle {
-    background: linear-gradient(135deg, #4a5aa8 0%, #5c3f8a 100%);
-    box-shadow: 0 4px 10px rgba(74,90,168,0.3);
+[data-theme="dark"] .btn-success,
+[data-theme="dark"] .btn.btn-success { background: linear-gradient(135deg, #10b981, #059669); }
+[data-theme="dark"] .btn-danger,
+[data-theme="dark"] .btn.btn-danger  { background: linear-gradient(135deg, #ef4444, #dc2626); }
+
+/* ==== Аватары, бейджи ==== */
+[data-theme="dark"] .avatar-circle,
+[data-theme="dark"] .user-avatar,
+[data-theme="dark"] .profile-avatar,
+[data-theme="dark"] .comment-avatar,
+[data-theme="dark"] .task-num,
+[data-theme="dark"] .sidebar-user-avatar,
+[data-theme="dark"] .cell-user-avatar,
+[data-theme="dark"] .kb-avatar,
+[data-theme="dark"] .notif-icon {
+    box-shadow: 0 4px 12px rgba(99,102,241,0.4);
 }
 
-/* ============ CARD HEADERS ============ */
-[data-theme="dark"] .card-header.bg-primary    { background-color: #3d4a7a !important; }
-[data-theme="dark"] .card-header.bg-success    { background-color: #2f6640 !important; }
-[data-theme="dark"] .card-header.bg-info       { background-color: #2c6a7a !important; }
-[data-theme="dark"] .card-header.bg-secondary  { background-color: #4a4a56 !important; }
-[data-theme="dark"] .card-header.bg-warning    { background-color: #8a6318 !important; }
-[data-theme="dark"] .card-header.bg-danger     { background-color: #7a2c34 !important; }
+/* ==== Цветные шапки карточек и модалок ==== */
+[data-theme="dark"] .card-header.bg-primary   { background: var(--accent)  !important; }
+[data-theme="dark"] .card-header.bg-success   { background: #10b981        !important; }
+[data-theme="dark"] .card-header.bg-info      { background: #0ea5e9        !important; }
+[data-theme="dark"] .card-header.bg-warning   { background: #f59e0b        !important; color: #333 !important; }
+[data-theme="dark"] .card-header.bg-danger    { background: #ef4444        !important; }
+[data-theme="dark"] .card-header.bg-secondary { background: #64748b        !important; }
+[data-theme="dark"] .card-header.bg-dark      { background: #18181b        !important; }
 
-/* ============ MODALS ============ */
 [data-theme="dark"] .modal-header.bg-primary,
 [data-theme="dark"] .modal-header.bg-success,
 [data-theme="dark"] .modal-header.bg-info,
+[data-theme="dark"] .modal-header.bg-danger,
 [data-theme="dark"] .modal-header.bg-secondary,
-[data-theme="dark"] .modal-header.bg-warning,
-[data-theme="dark"] .modal-header.bg-danger {
-    color: #e8e8f0;
-}
+[data-theme="dark"] .modal-header.bg-dark { color: #fff; }
 
-/* ============ SHADOWS ============ */
+/* ==== Мягкие тени ==== */
 [data-theme="dark"] .user-card,
 [data-theme="dark"] .stats-card,
 [data-theme="dark"] .filters-section,
-[data-theme="dark"] .table-container {
-    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-}
+[data-theme="dark"] .table-container,
+[data-theme="dark"] .card,
+[data-theme="dark"] .modal { box-shadow: var(--shadow-sm); }
 
-/* ============ INPUT DATE/TIME (иконки) ============ */
+/* ==== Формы ==== */
 [data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator,
 [data-theme="dark"] input[type="datetime-local"]::-webkit-calendar-picker-indicator,
 [data-theme="dark"] input[type="time"]::-webkit-calendar-picker-indicator {
-    filter: invert(0.7);
+    filter: invert(0.75);
 }
-
-/* ============ SELECT ============ */
 [data-theme="dark"] select option {
-    background-color: var(--card-bg);
-    color: var(--text-color);
+    background-color: var(--surface);
+    color: var(--text);
 }
 
-/* ============ DROPDOWN ============ */
-[data-theme="dark"] .dropdown-menu {
-    background-color: var(--card-bg);
-    border-color: var(--border-color);
-}
-[data-theme="dark"] .dropdown-item { color: var(--text-color); }
-[data-theme="dark"] .dropdown-item:hover { background-color: var(--hover-bg); }
-[data-theme="dark"] .dropdown-divider { border-color: var(--border-color); }
-
-/* ============ NAV-TABS ============ */
-[data-theme="dark"] .nav-tabs { border-bottom-color: var(--border-color); }
-[data-theme="dark"] .nav-tabs .nav-link { color: var(--text-muted); }
-[data-theme="dark"] .nav-tabs .nav-link.active {
-    background-color: var(--card-bg);
-    border-color: var(--border-color) var(--border-color) var(--card-bg);
-    color: #8b9bff;
+/* ==== Tooltip ==== */
+[data-theme="dark"] .tooltip-inner {
+    background-color: #2a2a35;
+    color: var(--text);
+    border: 1px solid var(--border);
 }
 
-/* ============ SWEETALERT2 ============ */
+/* ==== SweetAlert2 ==== */
 [data-theme="dark"] .swal2-popup {
-    background-color: var(--card-bg) !important;
-    color: var(--text-color) !important;
-    border: 1px solid var(--border-color);
+    background-color: var(--surface) !important;
+    color: var(--text) !important;
+    border: 1px solid var(--border);
 }
-[data-theme="dark"] .swal2-title { color: var(--text-color) !important; }
-[data-theme="dark"] .swal2-html-container { color: var(--text-color) !important; }
-[data-theme="dark"] .swal2-content { color: var(--text-color) !important; }
+[data-theme="dark"] .swal2-title,
+[data-theme="dark"] .swal2-html-container { color: var(--text) !important; }
 [data-theme="dark"] .swal2-input,
 [data-theme="dark"] .swal2-textarea,
 [data-theme="dark"] .swal2-select {
-    background-color: var(--bg-elevated) !important;
-    color: var(--text-color) !important;
-    border-color: var(--border-color) !important;
+    background-color: var(--surface-2) !important;
+    color: var(--text) !important;
+    border-color: var(--border) !important;
 }
 [data-theme="dark"] .swal2-validation-message {
-    background-color: var(--danger-bg) !important;
-    color: var(--danger-color) !important;
+    background-color: var(--danger-soft) !important;
+    color: var(--danger) !important;
 }
-[data-theme="dark"] .swal2-footer {
-    border-top-color: var(--border-color);
-    color: var(--text-muted);
-}
+[data-theme="dark"] .swal2-footer { border-top-color: var(--border); color: var(--text-muted); }
 [data-theme="dark"] .swal2-close { color: var(--text-muted); }
-[data-theme="dark"] .swal2-close:hover { color: var(--text-color); }
+[data-theme="dark"] .swal2-close:hover { color: var(--text); }
 
-/* Кнопки SweetAlert остаются цветными — не трогаем */
+/* ==== hr ==== */
+[data-theme="dark"] hr { border-color: var(--border); opacity: 1; }
 
-/* ============ TOOLTIP ============ */
-[data-theme="dark"] .tooltip-inner {
-    background-color: #2a2a35;
-    color: var(--text-color);
-    border: 1px solid var(--border-color);
+/* ==== Картинки ==== */
+[data-theme="dark"] img { opacity: 0.95; }
+
+/* ==== Kanban-column фон ==== */
+[data-theme="dark"] .kanban-column { background: var(--surface); }
+
+/* ==== Dropdown ==== */
+[data-theme="dark"] .dropdown-menu {
+    background-color: var(--surface);
+    border-color: var(--border);
 }
-[data-theme="dark"] .tooltip .tooltip-arrow::before {
-    border-top-color: #2a2a35 !important;
-    border-bottom-color: #2a2a35 !important;
-    border-left-color: #2a2a35 !important;
-    border-right-color: #2a2a35 !important;
-}
+[data-theme="dark"] .dropdown-item { color: var(--text); }
+[data-theme="dark"] .dropdown-item:hover { background-color: var(--surface-2); }
+[data-theme="dark"] .dropdown-divider { border-color: var(--border); }
 
-/* ============ PAGINATION ============ */
+/* ==== Pagination ==== */
 [data-theme="dark"] .page-link {
-    background-color: var(--card-bg);
-    border-color: var(--border-color);
-    color: #8b9bff;
+    background-color: var(--surface);
+    border-color: var(--border);
+    color: var(--accent);
 }
 [data-theme="dark"] .page-link:hover {
-    background-color: var(--hover-bg);
-    color: var(--text-color);
+    background-color: var(--surface-2);
+    color: var(--text);
 }
 [data-theme="dark"] .page-item.disabled .page-link {
-    background-color: var(--hover-bg);
-    border-color: var(--border-color);
+    background-color: var(--surface-2);
+    border-color: var(--border);
     color: var(--text-muted);
 }
-[data-theme="dark"] .page-item.active .page-link {
-    background: linear-gradient(135deg, #4a5aa8 0%, #5c3f8a 100%);
-    border-color: transparent;
-    color: white;
-}
-
-/* ============ PROGRESS ============ */
-[data-theme="dark"] .progress {
-    background-color: var(--hover-bg);
-}
-
-/* ============ SPINNER ============ */
-[data-theme="dark"] .spinner-border.text-primary { color: #8b9bff !important; }
-
-/* ============ HR ============ */
-[data-theme="dark"] hr { border-color: var(--border-color); opacity: 1; }
-
-/* ============ CARD BG-COLORED ============ */
-[data-theme="dark"] .bg-primary { background-color: #3d4a7a !important; }
-[data-theme="dark"] .bg-success { background-color: #2f6640 !important; }
-[data-theme="dark"] .bg-info    { background-color: #2c6a7a !important; }
-[data-theme="dark"] .bg-warning { background-color: #8a6318 !important; }
-[data-theme="dark"] .bg-danger  { background-color: #7a2c34 !important; }
-
-/* ============ BORDER-COLORED ============ */
-[data-theme="dark"] .border { border-color: var(--border-color) !important; }
-[data-theme="dark"] .border-top,
-[data-theme="dark"] .border-bottom,
-[data-theme="dark"] .border-start,
-[data-theme="dark"] .border-end { border-color: var(--border-color) !important; }
-
-/* ============ ПРИГЛУШЁННЫЕ КАРТИНКИ ============ */
-[data-theme="dark"] img { opacity: 0.95; }
