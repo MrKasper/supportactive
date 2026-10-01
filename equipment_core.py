@@ -68,13 +68,22 @@ def cabinet_details(cabinet_id):
 
 
 def _decode_computer(p):
-    """Декодирует JSON-поля компьютера."""
+    """
+    Декодирует JSON-поля компьютера.
+    Всегда возвращает список для ram/storage/software/monitors —
+    даже если в БД лежит строка, null или битый JSON.
+    """
     d = dict(p)
-    for field, default in (('ram', []), ('storage', []), ('software', [])):
+    for field in ('ram', 'storage', 'software', 'monitors'):
+        raw = d.get(field)
+        if isinstance(raw, list):
+            # уже список (например, из другого источника)
+            continue
         try:
-            d[field] = json.loads(d.get(field) or '[]')
+            parsed = json.loads(raw or '[]')
+            d[field] = parsed if isinstance(parsed, list) else []
         except Exception:
-            d[field] = default
+            d[field] = []
     return d
 
 

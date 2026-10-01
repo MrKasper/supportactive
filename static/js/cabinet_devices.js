@@ -1,9 +1,8 @@
 // static/js/cabinet_devices.js
 // Устройства кабинета: сетевое оборудование, ПК, принтеры.
 //
-// ВАЖНО: строки RAM/Storage в форме ПК используют ТОЛЬКО inline-стили
-// (без классов .eq-ram-row / .eq-storage-row), чтобы избежать конфликтов
-// с любыми CSS-файлами и быть уверенными в grid-раскладке.
+// ВАЖНО: строки RAM/Storage/Мониторы в форме ПК используют ТОЛЬКО inline-стили
+// (без классов), чтобы избежать конфликтов с любыми CSS-файлами.
 
 (function() {
     'use strict';
@@ -63,6 +62,16 @@
 
     var STYLE_STORAGE_SELECT =
         'width:100%;box-sizing:border-box;height:32px;padding:4px 8px;' +
+        'font-size:13px;border:1px solid #e8e8ec;border-radius:6px;' +
+        'background:#fff;color:#18181b;';
+
+    // --- Мониторы: строка = [модель] [инв.номер] [×] ---
+    var STYLE_MONITOR_ROW =
+        'display:grid;grid-template-columns:minmax(0,1fr) 160px 38px;' +
+        'gap:8px;align-items:center;width:100%;margin-bottom:8px;';
+
+    var STYLE_MONITOR_INPUT =
+        'width:100%;box-sizing:border-box;height:32px;padding:4px 10px;' +
         'font-size:13px;border:1px solid #e8e8ec;border-radius:6px;' +
         'background:#fff;color:#18181b;';
 
@@ -1261,10 +1270,11 @@
         var storage = (data.storage && data.storage.length > 0)
             ? data.storage.slice()
             : [{ capacity: '', type: 'SSD' }];
+        var monitors = Array.isArray(data.monitors) ? data.monitors.slice() : [];
         var software = (data.software || []).slice();
         var available = Cabinet().software || [];
 
-        // ---------- RAM-строка (только inline-стили) ----------
+        // ---------- RAM-строка ----------
         function ramRowHtml(r) {
             var numVal = (r.size || '').replace(/\s*(GB|TB|MB)\s*$/i, '');
             return '<div style="' + STYLE_RAM_ROW + '">' +
@@ -1284,7 +1294,7 @@
                 '</div>';
         }
 
-        // ---------- Storage-строка (только inline-стили) ----------
+        // ---------- Storage-строка ----------
         function storageRowHtml(s) {
             var val = (s.capacity || '').trim();
             var suffix = 'GB';
@@ -1318,6 +1328,23 @@
                 '</div>';
         }
 
+        // ---------- Строка монитора ----------
+        function monitorRowHtml(m) {
+            return '<div style="' + STYLE_MONITOR_ROW + '">' +
+                '<input class="eq-monitor-model" ' +
+                'style="' + STYLE_MONITOR_INPUT + '" ' +
+                'value="' + utils.escapeHtml(m.model || '') + '" ' +
+                'placeholder="Модель монитора">' +
+                '<input class="eq-monitor-inv" ' +
+                'style="' + STYLE_MONITOR_INPUT + '" ' +
+                'value="' + utils.escapeHtml(m.inventory_number || '') + '" ' +
+                'placeholder="Инв. номер">' +
+                '<button type="button" class="eq-monitor-remove" ' +
+                'style="' + STYLE_REMOVE_BTN + '">' +
+                '<i class="bi bi-x"></i></button>' +
+                '</div>';
+        }
+
         // ---------- Список выбранного ПО ----------
         function selectedSoftwareList() {
             if (software.length === 0) {
@@ -1343,7 +1370,7 @@
             }).join('');
         }
 
-        // ---------- Список доступного ПО (чекбоксы) ----------
+        // ---------- Список доступного ПО ----------
         function availableSoftwareList() {
             if (available.length === 0) {
                 return '<div style="padding:8px;font-size:12px;color:#a1a1aa;font-style:italic;">' +
@@ -1453,7 +1480,18 @@
                 '<i class="bi bi-plus"></i> Добавить диск</button>' +
             '</div>' +
 
-            // ===== Установленное ПО (без ручного ввода) =====
+            // ===== Мониторы =====
+            '<div style="' + STYLE_FORM_BLOCK + '">' +
+                '<label style="' + STYLE_FORM_LABEL + '">Мониторы</label>' +
+                '<div id="eq-monitor-container">' +
+                (monitors.length === 0 ? '' : monitors.map(monitorRowHtml).join('')) +
+                '</div>' +
+                '<button type="button" id="eq-add-monitor" ' +
+                'style="' + STYLE_FULL_BTN + '">' +
+                '<i class="bi bi-plus"></i> Добавить монитор</button>' +
+            '</div>' +
+
+            // ===== Установленное ПО =====
             '<div style="' + STYLE_FORM_BLOCK + '">' +
                 '<label style="' + STYLE_FORM_LABEL + '">Установленное ПО</label>' +
                 '<div id="eq-software-selected" ' +
@@ -1596,6 +1634,32 @@
                         $(this).parent().remove();
                     });
 
+                // ---------- Мониторы: добавить / удалить ----------
+                $('#eq-add-monitor').on('click', function(e) {
+                    e.preventDefault();
+                    var c = document.getElementById('eq-monitor-container');
+                    if (!c) return;
+                    var div = document.createElement('div');
+                    div.style.cssText = STYLE_MONITOR_ROW;
+                    div.innerHTML =
+                        '<input class="eq-monitor-model" ' +
+                        'style="' + STYLE_MONITOR_INPUT + '" ' +
+                        'placeholder="Модель монитора">' +
+                        '<input class="eq-monitor-inv" ' +
+                        'style="' + STYLE_MONITOR_INPUT + '" ' +
+                        'placeholder="Инв. номер">' +
+                        '<button type="button" class="eq-monitor-remove" ' +
+                        'style="' + STYLE_REMOVE_BTN + '">' +
+                        '<i class="bi bi-x"></i></button>';
+                    c.appendChild(div);
+                });
+
+                $(document).off('click.eqMonitorRemove')
+                    .on('click.eqMonitorRemove', '.eq-monitor-remove', function(e) {
+                        e.preventDefault();
+                        $(this).parent().remove();
+                    });
+
                 // ---------- ПО: toggle доступного ----------
                 $('#eq-toggle-soft').on('click', function(e) {
                     e.preventDefault();
@@ -1669,6 +1733,22 @@
                     });
                 });
 
+                var monitorsArr = [];
+                document.querySelectorAll(
+                    '#eq-monitor-container .eq-monitor-model'
+                ).forEach(function(el) {
+                    var row = el.parentNode;
+                    var invEl = row.querySelector('.eq-monitor-inv');
+                    var model = (el.value || '').trim();
+                    var inv = invEl ? (invEl.value || '').trim() : '';
+                    if (model || inv) {
+                        monitorsArr.push({
+                            model: model,
+                            inventory_number: inv,
+                        });
+                    }
+                });
+
                 return {
                     name: name,
                     motherboard: Cabinet().getTrimmed('eq-pc-mb'),
@@ -1680,6 +1760,7 @@
                     ip_address: Cabinet().getTrimmed('eq-pc-ip'),
                     ram: ramArr,
                     storage: storageArr,
+                    monitors: monitorsArr,
                     software: software.slice(),
                     notes: Cabinet().getTrimmed('eq-pc-notes'),
                 };

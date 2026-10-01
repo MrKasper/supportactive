@@ -18,6 +18,32 @@
     function Cabinet() { return window.App.Cabinet; }
 
     // ============================================================
+    // БЕЗОПАСНЫЕ ХЕЛПЕРЫ ДЛЯ МАССИВОВ (JSON может прийти строкой)
+    // ============================================================
+    function asArray(v) {
+        if (!v) return [];
+        if (Array.isArray(v)) return v;
+        if (typeof v === 'string') {
+            try {
+                const parsed = JSON.parse(v);
+                return Array.isArray(parsed) ? parsed : [];
+            } catch (e) {
+                return [];
+            }
+        }
+        return [];
+    }
+
+    function asObject(v) {
+        if (!v) return null;
+        if (typeof v === 'object') return v;
+        if (typeof v === 'string') {
+            try { return JSON.parse(v); } catch (e) { return null; }
+        }
+        return null;
+    }
+
+    // ============================================================
     // СЕКЦИЯ: ДОКУМЕНТЫ ПО
     // ============================================================
     Docs.renderSection = function(documents) {
@@ -39,7 +65,6 @@
                     '<i class="bi bi-file-earmark-text"></i>' +
                     'Документов нет</div>';
         } else {
-            // Группировка по software_name
             const grouped = {};
             documents.forEach(function(d) {
                 const key = d.software_name || 'Прочее';
@@ -254,6 +279,12 @@
         const documents = data.documents || [];
         const printDate = data.print_date || '';
 
+        // Быстрый поиск ПК по id — нужен для USB-принтеров
+        const pcById = {};
+        pcs.forEach(function(p) {
+            if (p && p.id != null) pcById[p.id] = p;
+        });
+
         const w = window.open('', '_blank', 'width=1000,height=800');
         if (!w) {
             utils.showErrorMessage('Разрешите всплывающие окна для печати');
@@ -331,24 +362,49 @@
                     html += '<tr><td>Материнская плата</td><td>' + mb + '</td></tr>';
                 }
                 if (p.cpu) html += '<tr><td>Процессор</td><td>' + esc(p.cpu) + '</td></tr>';
-                if (p.ram && p.ram.length > 0) {
-                    const ramText = p.ram.map(function(r) {
+                if (p.gpu) html += '<tr><td>Видеокарта</td><td>' + esc(p.gpu) + '</td></tr>';
+                if (p.psu) html += '<tr><td>Блок питания</td><td>' + esc(p.psu) + '</td></tr>';
+
+                // RAM (безопасно через asArray)
+                const ramArr = asArray(p.ram);
+                if (ramArr.length > 0) {
+                    const ramText = ramArr.map(function(r) {
                         return esc((r.size || '') + ' ' + (r.type || ''));
                     }).join(', ');
                     html += '<tr><td>ОЗУ</td><td>' + ramText + '</td></tr>';
                 }
-                if (p.storage && p.storage.length > 0) {
-                    const stText = p.storage.map(function(s) {
+
+                // Storage
+                const storageArr = asArray(p.storage);
+                if (storageArr.length > 0) {
+                    const stText = storageArr.map(function(s) {
                         return esc((s.capacity || '') + ' ' + (s.type || ''));
                     }).join(', ');
                     html += '<tr><td>Диски</td><td>' + stText + '</td></tr>';
                 }
-                if (p.software && p.software.length > 0) {
-                    const swList = p.software.map(function(s) {
-                        return esc(s);
+
+                // Monitors (безопасно через asArray)
+                const monitorsArr = asArray(p.monitors);
+                if (monitorsArr.length > 0) {
+                    const monText = monitorsArr.map(function(m) {
+                        let t = esc(m.model || '—');
+                        if (m.inventory_number) {
+                            t += ' (инв. ' + esc(m.inventory_number) + ')';
+                        }
+                        return t;
+                    }).join('<br>');
+                    html += '<tr><td>Мониторы</td><td>' + monText + '</td></tr>';
+                }
+
+                // Software
+                const softwareArr = asArray(p.software);
+                if (softwareArr.length > 0) {
+                    const swList = softwareArr.map(function(s) {
+                        return esc(typeof s === 'string' ? s : (s.name || '—'));
                     }).join('<br>');
                     html += '<tr><td>Установленное ПО</td><td>' + swList + '</td></tr>';
                 }
+
                 if (p.notes) html += '<tr><td>Примечание</td><td>' + esc(p.notes) + '</td></tr>';
                 html += '</table>';
             });
@@ -378,9 +434,28 @@
             printers.forEach(function(pr) {
                 const connType = pr.connection_type || 'network';
                 const connLabel = connType === 'network' ? 'Сетевой' : 'USB';
-                const connTarget = connType === 'network'
-                    ? (pr.ip_address || '—')
-                    : (pr.connected_to_pc_id ? ('ПК #' + pr.connected_to_pc_id) : '—');
+
+                let connTarget = '—';
+                if (connType === 'network') {
+                    connTarget = pr.ip_address || '—';
+                } else {
+                    const pcId = pr.connected_to_pc_id;
+                    if (pcId != null) {
+                        const pc = pcById[pcId];
+                        if (pc) {
+                            let name = (pc.name || '').trim();
+                            if (!name) {
+                                name = 'ПК #' + pcId;
+                            } else {
+                                name = name + ' (#' + pcId + ')';
+                            }
+                            connTarget = name;
+                        } else {
+                            connTarget = 'ПК #' + pcId;
+                        }
+                    }
+                }
+
                 html += '<tr>' +
                     '<td>' + esc(pr.model || '—') + '</td>' +
                     '<td>' + connLabel + '</td>' +

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Отчёт</title>
+    <style>
+        @page {
+            size: A4 landscape;
+            margin: 12mm 8mm;
+            @bottom-center {
+                content: "Стр. " counter(page) " из " counter(pages);
+                font-size: 8pt;
+                color: #666;
+            }
+        }
+        body {
+            font-family: 'DejaVu Sans', Arial, sans-serif;
+            font-size: 8pt;
+            color: #222;
+            margin: 0;
+        }
+        h1 {
+            font-size: 14pt;
+            text-align: center;
+            margin: 0 0 4mm 0;
+            color: #333;
+        }
+        .meta {
+            text-align: center;
+            font-size: 9pt;
+            color: #666;
+            margin-bottom: 5mm;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 7.5pt;
+        }
+        th {
+            background: #4e73df;
+            color: white;
+            padding: 4px 5px;
+            text-align: left;
+            font-weight: bold;
+            border: 1px solid #2c4ea0;
+        }
+        td {
+            padding: 3px 5px;
+            border: 1px solid #ccc;
+            vertical-align: top;
+            word-break: break-word;
+        }
+        tr:nth-child(even) td {
+            background: #f5f7fb;
+        }
+        .footer {
+            margin-top: 5mm;
+            font-size: 7pt;
+            color: #888;
+            text-align: center;
+            border-top: 1px dashed #ccc;
+            padding-top: 3mm;
+        }
+    </style>
+</head>
+<body>
+    <h1>Отчёт</h1>
+    <div class="meta">
+        Сформировано: {{ generated }} · Всего строк: <strong>{{ total }}</strong>
+    </div>
+
+    {% if rows %}
+    <table>
+        <thead>
+            <tr>
+                {% for h in headers %}
+                <th>{{ h.label }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+            <tr>
+                {% for h in headers %}
+                <td>{{ row.get(h.key) if row.get(h.key) is not none else '—' }}</td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="text-align:center; color:#888; margin-top:20mm;">
+        Нет данных по заданным условиям
+    </p>
+    {% endif %}
+
+    <div class="footer">
+        Support Active — Система управления заявками
+    </div>
+</body>
+</html>

@@ -5,7 +5,8 @@
 Даёт API:
   • GET  /api/reports/fields           — справочник полей и метрик
   • POST /api/reports/run              — выполнить отчёт по конфигу
-  • POST /api/reports/export           — выгрузить в XLSX
+  • POST /api/reports/export           — выгрузить в XLSX (JSON или form-data)
+  • POST /api/reports/export-pdf       — выгрузить в PDF (WeasyPrint)
   • GET  /api/reports/templates        — список шаблонов
   • POST /api/reports/templates        — сохранить шаблон
   • PUT  /api/reports/templates/<id>   — обновить шаблон
@@ -15,7 +16,10 @@ import io
 import json
 from datetime import datetime
 
-from flask import Blueprint, jsonify, request, session, send_file
+from flask import (
+    Blueprint, jsonify, request, session, send_file, render_template,
+    Response,
+)
 
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -57,40 +61,24 @@ _FIELDS = [
 _FIELDS_BY_KEY = {f['key']: f for f in _FIELDS}
 
 _METRICS = [
-    {
-        'key': 'count',
-        'label': 'Количество',
-        'sql': 'COUNT(*)',
-    },
-    {
-        'key': 'avg_duration',
-        'label': 'Ср. длительность, мин',
-        'sql': 'ROUND(AVG(duration_minutes), 1)',
-    },
-    {
-        'key': 'avg_close_hours',
-        'label': 'Ср. время закрытия, ч',
-        'sql': (
-            "ROUND(AVG(CASE WHEN completed_date IS NOT NULL "
-            "AND created_date IS NOT NULL "
-            "THEN (julianday(completed_date) - julianday(created_date)) * 24 "
-            "ELSE NULL END), 1)"
-        ),
-    },
-    {
-        'key': 'overdue_count',
-        'label': 'Просрочено',
-        'sql': (
-            "SUM(CASE WHEN status NOT IN ('Выполнено','Отменено') "
-            "AND deadline IS NOT NULL AND deadline < datetime('now') "
-            "THEN 1 ELSE 0 END)"
-        ),
-    },
-    {
-        'key': 'completed_count',
-        'label': 'Выполнено',
-        'sql': "SUM(CASE WHEN status = 'Выполнено' THEN 1 ELSE 0 END)",
-    },
+    {'key': 'count', 'label': 'Количество', 'sql': 'COUNT(*)'},
+    {'key': 'avg_duration', 'label': 'Ср. длительность, мин',
+     'sql': 'ROUND(AVG(duration_minutes), 1)'},
+    {'key': 'avg_close_hours', 'label': 'Ср. время закрытия, ч',
+     'sql': (
+         "ROUND(AVG(CASE WHEN completed_date IS NOT NULL "
+         "AND created_date IS NOT NULL "
+         "THEN (julianday(completed_date) - julianday(created_date)) * 24 "
+         "ELSE NULL END), 1)"
+     )},
+    {'key': 'overdue_count', 'label': 'Просрочено',
+     'sql': (
+         "SUM(CASE WHEN status NOT IN ('Выполнено','Отменено') "
+         "AND deadline IS NOT NULL AND deadline < datetime('now') "
+         "THEN 1 ELSE 0 END)"
+     )},
+    {'key': 'completed_count', 'label': 'Выполнено',
+     'sql': "SUM(CASE WHEN status = 'Выполнено' THEN 1 ELSE 0 END)"},
 ]
 
 _METRICS_BY_KEY = {m['key']: m for m in _METRICS}
@@ -101,20 +89,9 @@ _METRICS_BY_KEY = {m['key']: m for m in _METRICS}
 # ============================================================
 
 _ALLOWED_SORT_FIELDS = {f['key'] for f in _FIELDS}
-_ALLOWED_OPERATORS = {'=', '!=', '>', '<', '>=', '<=', 'LIKE', 'IN', 'IS NULL', 'IS NOT NULL'}
 
 
 def _build_where(filters):
-    """
-    Возвращает (where_sql, params).
-    filters — dict с ключами:
-      date_field, date_from, date_to,
-      status (list), priority (list), work_type (str),
-      executor (str), cabinet (str), from_user (str),
-      tags (list of ids), search (str),
-      user_role (str — для ограничений по ролям),
-      user_name (str)
-    """
     where = 'WHERE t.deleted_at IS NULL'
     params = []
 
@@ -192,7 +169,6 @@ def _build_where(filters):
         )
         params.extend(tag_ids)
 
-    # Ограничение по роли
     user_role = (filters.get('user_role') or '').strip()
     user_name = (filters.get('user_name') or '').strip()
     if user_role == ROLE_TECH and user_name:
@@ -206,10 +182,6 @@ def _build_where(filters):
 
 
 def _build_select(config):
-    """
-    Возвращает (select_sql, headers, is_grouped).
-    headers — список dict: {key, label, type}
-    """
     fields = config.get('fields') or []
     fields = [f for f in fields if f in _FIELDS_BY_KEY]
     if not fields:
@@ -227,23 +199,16 @@ def _build_select(config):
         select_parts = []
         headers = []
 
-        # Сначала — поля группировки
         for g in group_by:
             info = _FIELDS_BY_KEY[g]
             select_parts.append(f't.{g} AS g_{g}')
             headers.append({'key': f'g_{g}', 'label': info['label'], 'type': info['type']})
 
-        # Если group_by пусто, но есть метрики — просто метрики по всему набору
-        if not group_by:
-            pass
-
-        # Затем — метрики
         for m in metrics:
             info = _METRICS_BY_KEY[m]
             select_parts.append(f'{info["sql"]} AS m_{m}')
             headers.append({'key': f'm_{m}', 'label': info['label'], 'type': 'metric'})
 
-        # Если вообще ничего не выбрано
         if not select_parts:
             select_parts.append('COUNT(*) AS m_count')
             headers.append({'key': 'm_count', 'label': 'Количество', 'type': 'metric'})
@@ -251,7 +216,6 @@ def _build_select(config):
         sql = 'SELECT ' + ', '.join(select_parts) + ' FROM tasks t'
         return sql, headers, is_grouped, group_by
     else:
-        # Без группировки — просто строки
         select_parts = [f't.{f} AS {f}' for f in fields]
         headers = [
             {'key': f, 'label': _FIELDS_BY_KEY[f]['label'], 'type': _FIELDS_BY_KEY[f]['type']}
@@ -269,7 +233,6 @@ def _build_order(config, is_grouped, group_by):
         order = 'DESC'
 
     if is_grouped:
-        # Сортируем по первой метрике (обычно count) убыв. или по первой группе
         metrics = config.get('metrics') or []
         if metrics and metrics[0] in _METRICS_BY_KEY:
             return f'ORDER BY m_{metrics[0]} {order}'
@@ -330,6 +293,40 @@ def _run_report(config):
     }
 
 
+def _extract_config():
+    """
+    Возвращает config из запроса.
+    Поддерживает JSON-body и form-data (поле `config` как JSON-строка).
+    """
+    # 1. JSON
+    data = request.get_json(silent=True)
+    if isinstance(data, dict) and data:
+        return data
+
+    # 2. form-data
+    raw = request.form.get('config')
+    if raw:
+        try:
+            parsed = json.loads(raw)
+            if isinstance(parsed, dict):
+                return parsed
+        except (ValueError, TypeError):
+            pass
+
+    return None
+
+
+def _apply_role_restrictions(config):
+    """Подмешивает роль/имя текущего пользователя в фильтры."""
+    role = session.get('user_role')
+    name = session.get('user_name')
+    filters = config.get('filters') or {}
+    filters['user_role'] = role
+    filters['user_name'] = name
+    config['filters'] = filters
+    return config
+
+
 # ============================================================
 # API: СПРАВОЧНИК
 # ============================================================
@@ -337,9 +334,7 @@ def _run_report(config):
 @reports_builder_bp.route('/api/reports/fields')
 @role_required(*REPORT_ROLES)
 def reports_fields():
-    """Справочник полей, метрик и фильтров."""
     try:
-        # Значения для фильтров — из справочников
         statuses = ['Новое', 'В работе', 'Выполнено', 'Отменено']
         priorities = ['Высокий', 'Средний', 'Низкий']
 
@@ -350,12 +345,15 @@ def reports_fields():
             'SELECT cabinet_number FROM cabinets WHERE is_active = 1 '
             'ORDER BY cabinet_number'
         )]
+
+        # Только техники — для фильтра «Исполнитель»
         executors = [r['full_name'] for r in db.query(
-            "SELECT full_name FROM users WHERE is_active = 1 "
-            "AND deleted_at IS NULL "
-            "AND role IN ('Администратор', 'Техник') "
+            "SELECT full_name FROM users "
+            "WHERE is_active = 1 AND deleted_at IS NULL "
+            "AND role = 'Техник' "
             "ORDER BY full_name"
         )]
+
         tags = [{'id': r['id'], 'name': r['name'], 'color': r['color']}
                 for r in db.query(
                     'SELECT id, name, color FROM tags '
@@ -392,18 +390,11 @@ def reports_fields():
 @role_required(*REPORT_ROLES)
 def reports_run():
     try:
-        config = request.get_json(silent=True) or {}
+        config = _extract_config()
         if not config:
             return jsonify({'success': False, 'error': 'Нет конфига'}), 400
 
-        # Ограничения по роли — Техник видит только свои + новые без исполнителя
-        role = session.get('user_role')
-        name = session.get('user_name')
-        filters = config.get('filters') or {}
-        filters['user_role'] = role
-        filters['user_name'] = name
-        config['filters'] = filters
-
+        config = _apply_role_restrictions(config)
         result = _run_report(config)
         return jsonify({'success': True, **result})
     except Exception as e:
@@ -428,17 +419,11 @@ _BORDER = Border(left=_BORDER_THIN, right=_BORDER_THIN,
 @role_required(*REPORT_ROLES)
 def reports_export():
     try:
-        config = request.get_json(silent=True) or {}
+        config = _extract_config()
         if not config:
             return jsonify({'success': False, 'error': 'Нет конфига'}), 400
 
-        role = session.get('user_role')
-        name = session.get('user_name')
-        filters = config.get('filters') or {}
-        filters['user_role'] = role
-        filters['user_name'] = name
-        config['filters'] = filters
-
+        config = _apply_role_restrictions(config)
         result = _run_report(config)
         headers = result['headers']
         rows = result['rows']
@@ -447,7 +432,6 @@ def reports_export():
         ws = wb.active
         ws.title = 'Отчёт'
 
-        # Заголовок
         for col, h in enumerate(headers, start=1):
             c = ws.cell(row=1, column=col, value=h['label'])
             c.fill = _HEADER_FILL
@@ -457,7 +441,6 @@ def reports_export():
         ws.row_dimensions[1].height = 30
         ws.freeze_panes = 'A2'
 
-        # Данные
         for i, row in enumerate(rows, start=2):
             for col, h in enumerate(headers, start=1):
                 v = row.get(h['key'])
@@ -467,7 +450,6 @@ def reports_export():
                 c.alignment = _CELL_ALIGN
                 c.border = _BORDER
 
-        # Автоширина
         for col_idx, h in enumerate(headers, start=1):
             letter = get_column_letter(col_idx)
             max_len = len(h['label'])
@@ -496,6 +478,80 @@ def reports_export():
         )
     except Exception as e:
         log.exception('reports_export error')
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# API: EXPORT PDF (WeasyPrint)
+# ============================================================
+
+@reports_builder_bp.route('/api/reports/export-pdf', methods=['POST'])
+@role_required(*REPORT_ROLES)
+def reports_export_pdf():
+    try:
+        # Проверка WeasyPrint + нативных библиотек
+        try:
+            from weasyprint import HTML
+        except ImportError:
+            return jsonify({
+                'success': False,
+                'error': 'weasyprint не установлен. '
+                         'Установите: pip install weasyprint',
+            }), 500
+        except OSError as gtk_err:
+            log.warning(f'WeasyPrint: GTK не найден — {gtk_err}')
+            return jsonify({
+                'success': False,
+                'error': (
+                    'Для PDF-экспорта требуется GTK-библиотека. '
+                    'Windows: установите GTK3 Runtime и добавьте bin в PATH. '
+                    'Linux: apt install libpango-1.0-0 libpangoft2-1.0-0 '
+                    'libcairo2 libgdk-pixbuf-2.0-0.'
+                ),
+            }), 500
+
+        config = _extract_config()
+        if not config:
+            return jsonify({'success': False, 'error': 'Нет конфига'}), 400
+
+        config = _apply_role_restrictions(config)
+        result = _run_report(config)
+
+        generated = datetime.now().strftime('%d.%m.%Y %H:%M')
+
+        try:
+            html = render_template(
+                'report_pdf.html',
+                headers=result['headers'],
+                rows=result['rows'],
+                total=result['total'],
+                generated=generated,
+            )
+            pdf_bytes = HTML(
+                string=html,
+                base_url=request.url_root,
+            ).write_pdf()
+        except OSError as gtk_err:
+            log.warning(f'WeasyPrint: рендеринг упал — {gtk_err}')
+            return jsonify({
+                'success': False,
+                'error': 'Не удалось отрисовать PDF (GTK-библиотека).',
+            }), 500
+
+        ts = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f'report_{ts}.pdf'
+
+        log.info(f'[REPORT] PDF-экспорт: {result["total"]} записей')
+
+        return Response(
+            pdf_bytes,
+            mimetype='application/pdf',
+            headers={
+                'Content-Disposition': f'attachment; filename="{filename}"',
+            },
+        )
+    except Exception as e:
+        log.exception('reports_export_pdf error')
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -597,7 +653,6 @@ def reports_templates_update(tid):
         if not old:
             return jsonify({'success': False, 'error': 'Шаблон не найден'}), 404
 
-        # Редактировать может автор или админ
         is_admin = session.get('user_role') == ROLE_ADMIN
         if old['created_by'] != session.get('user_id') and not is_admin:
             return jsonify({'success': False, 'error': 'Недостаточно прав'}), 403

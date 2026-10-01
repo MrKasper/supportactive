@@ -1,5 +1,9 @@
 // static/js/reports_builder.js
 // Конструктор отчётов: поля, фильтры, группировка, метрики, шаблоны, экспорт.
+//
+// Экспорт в PDF реализован БЕЗ WeasyPrint и GTK — через новое окно
+// с HTML-таблицей и кнопкой «Печать / Сохранить как PDF».
+// Это работает одинаково на Windows, Linux, macOS, в любом браузере.
 
 (function() {
     'use strict';
@@ -13,7 +17,6 @@
     var http = window.App.api;
     var utils = window.App.utils;
 
-    // Текущий конфиг отчёта
     var config = {
         fields: ['id', 'created_date', 'cabinet', 'description', 'status', 'executor'],
         filters: {
@@ -35,8 +38,8 @@
         limit: 500,
     };
 
-    var META = null;   // /api/reports/fields
-    var RESULT = null; // последний результат
+    var META = null;
+    var RESULT = null;
     var TEMPLATES = [];
 
     // ============================================================
@@ -64,47 +67,31 @@
     }
 
     // ============================================================
-    // РЕНДЕР СТРАНИЦЫ
+    // РЕНДЕР
     // ============================================================
     function render() {
         var html = '';
         html += '<div class="rb-layout">';
-
-        // -------- ЛЕВАЯ КОЛОНКА: поля, шаблоны --------
-        html += '<div>';
-        html += renderFieldsPanel();
-        html += renderTemplatesPanel();
-        html += '</div>';
-
-        // -------- ПРАВАЯ КОЛОНКА: фильтры + группировка + превью --------
-        html += '<div>';
-        html += renderFiltersPanel();
-        html += renderGroupingPanel();
-        html += renderPreviewPanel();
-        html += '</div>';
-
+        html += '<div>' + renderFieldsPanel() + renderTemplatesPanel() + '</div>';
+        html += '<div>' + renderFiltersPanel() +
+                renderGroupingPanel() + renderPreviewPanel() + '</div>';
         html += '</div>';
 
         $('#otherPagesBlock').html(html);
 
-        // Синхронизируем checkbox-и с конфигом
         syncFieldsUI();
         syncFiltersUI();
         syncGroupingUI();
     }
 
-    // ============================================================
-    // ПАНЕЛЬ ПОЛЕЙ
-    // ============================================================
     function renderFieldsPanel() {
         var html = '<div class="rb-panel mb-3">';
         html += '<div class="rb-panel-head">' +
                 '<span><i class="bi bi-list-ul"></i> Поля отчёта</span>' +
                 '<button class="btn-ghost" onclick="App.Reports.clearFields()" ' +
-                'title="Сбросить" style="padding:4px 8px;font-size:11px;">' +
+                'style="padding:4px 8px;font-size:11px;">' +
                 '<i class="bi bi-eraser"></i></button></div>';
         html += '<div class="rb-panel-body">';
-
         html += '<div class="rb-fields-list" id="rb-fields-list">';
         (META.fields || []).forEach(function(f) {
             var selected = config.fields.indexOf(f.key) !== -1;
@@ -116,14 +103,10 @@
                 '</label>';
         });
         html += '</div>';
-
         html += '</div></div>';
         return html;
     }
 
-    // ============================================================
-    // ПАНЕЛЬ ШАБЛОНОВ
-    // ============================================================
     function renderTemplatesPanel() {
         var html = '<div class="rb-panel">';
         html += '<div class="rb-panel-head">' +
@@ -160,14 +143,10 @@
             });
             html += '</div>';
         }
-
         html += '</div></div>';
         return html;
     }
 
-    // ============================================================
-    // ПАНЕЛЬ ФИЛЬТРОВ
-    // ============================================================
     function renderFiltersPanel() {
         var F = META.filters;
 
@@ -179,7 +158,6 @@
                 '<i class="bi bi-x-circle"></i> Сбросить</button></div>';
         html += '<div class="rb-panel-body">';
 
-        // Поле даты
         html += '<div class="rb-filter-row">' +
             '<label>Поле даты</label>' +
             '<select id="rb-f-date-field" onchange="App.Reports.onFilterChange()">';
@@ -189,7 +167,6 @@
         });
         html += '</select></div>';
 
-        // Диапазон дат
         html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">';
         html += '<div class="rb-filter-row"><label>С</label>' +
             '<input type="date" id="rb-f-date-from" onchange="App.Reports.onFilterChange()"></div>';
@@ -197,7 +174,6 @@
             '<input type="date" id="rb-f-date-to" onchange="App.Reports.onFilterChange()"></div>';
         html += '</div>';
 
-        // Статусы (мульти)
         html += '<div class="rb-filter-row"><label>Статус</label>' +
             '<div class="rb-multiselect" id="rb-f-statuses">';
         (F.statuses || []).forEach(function(s) {
@@ -207,7 +183,6 @@
         });
         html += '</div></div>';
 
-        // Приоритеты (мульти)
         html += '<div class="rb-filter-row"><label>Приоритет</label>' +
             '<div class="rb-multiselect" id="rb-f-priorities">';
         (F.priorities || []).forEach(function(p) {
@@ -217,7 +192,6 @@
         });
         html += '</div></div>';
 
-        // Тип работы
         html += '<div class="rb-filter-row"><label>Тип работы</label>' +
             '<select id="rb-f-work-type" onchange="App.Reports.onFilterChange()">' +
             '<option value="">— все —</option>';
@@ -227,7 +201,6 @@
         });
         html += '</select></div>';
 
-        // Исполнитель
         html += '<div class="rb-filter-row"><label>Исполнитель</label>' +
             '<select id="rb-f-executor" onchange="App.Reports.onFilterChange()">' +
             '<option value="">— все —</option>';
@@ -237,7 +210,6 @@
         });
         html += '</select></div>';
 
-        // Кабинет
         html += '<div class="rb-filter-row"><label>Кабинет</label>' +
             '<select id="rb-f-cabinet" onchange="App.Reports.onFilterChange()">' +
             '<option value="">— все —</option>';
@@ -247,7 +219,6 @@
         });
         html += '</select></div>';
 
-        // Поиск по описанию
         html += '<div class="rb-filter-row"><label>Поиск</label>' +
             '<input type="text" id="rb-f-search" placeholder="Описание, ФИО..." ' +
             'oninput="App.Reports.onSearchInput()"></div>';
@@ -256,9 +227,6 @@
         return html;
     }
 
-    // ============================================================
-    // ПАНЕЛЬ ГРУППИРОВКИ И МЕТРИК
-    // ============================================================
     function renderGroupingPanel() {
         var groupableFields = (META.fields || []).filter(function(f) {
             return f.groupable;
@@ -272,7 +240,6 @@
                 '<i class="bi bi-eraser"></i></button></div>';
         html += '<div class="rb-panel-body">';
 
-        // Группировка
         html += '<div class="rb-section-title">Группировать по</div>';
         html += '<div class="rb-chip-list" id="rb-group-list">';
         groupableFields.forEach(function(f) {
@@ -280,15 +247,12 @@
             html += '<span class="rb-chip' + (selected ? ' rb-chip-selected' : '') +
                 '" data-key="' + f.key + '" ' +
                 'onclick="App.Reports.toggleGroupBy(\'' + f.key + '\')">' +
-                utils.escapeHtml(f.label);
-            if (selected) {
-                html += ' <span class="rb-chip-remove">×</span>';
-            }
-            html += '</span>';
+                utils.escapeHtml(f.label) +
+                (selected ? ' <span class="rb-chip-remove">×</span>' : '') +
+                '</span>';
         });
         html += '</div>';
 
-        // Метрики
         html += '<div class="rb-section-title">Метрики (агрегаты)</div>';
         html += '<div class="rb-chip-list" id="rb-metric-list">';
         (META.metrics || []).forEach(function(m) {
@@ -297,15 +261,12 @@
                 (selected ? ' rb-chip-selected' : '') +
                 '" data-key="' + m.key + '" ' +
                 'onclick="App.Reports.toggleMetric(\'' + m.key + '\')">' +
-                utils.escapeHtml(m.label);
-            if (selected) {
-                html += ' <span class="rb-chip-remove">×</span>';
-            }
-            html += '</span>';
+                utils.escapeHtml(m.label) +
+                (selected ? ' <span class="rb-chip-remove">×</span>' : '') +
+                '</span>';
         });
         html += '</div>';
 
-        // Лимит
         html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px;">';
         html += '<div class="rb-filter-row"><label>Сортировка</label>' +
             '<select id="rb-f-sort-by" onchange="App.Reports.onSortChange()">' +
@@ -332,16 +293,15 @@
         html += '<button class="btn-primary" onclick="App.Reports.runReport()">' +
                 '<i class="bi bi-play-fill"></i> Выполнить</button>';
         html += '<button class="btn-ghost" onclick="App.Reports.exportXlsx()">' +
-                '<i class="bi bi-file-earmark-excel"></i> Экспорт XLSX</button>';
+                '<i class="bi bi-file-earmark-excel"></i> Excel</button>';
+        html += '<button class="btn-ghost" onclick="App.Reports.openPrintPreview()">' +
+                '<i class="bi bi-printer"></i> Печать / PDF</button>';
         html += '</div>';
 
         html += '</div></div>';
         return html;
     }
 
-    // ============================================================
-    // ПАНЕЛЬ ПРЕВЬЮ
-    // ============================================================
     function renderPreviewPanel() {
         var html = '<div class="rb-panel" id="rb-preview-panel">';
         html += '<div class="rb-panel-head">' +
@@ -356,7 +316,7 @@
     }
 
     // ============================================================
-    // СИНХРОНИЗАЦИЯ UI С КОНФИГОМ
+    // СИНХРОНИЗАЦИЯ UI
     // ============================================================
     function syncFieldsUI() {
         $('#rb-fields-list .rb-field-item').each(function() {
@@ -369,7 +329,6 @@
 
     function syncFiltersUI() {
         var F = config.filters;
-
         $('#rb-f-date-field').val(F.date_field || 'created_date');
         $('#rb-f-date-from').val(F.date_from || '');
         $('#rb-f-date-to').val(F.date_to || '');
@@ -409,11 +368,8 @@
     // ============================================================
     function toggleField(key, checked) {
         var idx = config.fields.indexOf(key);
-        if (checked && idx === -1) {
-            config.fields.push(key);
-        } else if (!checked && idx !== -1) {
-            config.fields.splice(idx, 1);
-        }
+        if (checked && idx === -1) config.fields.push(key);
+        else if (!checked && idx !== -1) config.fields.splice(idx, 1);
         syncFieldsUI();
     }
 
@@ -424,28 +380,22 @@
 
     function toggleGroupBy(key) {
         var idx = config.group_by.indexOf(key);
-        if (idx === -1) {
-            config.group_by.push(key);
-        } else {
-            config.group_by.splice(idx, 1);
-        }
-        syncGroupingUI();
+        if (idx === -1) config.group_by.push(key);
+        else config.group_by.splice(idx, 1);
+        render();
     }
 
     function toggleMetric(key) {
         var idx = config.metrics.indexOf(key);
-        if (idx === -1) {
-            config.metrics.push(key);
-        } else {
-            config.metrics.splice(idx, 1);
-        }
-        syncGroupingUI();
+        if (idx === -1) config.metrics.push(key);
+        else config.metrics.splice(idx, 1);
+        render();
     }
 
     function clearGrouping() {
         config.group_by = [];
         config.metrics = [];
-        syncGroupingUI();
+        render();
     }
 
     function onFilterChange() {
@@ -508,16 +458,20 @@
         syncFiltersUI();
     }
 
-    // ============================================================
-    // ЗАПУСК ОТЧЁТА
-    // ============================================================
-    function runReport() {
-        // Забираем актуальные значения фильтров
+    function currentConfig() {
         onFilterChange();
         onMultiStatusChange();
         onMultiPriorityChange();
         onSortChange();
         onLimitChange();
+        return config;
+    }
+
+    // ============================================================
+    // ЗАПУСК ОТЧЁТА
+    // ============================================================
+    function runReport() {
+        currentConfig();
 
         $('#rb-preview-body').html(
             '<div class="text-center py-4"><div class="spinner-border spinner-border-sm"></div></div>'
@@ -554,7 +508,7 @@
 
         if (rows.length === 0) {
             $('#rb-preview-body').html(
-                '<div class="rb-empty" style="padding:40px;text-align:center;color:var(--text-muted);">' +
+                '<div style="padding:40px;text-align:center;color:var(--text-muted);">' +
                 'Нет данных по заданным условиям</div>'
             );
             return;
@@ -567,8 +521,7 @@
         });
         html += '</tr></thead><tbody>';
 
-        var showRows = rows.slice(0, 500);
-        showRows.forEach(function(row) {
+        rows.slice(0, 500).forEach(function(row) {
             html += '<tr>';
             headers.forEach(function(h) {
                 var v = row[h.key];
@@ -582,54 +535,222 @@
         });
 
         html += '</tbody></table></div>';
-
-        if (rows.length > showRows.length) {
-            html += '<div class="rb-preview-meta">' +
-                'Показаны первые ' + showRows.length + ' из ' + rows.length +
-                ' строк. Экспортируйте в XLSX, чтобы получить все.' +
-                '</div>';
-        }
-
         $('#rb-preview-body').html(html);
     }
 
     // ============================================================
-    // ЭКСПОРТ
+    // ЭКСПОРТ XLSX (через fetch + blob)
     // ============================================================
-    function exportXlsx() {
-        // Актуализируем конфиг
-        onFilterChange();
-        onMultiStatusChange();
-        onMultiPriorityChange();
-        onSortChange();
-        onLimitChange();
-
-        // Отправим POST через форму
-        var form = document.createElement('form');
-        form.method = 'POST';
-        form.action = '/api/reports/export';
-        form.style.display = 'none';
-
-        // CSRF-токен из meta
-        var csrfMeta = document.querySelector('meta[name="csrf-token"]');
-        if (csrfMeta) {
-            var inp = document.createElement('input');
-            inp.type = 'hidden';
-            inp.name = 'csrf_token';
-            inp.value = csrfMeta.getAttribute('content') || '';
-            form.appendChild(inp);
+    function postForBlob(url, payload, filename, btn) {
+        var $btn = btn ? $(btn) : null;
+        var oldHtml = $btn ? $btn.html() : null;
+        if ($btn) {
+            $btn.prop('disabled', true).html(
+                '<span class="spinner-border spinner-border-sm"></span> Подготовка...'
+            );
         }
 
-        // config — как JSON-строка
-        var inpCfg = document.createElement('input');
-        inpCfg.type = 'hidden';
-        inpCfg.name = 'config';
-        inpCfg.value = JSON.stringify(config);
-        form.appendChild(inpCfg);
+        var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+        var csrf = csrfMeta ? csrfMeta.getAttribute('content') : '';
 
-        document.body.appendChild(form);
-        form.submit();
-        document.body.removeChild(form);
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrf,
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify(payload),
+        })
+        .then(function(resp) {
+            var ct = resp.headers.get('content-type') || '';
+            if (!resp.ok || ct.indexOf('application/json') !== -1) {
+                return resp.json().then(function(errData) {
+                    throw new Error(
+                        (errData && errData.error) || ('HTTP ' + resp.status)
+                    );
+                }).catch(function(parseErr) {
+                    throw new Error(parseErr.message || 'Ошибка сервера');
+                });
+            }
+            return resp.blob();
+        })
+        .then(function(blob) {
+            var objectUrl = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = objectUrl;
+            a.download = filename || 'report';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(function() { URL.revokeObjectURL(objectUrl); }, 1000);
+
+            if ($btn) $btn.prop('disabled', false).html(oldHtml);
+            utils.showSuccessMessage('Файл скачивается');
+        })
+        .catch(function(err) {
+            if ($btn) $btn.prop('disabled', false).html(oldHtml);
+            utils.showErrorMessage(err.message || 'Ошибка экспорта');
+        });
+    }
+
+    function exportXlsx() {
+        currentConfig();
+        var ts = new Date().toISOString().replace(/[-:T.]/g, '').slice(0, 14);
+        postForBlob('/api/reports/export', config, 'report_' + ts + '.xlsx');
+    }
+
+    // ============================================================
+    // ПЕЧАТЬ / СОХРАНИТЬ КАК PDF — через новое окно с HTML
+    // ------------------------------------------------------------
+    // Никаких WeasyPrint и GTK. Браузер сам отрисует таблицу,
+    // пользователь нажимает «Печать» → «Сохранить как PDF».
+    // ============================================================
+    function openPrintPreview() {
+        currentConfig();
+
+        if (!RESULT || !RESULT.rows || RESULT.rows.length === 0) {
+            // Пробуем сначала выполнить отчёт, потом открыть печать
+            Swal.fire({
+                title: 'Выполнить отчёт?',
+                text: 'Сначала нужно построить данные для печати.',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Выполнить и открыть',
+                cancelButtonText: 'Отмена',
+            }).then(function(r) {
+                if (!r.isConfirmed) return;
+
+                Swal.fire({
+                    title: 'Построение отчёта...',
+                    allowOutsideClick: false,
+                    didOpen: function() { Swal.showLoading(); },
+                });
+
+                http.post('/api/reports/run', config)
+                    .then(function(res) {
+                        Swal.close();
+                        if (!res.success) {
+                            utils.showErrorMessage(res.error || 'Ошибка');
+                            return;
+                        }
+                        RESULT = res;
+                        renderResult(res);
+                        openPrintWindow(res);
+                    })
+                    .catch(function(err) {
+                        Swal.close();
+                        utils.showErrorMessage(err.message || 'Ошибка');
+                    });
+            });
+            return;
+        }
+
+        openPrintWindow(RESULT);
+    }
+
+    function openPrintWindow(res) {
+        var headers = res.headers || [];
+        var rows = res.rows || [];
+        var generated = new Date().toLocaleString('ru-RU');
+
+        var w = window.open('', '_blank', 'width=1200,height=800');
+        if (!w) {
+            utils.showErrorMessage('Разрешите всплывающие окна для печати');
+            return;
+        }
+
+        var html = '<!DOCTYPE html><html lang="ru"><head>';
+        html += '<meta charset="UTF-8">';
+        html += '<title>Отчёт от ' + generated + '</title>';
+        html += '<style>';
+        html += '* { box-sizing: border-box; }';
+        html += 'body{font-family:Arial,sans-serif;padding:20px;color:#222;margin:0;}';
+        html += 'h1{font-size:18px;margin:0 0 6px;}';
+        html += '.meta{font-size:12px;color:#666;margin-bottom:16px;}';
+        html += 'table{width:100%;border-collapse:collapse;font-size:11px;}';
+        html += 'th{background:#4e73df;color:#fff;padding:8px 10px;text-align:left;';
+        html += 'border:1px solid #2c4ea0;font-weight:600;position:sticky;top:0;}';
+        html += 'td{padding:6px 10px;border:1px solid #ccc;vertical-align:top;';
+        html += 'word-break:break-word;}';
+        html += 'tr:nth-child(even) td{background:#f5f7fb;}';
+        html += '.actions{position:fixed;top:12px;right:12px;display:flex;gap:8px;z-index:100;}';
+        html += '.actions button{padding:10px 18px;font-size:14px;border:none;border-radius:8px;';
+        html += 'cursor:pointer;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,0.15);}';
+        html += '.btn-print{background:#4e73df;color:#fff;}';
+        html += '.btn-print:hover{background:#3b5bbd;}';
+        html += '.btn-close{background:#fff;color:#444;border:1px solid #ccc!important;}';
+        html += '.footer{margin-top:20px;padding-top:12px;border-top:1px dashed #ccc;';
+        html += 'font-size:11px;color:#888;text-align:center;}';
+        html += '@media print {';
+        html += '  .actions{display:none!important;}';
+        html += '  body{padding:0;}';
+        html += '  @page{size:A4 landscape;margin:10mm 8mm;}';
+        html += '  tr{page-break-inside:avoid;}';
+        html += '  thead{display:table-header-group;}';
+        html += '}';
+        html += '</style></head><body>';
+
+        // Кнопки действий
+        html += '<div class="actions">';
+        html += '<button class="btn-print" onclick="window.print()">';
+        html += '🖨️ Печать / Сохранить как PDF</button>';
+        html += '<button class="btn-close" onclick="window.close()">Закрыть</button>';
+        html += '</div>';
+
+        html += '<h1>Отчёт</h1>';
+        html += '<div class="meta">';
+        html += 'Сформировано: ' + escapeHtmlForPrint(generated) +
+                ' · Всего строк: <strong>' + rows.length + '</strong>';
+        if (res.truncated) {
+            html += ' · <em>(показаны первые ' + rows.length + ')</em>';
+        }
+        html += '</div>';
+
+        if (rows.length === 0) {
+            html += '<p style="text-align:center;color:#888;padding:40px;">' +
+                    'Нет данных по заданным условиям</p>';
+        } else {
+            html += '<table>';
+            html += '<thead><tr>';
+            headers.forEach(function(h) {
+                html += '<th>' + escapeHtmlForPrint(h.label) + '</th>';
+            });
+            html += '</tr></thead><tbody>';
+            rows.forEach(function(row) {
+                html += '<tr>';
+                headers.forEach(function(h) {
+                    var v = row[h.key];
+                    if (v === null || v === undefined) v = '—';
+                    html += '<td>' + escapeHtmlForPrint(String(v)) + '</td>';
+                });
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+        }
+
+        html += '<div class="footer">Support Active — Система управления заявками</div>';
+        html += '</body></html>';
+
+        w.document.open();
+        w.document.write(html);
+        w.document.close();
+
+        // Автофокус на окне
+        setTimeout(function() {
+            try { w.focus(); } catch (e) {}
+        }, 200);
+    }
+
+    function escapeHtmlForPrint(s) {
+        if (s === null || s === undefined) return '';
+        return String(s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     }
 
     // ============================================================
@@ -660,6 +781,7 @@
                     Swal.showValidationMessage('Введите название');
                     return false;
                 }
+                currentConfig();
                 return {
                     name: name,
                     description: ($('#rb-tpl-desc').val() || '').trim(),
@@ -694,7 +816,6 @@
         }).then(function(r) {
             if (!r.isConfirmed) return;
 
-            // Копируем конфиг из шаблона
             var cfg = t.config || {};
             config.fields = cfg.fields || [];
             config.filters = Object.assign({}, config.filters, cfg.filters || {});
@@ -703,9 +824,7 @@
             config.sort = cfg.sort || { by: 'created_date', order: 'DESC' };
             config.limit = cfg.limit || 500;
 
-            syncFieldsUI();
-            syncFiltersUI();
-            syncGroupingUI();
+            render();
             utils.showSuccessMessage('Шаблон применён');
         });
     }
@@ -724,6 +843,7 @@
             cancelButtonText: 'Отмена',
         }).then(function(r) {
             if (!r.isConfirmed) return;
+            currentConfig();
             http.put('/api/reports/templates/' + tid, {
                 name: t.name,
                 description: t.description,
@@ -779,10 +899,11 @@
     mod.resetFilters = resetFilters;
     mod.runReport = runReport;
     mod.exportXlsx = exportXlsx;
+    mod.openPrintPreview = openPrintPreview;
     mod.saveTemplate = saveTemplate;
     mod.applyTemplate = applyTemplate;
     mod.updateTemplate = updateTemplate;
     mod.deleteTemplate = deleteTemplate;
 
-    console.log('[reports_builder] Загружено');
+    console.log('[reports_builder] Загружено (PDF через окно печати, без GTK)');
 })();

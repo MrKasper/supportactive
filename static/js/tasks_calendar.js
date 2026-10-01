@@ -18,26 +18,21 @@
                      'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
 
     var state = {
-        view: 'month',           // 'month' | 'week'
-        anchor: new Date(),      // опорная дата
+        view: 'month',
+        anchor: new Date(),
         dateField: 'deadline',
-        filters: {
-            statuses: [],
-            priority: '',
-            executor: '',
-            cabinet: '',
-            work_type: '',
-            tags: [],
-        },
-        data: null,              // ответ API
+        data: null,
         loaded: false,
+        filtersMeta: null,   // ← данные из /api/filters + /api/executors
     };
 
     // ============================================================
     // УТИЛИТЫ
     // ============================================================
     function pad(n) { return String(n).padStart(2, '0'); }
-    function iso(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+    function iso(d) {
+        return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+    }
 
     function fmtDay(d) {
         return d.getDate() + ' ' + MONTHS_RU[d.getMonth()].slice(0, 3).toLowerCase();
@@ -47,7 +42,7 @@
     function endOfMonth(d) { return new Date(d.getFullYear(), d.getMonth() + 1, 0); }
 
     function startOfWeek(d) {
-        var day = (d.getDay() + 6) % 7;  // 0 = Пн
+        var day = (d.getDay() + 6) % 7;
         var r = new Date(d);
         r.setDate(r.getDate() - day);
         return r;
@@ -69,7 +64,30 @@
     }
 
     // ============================================================
-    // ЗАГРУЗКА СТРАНИЦЫ
+    // СОХРАНЕНИЕ / ВОССТАНОВЛЕНИЕ ФИЛЬТРОВ
+    // ============================================================
+    function readFiltersFromUI() {
+        return {
+            status:      $('#tc-f-status').val() || '',
+            priority:    $('#tc-f-priority').val() || '',
+            executor:    $('#tc-f-executor').val() || '',
+            cabinet:     $('#tc-f-cabinet').val() || '',
+            work_type:   $('#tc-f-work-type').val() || '',
+        };
+    }
+
+    function applyFiltersToUI(filters) {
+        filters = filters || {};
+        $('#tc-f-status').val(filters.status || '');
+        $('#tc-f-priority').val(filters.priority || '');
+        $('#tc-f-executor').val(filters.executor || '');
+        $('#tc-f-cabinet').val(filters.cabinet || '');
+        $('#tc-f-work-type').val(filters.work_type || '');
+        $('#tc-date-field').val(state.dateField);
+    }
+
+    // ============================================================
+    // ЗАГРУЗКА
     // ============================================================
     function load() {
         var $block = $('#otherPagesBlock');
@@ -80,15 +98,37 @@
         );
 
         Promise.all([
-            http.get('/api/filters').catch(function() { return null; }),
+            http.get('/api/filters').catch(function() { return {}; }),
+            http.get('/api/executors').catch(function() { return []; }),
         ]).then(function(results) {
-            var filters = results[0] || {};
-            renderShell(filters);
+            var baseMeta = results[0] || {};
+            var executorsRaw = Array.isArray(results[1]) ? results[1] : [];
+
+            // Только Техники
+            var techs = executorsRaw.filter(function(e) {
+                return e && e.role === 'Техник';
+            });
+
+            state.filtersMeta = {
+                statuses: baseMeta.statuses || ['Новое', 'В работе', 'Выполнено', 'Отменено'],
+                priorities: baseMeta.priorities || ['Высокий', 'Средний', 'Низкий'],
+                work_types: baseMeta.work_types || [],
+                cabinets: baseMeta.cabinets || [],
+                executors: techs,
+            };
+
+            renderShell();
             fetchAndRender();
         });
     }
 
-    function renderShell(filters) {
+    // ============================================================
+    // РЕНДЕР ОБОЛОЧКИ (не зависит от filters)
+    // ============================================================
+    function renderShell() {
+        var meta = state.filtersMeta || {};
+        var savedFilters = readFiltersFromUI();
+
         var html = '';
 
         html += '<div class="tc-wrap">';
@@ -127,52 +167,49 @@
 
         html += '<div class="field"><label>Статус</label>' +
             '<select id="tc-f-status" onchange="App.TasksCalendar.applyFilters()">' +
-            '<option value="">Все</option>' +
-            '<option value="Новое">Новое</option>' +
-            '<option value="В работе">В работе</option>' +
-            '<option value="Выполнено">Выполнено</option>' +
-            '<option value="Отменено">Отменено</option>' +
-            '</select></div>';
+            '<option value="">Все</option>';
+        (meta.statuses || []).forEach(function(s) {
+            html += '<option value="' + utils.escapeHtml(s) + '">' +
+                utils.escapeHtml(s) + '</option>';
+        });
+        html += '</select></div>';
 
         html += '<div class="field"><label>Приоритет</label>' +
             '<select id="tc-f-priority" onchange="App.TasksCalendar.applyFilters()">' +
-            '<option value="">Все</option>' +
-            '<option value="Высокий">Высокий</option>' +
-            '<option value="Средний">Средний</option>' +
-            '<option value="Низкий">Низкий</option>' +
-            '</select></div>';
+            '<option value="">Все</option>';
+        (meta.priorities || []).forEach(function(p) {
+            html += '<option value="' + utils.escapeHtml(p) + '">' +
+                utils.escapeHtml(p) + '</option>';
+        });
+        html += '</select></div>';
 
-        var execs = (filters.executors || []);
-        if (execs.length === 0 && filters.users) {
-            execs = filters.users.map(function(n) { return { full_name: n }; });
-        }
+        // Только Техники
         html += '<div class="field"><label>Исполнитель</label>' +
             '<select id="tc-f-executor" onchange="App.TasksCalendar.applyFilters()">' +
             '<option value="">Все</option>';
-        execs.forEach(function(e) {
-            var name = e.full_name || e;
+        (meta.executors || []).forEach(function(e) {
+            var name = e.full_name || '';
+            if (!name) return;
             html += '<option value="' + utils.escapeHtml(name) + '">' +
-                    utils.escapeHtml(name) + '</option>';
+                utils.escapeHtml(name) + '</option>';
         });
         html += '</select></div>';
 
-        var cabs = (filters.cabinets || []);
         html += '<div class="field"><label>Кабинет</label>' +
             '<select id="tc-f-cabinet" onchange="App.TasksCalendar.applyFilters()">' +
             '<option value="">Все</option>';
-        cabs.forEach(function(c) {
+        (meta.cabinets || []).forEach(function(c) {
             html += '<option value="' + utils.escapeHtml(c) + '">' +
-                    utils.escapeHtml(c) + '</option>';
+                utils.escapeHtml(c) + '</option>';
         });
         html += '</select></div>';
 
-        var wts = (filters.work_types || []);
         html += '<div class="field"><label>Тип работы</label>' +
             '<select id="tc-f-work-type" onchange="App.TasksCalendar.applyFilters()">' +
             '<option value="">Все</option>';
-        wts.forEach(function(t) {
+        (meta.work_types || []).forEach(function(t) {
             html += '<option value="' + utils.escapeHtml(t) + '">' +
-                    utils.escapeHtml(t) + '</option>';
+                utils.escapeHtml(t) + '</option>';
         });
         html += '</select></div>';
 
@@ -180,31 +217,33 @@
             '<button class="btn-ghost" onclick="App.TasksCalendar.resetFilters()">' +
             '<i class="bi bi-x-circle"></i> Сбросить</button></div>';
 
-        html += '</div>'; // /filters
+        html += '</div>';
 
         // Контейнер календаря
         html += '<div id="tc-calendar-container">' +
             '<div class="text-center py-4"><div class="spinner-border spinner-border-sm"></div></div>' +
             '</div>';
 
-        html += '</div>'; // /tc-wrap
+        html += '</div>';
 
         $('#otherPagesBlock').html(html);
+
+        // Восстанавливаем фильтры и поле даты
+        applyFiltersToUI(savedFilters);
+        $('#tc-date-field').val(state.dateField);
     }
 
     // ============================================================
-    // ПОЛУЧЕНИЕ ДИАПАЗОНА ДАТ
+    // ДИАПАЗОН
     // ============================================================
     function computeRange() {
         if (state.view === 'month') {
             var from = startOfMonth(state.anchor);
             var to = endOfMonth(state.anchor);
-            // Для сетки нужны "хвосты" соседних недель
             var gridStart = startOfWeek(from);
             var gridEnd = endOfWeek(to);
             return { from: gridStart, to: gridEnd, display: from, displayEnd: to };
         }
-        // week
         var from = startOfWeek(state.anchor);
         var to = endOfWeek(state.anchor);
         return { from: from, to: to, display: from, displayEnd: to };
@@ -216,18 +255,13 @@
         params.append('to', iso(range.to));
         params.append('date_field', state.dateField);
 
-        var status = $('#tc-f-status').val() || '';
-        if (status) params.append('status', status);
-        var prio = $('#tc-f-priority').val() || '';
-        if (prio) params.append('priority', prio);
-        var ex = $('#tc-f-executor').val() || '';
-        if (ex) params.append('executor', ex);
-        var cab = $('#tc-f-cabinet').val() || '';
-        if (cab) params.append('cabinet', cab);
-        var wt = $('#tc-f-work-type').val() || '';
-        if (wt) params.append('work_type', wt);
+        var f = readFiltersFromUI();
+        if (f.status)    params.append('status', f.status);
+        if (f.priority)  params.append('priority', f.priority);
+        if (f.executor)  params.append('executor', f.executor);
+        if (f.cabinet)   params.append('cabinet', f.cabinet);
+        if (f.work_type) params.append('work_type', f.work_type);
 
-        // Ограничения для Техника
         if (window.currentUserRole === 'Техник' && window.currentUserFullName) {
             params.append('for_technician', window.currentUserFullName);
         }
@@ -264,7 +298,6 @@
     }
 
     function render(range) {
-        // Заголовок периода
         var title;
         if (state.view === 'month') {
             title = MONTHS_RU[range.display.getMonth()] + ' ' + range.display.getFullYear();
@@ -279,12 +312,10 @@
 
         var html = '<div class="tc-calendar">';
 
-        // Заголовки дней недели
         WEEKDAYS_SHORT.forEach(function(w) {
             html += '<div class="tc-day-head">' + w + '</div>';
         });
 
-        // Ячейки
         var cursor = new Date(range.from);
         while (cursor <= range.to) {
             var dStr = iso(cursor);
@@ -305,8 +336,7 @@
             }
             html += '</div>';
 
-            var shown = tasks.slice(0, 4);
-            shown.forEach(function(t) {
+            tasks.slice(0, 4).forEach(function(t) {
                 html += renderTask(t);
             });
             if (tasks.length > 4) {
@@ -315,7 +345,7 @@
                     '+' + (tasks.length - 4) + ' ещё</div>';
             }
 
-            html += '</div>';  // /tc-cell
+            html += '</div>';
 
             cursor.setDate(cursor.getDate() + 1);
         }
@@ -323,8 +353,6 @@
         html += '</div>';
 
         $('#tc-calendar-container').html(html);
-
-        // Навешиваем drag-n-drop на ячейки и задачи
         enableDragDrop();
     }
 
@@ -345,14 +373,12 @@
     // ============================================================
     function enableDragDrop() {
         if (window.currentUserRole === 'Пользователь') return;
-        if (window.currentUserRole === 'Техник') {
-            // Техник не может менять deadline произвольно — пропускаем
-            return;
-        }
+        if (window.currentUserRole === 'Техник') return;
 
         var draggedTaskId = null;
 
-        $('#tc-calendar-container').off('dragstart.tc dragend.tc dragover.tc dragleave.tc drop.tc')
+        $('#tc-calendar-container')
+            .off('dragstart.tc dragend.tc dragover.tc dragleave.tc drop.tc')
             .on('dragstart.tc', '.tc-task', function(e) {
                 draggedTaskId = parseInt($(this).attr('data-task-id'), 10);
                 e.originalEvent.dataTransfer.effectAllowed = 'move';
@@ -382,14 +408,12 @@
                 var newDate = $(this).attr('data-date');
                 if (!newDate) return;
 
-                // Отправляем на сервер обновление deadline
                 moveTask(draggedTaskId, newDate);
                 draggedTaskId = null;
             });
     }
 
     function moveTask(taskId, newDate) {
-        // Получаем старую заявку, чтобы забрать её deadline'ы и другие поля
         http.get('/api/task/' + taskId)
             .then(function(task) {
                 if (task.error) {
@@ -397,7 +421,6 @@
                     return;
                 }
 
-                // Формируем новый deadline с сохранением времени, если было
                 var oldDeadline = task.deadline || '';
                 var timePart = '12:00:00';
                 if (oldDeadline && oldDeadline.indexOf(' ') !== -1) {
@@ -405,11 +428,9 @@
                 }
                 var newDeadline = newDate + ' ' + timePart;
 
-                var payload = {
+                return http.post('/api/update_task/' + taskId, {
                     deadline: newDeadline,
-                };
-
-                return http.post('/api/update_task/' + taskId, payload);
+                });
             })
             .then(function(res) {
                 if (res && res.success) {
@@ -425,20 +446,13 @@
     }
 
     // ============================================================
-    // ПУБЛИЧНЫЕ ДЕЙСТВИЯ
+    // ДЕЙСТВИЯ
     // ============================================================
     function setView(v) {
+        if (state.view === v) return;
         state.view = v;
-        renderShell(null);  // перерендер оболочки
-        // Восстановим фильтры (мы их не сохраняем при перерендере — оставим всё как было)
-        // Просто заново навесим значения из state
-        applyFilterValues();
+        renderShell();
         fetchAndRender();
-    }
-
-    function applyFilterValues() {
-        // Ничего — фильтры будут показаны как "Все" после перерендера оболочки
-        // (не критично, пользователь их выберет заново)
     }
 
     function shift(delta) {
